@@ -1,0 +1,280 @@
+{
+  "schema_version": 1,
+  "catalog_version": "1.0.0",
+  "estado": "sin verificar",
+  "fuente": null,
+  "nota": "Las fórmulas implementan operaciones dimensionales, no recomendaciones clínicas. Parámetros clínicos y protocolos requieren fuente específica. Sin datos clínicos precargados.",
+  "calculos": [
+    {
+      "id": "fluids",
+      "titulo": "Fluidoterapia",
+      "entradas": [
+        {
+          "id": "weight",
+          "etiqueta": "Peso (kg)",
+          "permite_cero": false
+        },
+        {
+          "id": "maintenance",
+          "etiqueta": "Mantenimiento indicado (ml/kg/día)",
+          "permite_cero": true
+        },
+        {
+          "id": "percent",
+          "etiqueta": "Deshidratación estimada (%)",
+          "permite_cero": true
+        },
+        {
+          "id": "hours",
+          "etiqueta": "Periodo de reposición (h)",
+          "permite_cero": false
+        },
+        {
+          "id": "losses",
+          "etiqueta": "Pérdidas adicionales TOTALES del periodo (ml)",
+          "permite_cero": true
+        },
+        {
+          "id": "drop_factor",
+          "etiqueta": "Factor del equipo (gotas/ml)",
+          "permite_cero": false
+        }
+      ],
+      "salidas": [
+        {
+          "id": "maintenance_day",
+          "etiqueta": "Mantenimiento (ml/día)"
+        },
+        {
+          "id": "deficit",
+          "etiqueta": "Déficit estimado (ml)"
+        },
+        {
+          "id": "total",
+          "etiqueta": "Volumen del periodo (ml)"
+        },
+        {
+          "id": "rate",
+          "etiqueta": "Velocidad (ml/h)"
+        },
+        {
+          "id": "drops",
+          "etiqueta": "Goteo teórico (gotas/min)"
+        }
+      ]
+    },
+    {
+      "id": "cri",
+      "titulo": "Infusión continua (CRI)",
+      "entradas": [
+        {
+          "id": "weight",
+          "etiqueta": "Peso (kg)",
+          "permite_cero": false
+        },
+        {
+          "id": "dose",
+          "etiqueta": "Dosis indicada (mcg/kg/min)",
+          "permite_cero": false
+        },
+        {
+          "id": "concentration",
+          "etiqueta": "Concentración del frasco (mg/ml)",
+          "permite_cero": false
+        },
+        {
+          "id": "final_volume",
+          "etiqueta": "Volumen FINAL de mezcla (ml)",
+          "permite_cero": false
+        },
+        {
+          "id": "pump_rate",
+          "etiqueta": "Velocidad de bomba (ml/h)",
+          "permite_cero": false
+        },
+        {
+          "id": "drop_factor",
+          "etiqueta": "Factor del equipo (gotas/ml)",
+          "permite_cero": false
+        }
+      ],
+      "salidas": [
+        {
+          "id": "mass_hour",
+          "etiqueta": "Activo (mg/h)"
+        },
+        {
+          "id": "duration",
+          "etiqueta": "Duración de la mezcla (h)"
+        },
+        {
+          "id": "mass",
+          "etiqueta": "Activo total (mg)"
+        },
+        {
+          "id": "drug_volume",
+          "etiqueta": "Volumen del fármaco (ml)"
+        },
+        {
+          "id": "solvent_volume",
+          "etiqueta": "Volumen del diluyente (ml)"
+        },
+        {
+          "id": "mixture_concentration",
+          "etiqueta": "Concentración final (mg/ml)"
+        },
+        {
+          "id": "drops",
+          "etiqueta": "Goteo teórico (gotas/min)"
+        }
+      ]
+    },
+    {
+      "id": "herd",
+      "titulo": "Producción: por cabeza y lote",
+      "entradas": [
+        {
+          "id": "weight",
+          "etiqueta": "Peso por cabeza (kg)",
+          "permite_cero": false
+        },
+        {
+          "id": "count",
+          "etiqueta": "Número de animales",
+          "permite_cero": false
+        },
+        {
+          "id": "dose",
+          "etiqueta": "Dosis indicada (mg/kg)",
+          "permite_cero": false
+        },
+        {
+          "id": "concentration",
+          "etiqueta": "Concentración comercial (mg/ml)",
+          "permite_cero": false
+        }
+      ],
+      "salidas": [
+        {
+          "id": "mass_head",
+          "etiqueta": "Activo por cabeza (mg)"
+        },
+        {
+          "id": "volume_head",
+          "etiqueta": "Volumen por cabeza (ml)"
+        },
+        {
+          "id": "mass_lot",
+          "etiqueta": "Activo del lote (mg)"
+        },
+        {
+          "id": "volume_lot",
+          "etiqueta": "Volumen del lote (ml)"
+        }
+      ]
+    },
+    {
+      "id": "water",
+      "titulo": "Producción: agua",
+      "entradas": [
+        {
+          "id": "target",
+          "etiqueta": "Concentración indicada de activo (mg/L)",
+          "permite_cero": false
+        },
+        {
+          "id": "litres",
+          "etiqueta": "Volumen de agua (L)",
+          "permite_cero": false
+        },
+        {
+          "id": "strength",
+          "etiqueta": "Potencia del producto (mg de activo/g de producto)",
+          "permite_cero": false
+        }
+      ],
+      "salidas": [
+        {
+          "id": "mass",
+          "etiqueta": "Activo total (mg)"
+        },
+        {
+          "id": "product_grams",
+          "etiqueta": "Producto total (g)"
+        }
+      ]
+    },
+    {
+      "id": "feed",
+      "titulo": "Producción: alimento",
+      "entradas": [
+        {
+          "id": "target",
+          "etiqueta": "Concentración indicada de activo (mg/kg de alimento)",
+          "permite_cero": false
+        },
+        {
+          "id": "tonnes",
+          "etiqueta": "Cantidad de alimento (toneladas métricas)",
+          "permite_cero": false
+        },
+        {
+          "id": "strength",
+          "etiqueta": "Potencia del producto (mg de activo/g de producto)",
+          "permite_cero": false
+        }
+      ],
+      "salidas": [
+        {
+          "id": "mass",
+          "etiqueta": "Activo total (mg)"
+        },
+        {
+          "id": "product_grams",
+          "etiqueta": "Producto total (g)"
+        }
+      ]
+    },
+    {
+      "id": "adjustment",
+      "titulo": "Ajuste pediátrico / geriátrico",
+      "entradas": [
+        {
+          "id": "weight",
+          "etiqueta": "Peso (kg)",
+          "permite_cero": false
+        },
+        {
+          "id": "dose",
+          "etiqueta": "Dosis inicial indicada (mg/kg)",
+          "permite_cero": false
+        },
+        {
+          "id": "factor",
+          "etiqueta": "Factor de referencia",
+          "permite_cero": false
+        },
+        {
+          "id": "concentration",
+          "etiqueta": "Concentración comercial (mg/ml)",
+          "permite_cero": false
+        }
+      ],
+      "salidas": [
+        {
+          "id": "dose",
+          "etiqueta": "Dosis ajustada (mg/kg)"
+        },
+        {
+          "id": "mass",
+          "etiqueta": "Activo total (mg)"
+        },
+        {
+          "id": "volume",
+          "etiqueta": "Volumen (ml)"
+        }
+      ]
+    }
+  ],
+  "referencias": []
+}

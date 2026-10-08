@@ -1,0 +1,18 @@
+[functions.forms-pdf]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/forms-pdf/index.ts"
+import_map = "./functions/forms-pdf/deno.json"
+static_files = ["./functions/forms-pdf/DejaVuSans.ttf", "./functions/forms-pdf/FONT-LICENSE.txt"]
+
+[functions.ai-gateway]
+verify_jwt = false
+
+[functions.subscriptions-gateway]
+verify_jwt = false
+
+[functions.subscriptions-webhook]
+verify_jwt = false
+
+[functions.starter-ai]
+verify_jwt = false

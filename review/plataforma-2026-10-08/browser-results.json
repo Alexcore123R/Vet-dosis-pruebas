@@ -1,0 +1,175 @@
+{
+  "synthetic_preview": true,
+  "checks": [
+    {
+      "screen": "Inicio",
+      "width": 390,
+      "theme": "light",
+      "http": 200,
+      "screenshot": "inicio-390-light.png"
+    },
+    {
+      "screen": "Inicio",
+      "width": 390,
+      "theme": "dark",
+      "http": 200,
+      "screenshot": "inicio-390-dark.png"
+    },
+    {
+      "screen": "Ajustes",
+      "width": 390,
+      "theme": "light",
+      "http": 200,
+      "screenshot": "ajustes-390-light.png"
+    },
+    {
+      "screen": "Ajustes",
+      "width": 390,
+      "theme": "dark",
+      "http": 200,
+      "screenshot": "ajustes-390-dark.png"
+    },
+    {
+      "screen": "Producto y costos",
+      "width": 390,
+      "theme": "light",
+      "http": 200,
+      "screenshot": "producto-390-light.png"
+    },
+    {
+      "screen": "Producto y costos",
+      "width": 390,
+      "theme": "dark",
+      "http": 200,
+      "screenshot": "producto-390-dark.png"
+    },
+    {
+      "screen": "Inicio guiado",
+      "width": 390,
+      "theme": "light",
+      "http": 200,
+      "screenshot": "guia-390-light.png"
+    },
+    {
+      "screen": "Inicio guiado",
+      "width": 390,
+      "theme": "dark",
+      "http": 200,
+      "screenshot": "guia-390-dark.png"
+    },
+    {
+      "screen": "Asistente IA",
+      "width": 390,
+      "theme": "light",
+      "http": 200,
+      "screenshot": "ia-390-light.png"
+    },
+    {
+      "screen": "Asistente IA",
+      "width": 390,
+      "theme": "dark",
+      "http": 200,
+      "screenshot": "ia-390-dark.png"
+    },
+    {
+      "screen": "Planes",
+      "width": 390,
+      "theme": "light",
+      "http": 200,
+      "screenshot": "planes-390-light.png"
+    },
+    {
+      "screen": "Planes",
+      "width": 390,
+      "theme": "dark",
+      "http": 200,
+      "screenshot": "planes-390-dark.png"
+    },
+    {
+      "screen": "Inicio",
+      "width": 1440,
+      "theme": "light",
+      "http": 200,
+      "screenshot": "inicio-1440-light.png"
+    },
+    {
+      "screen": "Inicio",
+      "width": 1440,
+      "theme": "dark",
+      "http": 200,
+      "screenshot": "inicio-1440-dark.png"
+    },
+    {
+      "screen": "Ajustes",
+      "width": 1440,
+      "theme": "light",
+      "http": 200,
+      "screenshot": "ajustes-1440-light.png"
+    },
+    {
+      "screen": "Ajustes",
+      "width": 1440,
+      "theme": "dark",
+      "http": 200,
+      "screenshot": "ajustes-1440-dark.png"
+    },
+    {
+      "screen": "Producto y costos",
+      "width": 1440,
+      "theme": "light",
+      "http": 200,
+      "screenshot": "producto-1440-light.png"
+    },
+    {
+      "screen": "Producto y costos",
+      "width": 1440,
+      "theme": "dark",
+      "http": 200,
+      "screenshot": "producto-1440-dark.png"
+    },
+    {
+      "screen": "Inicio guiado",
+      "width": 1440,
+      "theme": "light",
+      "http": 200,
+      "screenshot": "guia-1440-light.png"
+    },
+    {
+      "screen": "Inicio guiado",
+      "width": 1440,
+      "theme": "dark",
+      "http": 200,
+      "screenshot": "guia-1440-dark.png"
+    },
+    {
+      "screen": "Asistente IA",
+      "width": 1440,
+      "theme": "light",
+      "http": 200,
+      "screenshot": "ia-1440-light.png"
+    },
+    {
+      "screen": "Asistente IA",
+      "width": 1440,
+      "theme": "dark",
+      "http": 200,
+      "screenshot": "ia-1440-dark.png"
+    },
+    {
+      "screen": "Planes",
+      "width": 1440,
+      "theme": "light",
+      "http": 200,
+      "screenshot": "planes-1440-light.png"
+    },
+    {
+      "screen": "Planes",
+      "width": 1440,
+      "theme": "dark",
+      "http": 200,
+      "screenshot": "planes-1440-dark.png"
+    }
+  ],
+  "page_errors": [],
+  "console_errors": []
+}

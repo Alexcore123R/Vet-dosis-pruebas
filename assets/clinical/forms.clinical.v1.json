@@ -1,0 +1,515 @@
+{
+  "version": 1,
+  "source_status": "sin verificar",
+  "source": "Estructura original; requiere revisión de la clínica. Sin valores clínicos de referencia.",
+  "templates": [
+    {
+      "type": "clinical_history",
+      "title": "Historia clínica",
+      "fields": [
+        {
+          "id": "patient",
+          "label": "Paciente",
+          "type": "binding",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "owner",
+          "label": "Propietario registrado",
+          "type": "binding",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "mvz_name",
+          "label": "Nombre del MVZ responsable",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "mvz_license",
+          "label": "Cédula del MVZ responsable",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "privacy_url",
+          "label": "Enlace al aviso de privacidad",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "signature",
+          "label": "Firma del MVZ responsable",
+          "type": "signature",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "clinical_date",
+          "label": "Fecha clínica",
+          "type": "date",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "reason",
+          "label": "Motivo de atención",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "antecedents",
+          "label": "Antecedentes",
+          "type": "text",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "subjective",
+          "label": "SOAP · Subjetivo",
+          "type": "text",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "objective",
+          "label": "SOAP · Objetivo",
+          "type": "text",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "assessment",
+          "label": "SOAP · Análisis",
+          "type": "text",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "plan",
+          "label": "SOAP · Plan",
+          "type": "text",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "observed_at",
+          "label": "Fecha y hora de las mediciones (UTC)",
+          "type": "instant",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "weight",
+          "label": "Peso (kg)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "fc",
+          "label": "Frecuencia cardíaca (lpm)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "fr",
+          "label": "Frecuencia respiratoria (rpm)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "temperature",
+          "label": "Temperatura (°C)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "tllc",
+          "label": "TLLC (s)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "bp_systolic",
+          "label": "Presión sistólica (mmHg)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "bp_diastolic",
+          "label": "Presión diastólica (mmHg)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        }
+      ],
+      "clauses": [
+        {
+          "id": "clinical_scope",
+          "text": "Registro clínico elaborado por el MVZ. No sustituye la autorización del tutor. Los campos sin captura permanecen pendientes; no representan hallazgos normales. Las actuaciones posteriores se anexan al expediente sin alterar este documento.",
+          "locked": true
+        }
+      ]
+    },
+    {
+      "type": "surgical_sheet",
+      "title": "Hoja quirúrgica y anestésica",
+      "fields": [
+        {
+          "id": "patient",
+          "label": "Paciente",
+          "type": "binding",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "owner",
+          "label": "Propietario registrado",
+          "type": "binding",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "mvz_name",
+          "label": "Nombre del MVZ responsable",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "mvz_license",
+          "label": "Cédula del MVZ responsable",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "privacy_url",
+          "label": "Enlace al aviso de privacidad",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "signature",
+          "label": "Firma del MVZ responsable",
+          "type": "signature",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "clinical_date",
+          "label": "Fecha clínica",
+          "type": "date",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "reason",
+          "label": "Motivo de atención",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "procedure",
+          "label": "Procedimiento",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "surgeon_id",
+          "label": "Cirujano",
+          "type": "person",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "anesthetist_id",
+          "label": "Anestesista",
+          "type": "person",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "consent_id",
+          "label": "Consentimiento quirúrgico firmado vinculado",
+          "type": "consent",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "asa",
+          "label": "ASA: valoración capturada por el MVZ",
+          "type": "text",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "ekg",
+          "label": "EKG: hallazgos e interpretación del MVZ",
+          "type": "text",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "notes",
+          "label": "Observaciones clínicas",
+          "type": "text",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "observed_at",
+          "label": "Fecha y hora de las mediciones (UTC)",
+          "type": "instant",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "weight",
+          "label": "Peso (kg)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "fc",
+          "label": "Frecuencia cardíaca (lpm)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "fr",
+          "label": "Frecuencia respiratoria (rpm)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "temperature",
+          "label": "Temperatura (°C)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "tllc",
+          "label": "TLLC (s)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "bp_systolic",
+          "label": "Presión sistólica (mmHg)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "bp_diastolic",
+          "label": "Presión diastólica (mmHg)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        }
+      ],
+      "clauses": [
+        {
+          "id": "clinical_scope",
+          "text": "Registro clínico elaborado por el MVZ. No sustituye la autorización del tutor. Los campos sin captura permanecen pendientes; no representan hallazgos normales. Las actuaciones posteriores se anexan al expediente sin alterar este documento.",
+          "locked": true
+        }
+      ]
+    },
+    {
+      "type": "surgical_risk",
+      "title": "Valoración prequirúrgica / ASA / EKG",
+      "fields": [
+        {
+          "id": "patient",
+          "label": "Paciente",
+          "type": "binding",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "owner",
+          "label": "Propietario registrado",
+          "type": "binding",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "mvz_name",
+          "label": "Nombre del MVZ responsable",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "mvz_license",
+          "label": "Cédula del MVZ responsable",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "privacy_url",
+          "label": "Enlace al aviso de privacidad",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "signature",
+          "label": "Firma del MVZ responsable",
+          "type": "signature",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "clinical_date",
+          "label": "Fecha clínica",
+          "type": "date",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "reason",
+          "label": "Motivo de atención",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "procedure",
+          "label": "Procedimiento",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "surgeon_id",
+          "label": "Cirujano",
+          "type": "person",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "anesthetist_id",
+          "label": "Anestesista",
+          "type": "person",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "consent_id",
+          "label": "Consentimiento quirúrgico firmado vinculado",
+          "type": "consent",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "asa",
+          "label": "ASA: valoración capturada por el MVZ",
+          "type": "text",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "ekg",
+          "label": "EKG: hallazgos e interpretación del MVZ",
+          "type": "text",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "notes",
+          "label": "Observaciones clínicas",
+          "type": "text",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "observed_at",
+          "label": "Fecha y hora de las mediciones (UTC)",
+          "type": "instant",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "weight",
+          "label": "Peso (kg)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "fc",
+          "label": "Frecuencia cardíaca (lpm)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "fr",
+          "label": "Frecuencia respiratoria (rpm)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "temperature",
+          "label": "Temperatura (°C)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "tllc",
+          "label": "TLLC (s)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "bp_systolic",
+          "label": "Presión sistólica (mmHg)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        },
+        {
+          "id": "bp_diastolic",
+          "label": "Presión diastólica (mmHg)",
+          "type": "number",
+          "required": false,
+          "locked": true
+        }
+      ],
+      "clauses": [
+        {
+          "id": "clinical_scope",
+          "text": "Registro clínico elaborado por el MVZ. No sustituye la autorización del tutor. Los campos sin captura permanecen pendientes; no representan hallazgos normales. Las actuaciones posteriores se anexan al expediente sin alterar este documento.",
+          "locked": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+import '../../core/domain/plan_errors.dart';
+import 'package:flutter/foundation.dart';
+import '../domain/operations_repository.dart';
+
+class OperationsViewModel extends ChangeNotifier {
+  OperationsViewModel(this.repository, this.clinic);
+  final OperationsRepository repository;
+  final String clinic;
+  Map<String, dynamic> data = {};
+  bool busy = false, _disposed = false;
+  String? error;
+  List<Map<String, dynamic>> rows(String key) => (data[key] as List? ?? [])
+      .map((e) => Map<String, dynamic>.from(e as Map))
+      .toList();
+  Future<void> load() async {
+    if (busy) return;
+    busy = true;
+    error = null;
+    notifyListeners();
+    try {
+      data = await repository.dashboard(clinic);
+    } catch (e) {
+      data = {};
+      error = operationError(e);
+    }
+    if (_disposed) return;
+    busy = false;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+}
+
+String operationError(Object e) {
+  final planMessage = planActionError(e);
+  if (planMessage != null) return planMessage;
+  final text = e.toString();
+  const errors = {
+    'invalid_display_name': 'Usa un nombre de entre 2 y 120 caracteres.',
+    'patient_wrong_clinic':
+        'El paciente no pertenece a esta clínica. Vuelve a seleccionarlo.',
+    'appointment_reason_required':
+        'Escribe un motivo de al menos 3 caracteres.',
+    'appointment_not_scheduled': 'Solo se puede reprogramar una cita agendada.',
+    'invalid_professional':
+        'El profesional ya no está disponible en esta clínica.',
+    'appointment_overlap': 'Ese profesional ya tiene una cita en ese horario.',
+    'version_conflict': 'El registro cambió. Actualiza antes de guardar.',
+    'consent_required': 'Confirma tu consentimiento para guardar la ficha.',
+    'service_already_paid': 'Este servicio ya está cobrado.',
+    'invalid_transition': 'Ese cambio de estado no está permitido.',
+    'appointment_closed': 'La cita ya está cerrada.',
+    'access_denied': 'No tienes permiso para esta acción.',
+  };
+  for (final entry in errors.entries) {
+    if (text.contains(entry.key)) return entry.value;
+  }
+  return 'No se pudo guardar o consultar. Revisa los datos, la conexión y tus permisos.';
+}

@@ -1,0 +1,590 @@
+{
+  "version": 1,
+  "source_status": "sin verificar",
+  "templates": [
+    {
+      "type": "general",
+      "title": "Consentimiento general",
+      "fields": [
+        {
+          "id": "patient",
+          "label": "Paciente",
+          "type": "binding",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "owner",
+          "label": "Propietario registrado",
+          "type": "binding",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "mvz_name",
+          "label": "Nombre del MVZ responsable",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "mvz_license",
+          "label": "Cédula del MVZ responsable",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "signer_name",
+          "label": "Nombre del firmante",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "signer_id",
+          "label": "Número de identificación del firmante (sin fotografía)",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "privacy_url",
+          "label": "Enlace al aviso de privacidad",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "signature",
+          "label": "Firmas del tutor y del MVZ",
+          "type": "signature",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "procedure",
+          "label": "Procedimiento o alcance autorizado",
+          "type": "text",
+          "required": true,
+          "locked": false
+        },
+        {
+          "id": "information",
+          "label": "Información explicada y preguntas del tutor",
+          "type": "text",
+          "required": true,
+          "locked": false
+        },
+        {
+          "id": "preop_instructions",
+          "label": "Indicaciones de preparación indicadas por el MVZ",
+          "type": "text",
+          "required": false,
+          "locked": false
+        },
+        {
+          "id": "aftercare",
+          "label": "Indicaciones de recuperación",
+          "type": "text",
+          "required": false,
+          "locked": false
+        },
+        {
+          "id": "teaching",
+          "label": "Participación docente y supervisión (si corresponde)",
+          "type": "text",
+          "required": false,
+          "locked": false
+        }
+      ],
+      "clauses": [
+        {
+          "id": "information",
+          "text": "El MVZ responsable documentará el procedimiento propuesto, sus alternativas y los riesgos identificados para este paciente. El firmante puede formular preguntas antes de decidir. La clínica debe revisar este texto de referencia y adaptarlo a su práctica.",
+          "locked": false
+        },
+        {
+          "id": "revocation",
+          "text": "Puede comunicar al MVZ responsable su decisión de retirar esta autorización antes del procedimiento. Si el procedimiento ya está en curso, el MVZ explicará las medidas necesarias para atender al animal y registrará la decisión y su alcance.",
+          "locked": true
+        }
+      ]
+    },
+    {
+      "type": "surgery",
+      "title": "Sedación, anestesia y cirugía",
+      "fields": [
+        {
+          "id": "patient",
+          "label": "Paciente",
+          "type": "binding",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "owner",
+          "label": "Propietario registrado",
+          "type": "binding",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "mvz_name",
+          "label": "Nombre del MVZ responsable",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "mvz_license",
+          "label": "Cédula del MVZ responsable",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "signer_name",
+          "label": "Nombre del firmante",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "signer_id",
+          "label": "Número de identificación del firmante (sin fotografía)",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "privacy_url",
+          "label": "Enlace al aviso de privacidad",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "signature",
+          "label": "Firmas del tutor y del MVZ",
+          "type": "signature",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "procedure",
+          "label": "Procedimiento o alcance autorizado",
+          "type": "text",
+          "required": true,
+          "locked": false
+        },
+        {
+          "id": "information",
+          "label": "Información explicada y preguntas del tutor",
+          "type": "text",
+          "required": true,
+          "locked": false
+        },
+        {
+          "id": "preop_instructions",
+          "label": "Indicaciones de preparación indicadas por el MVZ",
+          "type": "text",
+          "required": false,
+          "locked": false
+        },
+        {
+          "id": "aftercare",
+          "label": "Indicaciones de recuperación",
+          "type": "text",
+          "required": false,
+          "locked": false
+        },
+        {
+          "id": "teaching",
+          "label": "Participación docente y supervisión (si corresponde)",
+          "type": "text",
+          "required": false,
+          "locked": false
+        }
+      ],
+      "clauses": [
+        {
+          "id": "information",
+          "text": "El MVZ responsable documentará el procedimiento propuesto, sus alternativas y los riesgos identificados para este paciente. El firmante puede formular preguntas antes de decidir. La clínica debe revisar este texto de referencia y adaptarlo a su práctica.",
+          "locked": false
+        },
+        {
+          "id": "revocation",
+          "text": "Puede comunicar al MVZ responsable su decisión de retirar esta autorización antes del procedimiento. Si el procedimiento ya está en curso, el MVZ explicará las medidas necesarias para atender al animal y registrará la decisión y su alcance.",
+          "locked": true
+        }
+      ]
+    },
+    {
+      "type": "euthanasia",
+      "title": "Consentimiento de eutanasia",
+      "fields": [
+        {
+          "id": "patient",
+          "label": "Paciente",
+          "type": "binding",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "owner",
+          "label": "Propietario registrado",
+          "type": "binding",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "mvz_name",
+          "label": "Nombre del MVZ responsable",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "mvz_license",
+          "label": "Cédula del MVZ responsable",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "signer_name",
+          "label": "Nombre del firmante",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "signer_id",
+          "label": "Número de identificación del firmante (sin fotografía)",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "privacy_url",
+          "label": "Enlace al aviso de privacidad",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "signature",
+          "label": "Firmas del tutor y del MVZ",
+          "type": "signature",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "procedure",
+          "label": "Procedimiento o alcance autorizado",
+          "type": "text",
+          "required": true,
+          "locked": false
+        },
+        {
+          "id": "information",
+          "label": "Información explicada y preguntas del tutor",
+          "type": "text",
+          "required": true,
+          "locked": false
+        },
+        {
+          "id": "preop_instructions",
+          "label": "Indicaciones de preparación indicadas por el MVZ",
+          "type": "text",
+          "required": false,
+          "locked": false
+        },
+        {
+          "id": "aftercare",
+          "label": "Indicaciones de recuperación",
+          "type": "text",
+          "required": false,
+          "locked": false
+        },
+        {
+          "id": "teaching",
+          "label": "Participación docente y supervisión (si corresponde)",
+          "type": "text",
+          "required": false,
+          "locked": false
+        },
+        {
+          "id": "clinical_reason",
+          "label": "Motivo clínico",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "prior_opinion",
+          "label": "Concepto previo del MVZ",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "method",
+          "label": "Método propuesto por el MVZ",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "body_disposition",
+          "label": "Disposición del cuerpo acordada",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "cost",
+          "label": "Costo y condiciones acordadas",
+          "type": "text",
+          "required": true,
+          "locked": true
+        }
+      ],
+      "clauses": [
+        {
+          "id": "information",
+          "text": "El MVZ responsable documentará el procedimiento propuesto, sus alternativas y los riesgos identificados para este paciente. El firmante puede formular preguntas antes de decidir. La clínica debe revisar este texto de referencia y adaptarlo a su práctica.",
+          "locked": false
+        },
+        {
+          "id": "revocation",
+          "text": "Puede comunicar al MVZ responsable su decisión de retirar esta autorización antes del procedimiento. Si el procedimiento ya está en curso, el MVZ explicará las medidas necesarias para atender al animal y registrará la decisión y su alcance.",
+          "locked": true
+        }
+      ]
+    },
+    {
+      "type": "early_discharge",
+      "title": "Solicitud de alta anticipada",
+      "fields": [
+        {
+          "id": "patient",
+          "label": "Paciente",
+          "type": "binding",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "owner",
+          "label": "Propietario registrado",
+          "type": "binding",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "mvz_name",
+          "label": "Nombre del MVZ responsable",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "mvz_license",
+          "label": "Cédula del MVZ responsable",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "signer_name",
+          "label": "Nombre del firmante",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "signer_id",
+          "label": "Número de identificación del firmante (sin fotografía)",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "privacy_url",
+          "label": "Enlace al aviso de privacidad",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "signature",
+          "label": "Firmas del tutor y del MVZ",
+          "type": "signature",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "procedure",
+          "label": "Procedimiento o alcance autorizado",
+          "type": "text",
+          "required": true,
+          "locked": false
+        },
+        {
+          "id": "information",
+          "label": "Información explicada y preguntas del tutor",
+          "type": "text",
+          "required": true,
+          "locked": false
+        },
+        {
+          "id": "preop_instructions",
+          "label": "Indicaciones de preparación indicadas por el MVZ",
+          "type": "text",
+          "required": false,
+          "locked": false
+        },
+        {
+          "id": "aftercare",
+          "label": "Indicaciones de recuperación",
+          "type": "text",
+          "required": false,
+          "locked": false
+        },
+        {
+          "id": "teaching",
+          "label": "Participación docente y supervisión (si corresponde)",
+          "type": "text",
+          "required": false,
+          "locked": false
+        }
+      ],
+      "clauses": [
+        {
+          "id": "information",
+          "text": "El MVZ responsable documentará el procedimiento propuesto, sus alternativas y los riesgos identificados para este paciente. El firmante puede formular preguntas antes de decidir. La clínica debe revisar este texto de referencia y adaptarlo a su práctica.",
+          "locked": false
+        },
+        {
+          "id": "revocation",
+          "text": "Puede comunicar al MVZ responsable su decisión de retirar esta autorización antes del procedimiento. Si el procedimiento ya está en curso, el MVZ explicará las medidas necesarias para atender al animal y registrará la decisión y su alcance.",
+          "locked": true
+        }
+      ]
+    },
+    {
+      "type": "hospital",
+      "title": "Consentimiento de ingreso hospitalario",
+      "fields": [
+        {
+          "id": "patient",
+          "label": "Paciente",
+          "type": "binding",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "owner",
+          "label": "Propietario registrado",
+          "type": "binding",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "mvz_name",
+          "label": "Nombre del MVZ responsable",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "mvz_license",
+          "label": "Cédula del MVZ responsable",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "signer_name",
+          "label": "Nombre del firmante",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "signer_id",
+          "label": "Número de identificación del firmante (sin fotografía)",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "privacy_url",
+          "label": "Enlace al aviso de privacidad",
+          "type": "text",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "signature",
+          "label": "Firmas del tutor y del MVZ",
+          "type": "signature",
+          "required": true,
+          "locked": true
+        },
+        {
+          "id": "procedure",
+          "label": "Procedimiento o alcance autorizado",
+          "type": "text",
+          "required": true,
+          "locked": false
+        },
+        {
+          "id": "information",
+          "label": "Información explicada y preguntas del tutor",
+          "type": "text",
+          "required": true,
+          "locked": false
+        },
+        {
+          "id": "preop_instructions",
+          "label": "Indicaciones de preparación indicadas por el MVZ",
+          "type": "text",
+          "required": false,
+          "locked": false
+        },
+        {
+          "id": "aftercare",
+          "label": "Indicaciones de recuperación",
+          "type": "text",
+          "required": false,
+          "locked": false
+        },
+        {
+          "id": "teaching",
+          "label": "Participación docente y supervisión (si corresponde)",
+          "type": "text",
+          "required": false,
+          "locked": false
+        }
+      ],
+      "clauses": [
+        {
+          "id": "information",
+          "text": "El MVZ responsable documentará el procedimiento propuesto, sus alternativas y los riesgos identificados para este paciente. El firmante puede formular preguntas antes de decidir. La clínica debe revisar este texto de referencia y adaptarlo a su práctica.",
+          "locked": false
+        },
+        {
+          "id": "revocation",
+          "text": "Puede comunicar al MVZ responsable su decisión de retirar esta autorización antes del procedimiento. Si el procedimiento ya está en curso, el MVZ explicará las medidas necesarias para atender al animal y registrará la decisión y su alcance.",
+          "locked": true
+        }
+      ]
+    }
+  ],
+  "source": {
+    "kind": "original_reference",
+    "description": "Estructuras originales según requisitos del usuario; PDFs adjuntos usados como guía, sin revisión normativa."
+  }
+}

@@ -1,0 +1,372 @@
+import '../../prescribing/domain/prescribing_repository.dart';
+import '../clinical/clinical_repository.dart';
+import '../clinical/clinical_screen.dart';
+import '../clinical/death_screen.dart';
+import 'package:flutter/material.dart';
+import '../../auth/domain/clinic_membership.dart';
+import '../../patients/domain/patient_repository.dart';
+import '../domain/form_models.dart';
+import '../domain/form_repository.dart';
+import 'form_view_model.dart';
+import 'template_editor.dart';
+import 'document_editor.dart';
+import 'form_pdf_screen.dart';
+import 'branding_editor.dart';
+
+class FormsScreen extends StatefulWidget {
+  const FormsScreen({
+    super.key,
+    required this.repository,
+    required this.patients,
+    required this.member,
+    this.clinical,
+    this.prescribing,
+  });
+  final FormRepository repository;
+  final ClinicalRepository? clinical;
+  final PrescribingRepository? prescribing;
+  final PatientRepository patients;
+  final ClinicMembership member;
+  @override
+  State<FormsScreen> createState() => _FormsScreenState();
+}
+
+class _FormsScreenState extends State<FormsScreen> {
+  late final FormViewModel model;
+  bool professionalAdmin = false;
+  @override
+  void initState() {
+    super.initState();
+    model = FormViewModel(widget.repository, widget.member);
+    model.load();
+    if (widget.member.role == ClinicRole.admin && widget.prescribing != null) {
+      loadProfessional();
+    }
+  }
+
+  Future<void> loadProfessional() async {
+    try {
+      final rows = await widget.prescribing!.read('rx_profiles', {
+        'p_clinic': widget.member.clinicId,
+      });
+      if (mounted) {
+        setState(
+          () => professionalAdmin = (rows as List).any(
+            (p) =>
+                p['user_id'] == widget.member.userId && p['authorized'] == true,
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) setState(() => professionalAdmin = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    model.dispose();
+    super.dispose();
+  }
+
+  Future<void> editor(
+    FormTemplateVersion version, {
+    bool restore = false,
+  }) async {
+    Map<String, dynamic>? base;
+    if (restore) {
+      try {
+        base = (await widget.repository.version(version.baseVersionId!)).schema;
+      } catch (_) {
+        message('No se pudo obtener la versión base exacta.');
+        return;
+      }
+      if (!mounted) return;
+    }
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => TemplateEditor(
+          repository: widget.repository,
+          clinicId: widget.member.clinicId,
+          original: version,
+          restore: base,
+        ),
+      ),
+    );
+    if (mounted) await model.load();
+  }
+
+  void message(String text) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+    }
+  }
+
+  Future<void> create(FormTemplateVersion version) async {
+    try {
+      final patients = await widget.patients.patients(widget.member.clinicId);
+      final branding = await widget.repository.branding(widget.member.clinicId);
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => DocumentEditor(
+            repository: widget.repository,
+            member: widget.member,
+            professionalAdmin: professionalAdmin,
+            prescribing: widget.prescribing,
+            template: version,
+            patients: patients,
+            initialBranding: branding,
+          ),
+        ),
+      );
+      if (mounted) await model.load();
+    } catch (_) {
+      message('No se pudieron consultar los pacientes.');
+    }
+  }
+
+  Future<void> open(FormDocument doc) async {
+    try {
+      if (doc.signed) {
+        final pdf = await widget.repository.pdf(doc.id);
+        if (!mounted) return;
+        await Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) =>
+                FormPdfScreen(pdf: pdf, title: 'PDF firmado', signed: true),
+          ),
+        );
+      } else {
+        if (!mounted) return;
+        await Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => DocumentEditor(
+              repository: widget.repository,
+              member: widget.member,
+              professionalAdmin: professionalAdmin,
+              prescribing: widget.prescribing,
+              document: doc,
+            ),
+          ),
+        );
+      }
+      if (mounted) await model.load();
+    } catch (_) {
+      message('No se pudo abrir el documento. Revisa acceso y conexión.');
+    }
+  }
+
+  Future<void> branding() async {
+    if (model.templates.isEmpty) return;
+    try {
+      final data = await widget.repository.branding(widget.member.clinicId);
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => BrandingEditor(
+            repository: widget.repository,
+            clinicId: widget.member.clinicId,
+            schema: model.templates.first.schema,
+            initial: data,
+          ),
+        ),
+      );
+    } catch (_) {
+      message('No se pudo abrir la configuración.');
+    }
+  }
+
+  Future<void> history(FormTemplateVersion version) async {
+    try {
+      final items = await widget.repository.history(version.templateId);
+      if (!mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        builder: (_) => SafeArea(
+          child: ListView(
+            children: [
+              const ListTile(
+                title: Text('Historial de versiones (solo lectura)'),
+              ),
+              for (final v in items)
+                ListTile(
+                  title: Text(
+                    'Versión ${v.version} · ${v.approved ? 'aprobada por clínica' : 'pendiente de revisión'}',
+                  ),
+                  subtitle: Text(
+                    '${v.reason}\n${v.createdAt ?? ''} · Autor: ${v.createdBy ?? 'catálogo base'}',
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    } catch (_) {
+      message('No se pudo consultar el historial.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: model,
+    builder: (context, _) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Formatos y consentimientos',
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 12),
+          child: Text(
+            'Plantillas de referencia. El contenido final es responsabilidad de la clínica. La aprobación de una plantilla no significa que un tutor haya firmado un documento.',
+          ),
+        ),
+        if (widget.member.role == ClinicRole.admin)
+          const Text(
+            'El administrador edita plantillas y consulta documentos. Para emitir clínicamente como administrador también necesita habilitación profesional vigente del servidor.',
+          ),
+        OutlinedButton.icon(
+          onPressed: model.busy ? null : model.load,
+          icon: const Icon(Icons.refresh),
+          label: const Text('Actualizar'),
+        ),
+        if (widget.member.role == ClinicRole.admin)
+          TextButton(
+            onPressed: model.busy ? null : branding,
+            child: const Text('Membrete y logo de la clínica'),
+          ),
+        if (model.busy) const LinearProgressIndicator(),
+        if (model.error != null) Text(model.error!),
+        if (widget.clinical != null && model.access.clinical)
+          OutlinedButton(
+            onPressed: model.busy
+                ? null
+                : () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => ClinicalScreen(
+                          repository: widget.clinical!,
+                          prescribing: widget.prescribing,
+                          forms: widget.repository,
+                          member: widget.member,
+                        ),
+                      ),
+                    );
+                    if (mounted) await model.load();
+                  },
+            child: const Text('Casos clínicos, mediciones y actuaciones'),
+          ),
+        Text('Plantillas', style: Theme.of(context).textTheme.titleLarge),
+        for (final version in model.templates)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    version.schema['title'],
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  Text(
+                    version.clinicId == null
+                        ? 'Base de referencia · sin verificar'
+                        : 'Copia de clínica · versión ${version.version} · ${version.approved ? 'aprobada para uso por la clínica' : 'pendiente de revisión'}',
+                  ),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      if (model.access.editTemplates &&
+                          (version.clinicId == null ||
+                              widget.member.role == ClinicRole.admin ||
+                              version.responsibleId == widget.member.userId))
+                        TextButton(
+                          onPressed: model.busy ? null : () => editor(version),
+                          child: Text(
+                            version.clinicId == null
+                                ? 'Crear copia / formato propio'
+                                : 'Editar en nueva versión',
+                          ),
+                        ),
+                      if (model.access.editTemplates &&
+                          version.clinicId != null &&
+                          version.baseVersionId != null &&
+                          (widget.member.role == ClinicRole.admin ||
+                              version.responsibleId == widget.member.userId))
+                        TextButton(
+                          onPressed: model.busy
+                              ? null
+                              : () => editor(version, restore: true),
+                          child: const Text('Restaurar base en versión nueva'),
+                        ),
+                      if ((model.access.finalize || professionalAdmin) &&
+                          version.clinicId != null &&
+                          version.approved)
+                        FilledButton(
+                          onPressed: model.busy ? null : () => create(version),
+                          child: Text(
+                            version.schema['type'].toString().startsWith(
+                                      'clinical_',
+                                    ) ||
+                                    version.schema['type']
+                                        .toString()
+                                        .startsWith('surgical_')
+                                ? 'Nuevo formato clínico'
+                                : 'Nuevo consentimiento',
+                          ),
+                        ),
+                      TextButton(
+                        onPressed: model.busy ? null : () => history(version),
+                        child: const Text('Historial de versiones'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        const SizedBox(height: 20),
+        Text('Documentos', style: Theme.of(context).textTheme.titleLarge),
+        if (model.documents.isEmpty && !model.busy)
+          const Text('Sin documentos disponibles para tu acceso.'),
+        for (final doc in model.documents) ...[
+          ListTile(
+            title: Text(doc.snapshot['schema']['title']),
+            subtitle: Text(
+              '${formStateLabel(doc.state)} · ${doc.snapshot['patient']['name']}',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: model.busy ? null : () => open(doc),
+          ),
+          if (widget.clinical != null &&
+              doc.signed &&
+              doc.snapshot['schema']['type'] == 'euthanasia')
+            TextButton(
+              onPressed: model.busy
+                  ? null
+                  : () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => DeathScreen(
+                            repository: widget.clinical!,
+                            document: doc,
+                            member: widget.member,
+                          ),
+                        ),
+                      );
+                    },
+              child: const Text('Constatación posterior / correcciones'),
+            ),
+        ],
+      ],
+    ),
+  );
+}

@@ -1,0 +1,1 @@
+{"private":true,"type":"module","scripts":{"test:renderer":"node --test tests/forms_renderer.test.mjs"},"devDependencies":{"pdf-lib":"1.17.1","@pdf-lib/fontkit":"1.1.1","pngjs":"7.0.0"}}

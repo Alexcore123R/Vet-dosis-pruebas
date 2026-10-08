@@ -1,0 +1,558 @@
+import 'package:flutter/material.dart';
+import '../../auth/domain/clinic_membership.dart';
+import '../../patients/domain/patient_repository.dart';
+import '../application/hospital_alerts.dart';
+import '../domain/hospital_models.dart';
+import '../domain/hospital_repository.dart';
+import 'hospital_view_model.dart';
+import 'hospital_forms.dart';
+
+class HospitalScreen extends StatefulWidget {
+  const HospitalScreen({
+    super.key,
+    required this.repository,
+    required this.patients,
+    required this.member,
+    required this.alerts,
+    this.onRecordMedication,
+  });
+  final HospitalRepository repository;
+  final PatientRepository patients;
+  final ClinicMembership member;
+  final HospitalAlerts alerts;
+  final Future<void> Function(HospitalTask)? onRecordMedication;
+  @override
+  State<HospitalScreen> createState() => _HospitalScreenState();
+}
+
+class _HospitalScreenState extends State<HospitalScreen> {
+  late final HospitalViewModel model;
+  DateTime day = DateTime.now();
+  bool table = false;
+  @override
+  void initState() {
+    super.initState();
+    model = HospitalViewModel(widget.repository, widget.member, widget.alerts);
+    model.start();
+  }
+
+  @override
+  void dispose() {
+    model.dispose();
+    super.dispose();
+  }
+
+  Future<void> admit() async {
+    try {
+      final patients = await widget.patients.patients(widget.member.clinicId);
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => HospitalAdmitForm(
+            patients: patients,
+            save: (patient, cage, op) => model.mutate(
+              () => widget.repository.admit(
+                widget.member.clinicId,
+                patient,
+                cage,
+                op,
+              ),
+              physician: true,
+            ),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudieron consultar los pacientes.'),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> prescribe(HospitalStay stay) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => HospitalOrderForm(
+          stay: stay,
+          save: (kind, label, instructions, times, delay, op) => model.mutate(
+            () => widget.repository.prescribe(
+              widget.member.clinicId,
+              stay.id,
+              kind,
+              label,
+              instructions,
+              times,
+              delay,
+              op,
+            ),
+            physician: true,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<String?> reason(String title) async {
+    final controller = TextEditingController();
+    String? error;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                maxLength: 500,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Motivo obligatorio',
+                ),
+              ),
+              if (error != null) Text(error!),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Volver'),
+            ),
+            FilledButton(
+              onPressed: () {
+                try {
+                  Navigator.pop(
+                    context,
+                    hospitalText(controller.text, max: 500),
+                  );
+                } on FormatException {
+                  setState(() => error = 'Escribe el motivo.');
+                }
+              },
+              child: const Text('Confirmar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+    return result;
+  }
+
+  Future<void> perform(HospitalStay stay, HospitalTask task) async {
+    if (task.prescriptionItemId != null) {
+      if (widget.onRecordMedication == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Esta tarea requiere registrar cantidad y lote en el registro de medicación.',
+            ),
+          ),
+        );
+        return;
+      }
+      await widget.onRecordMedication!(task);
+      if (mounted) await model.refresh();
+      return;
+    }
+    bool checked = false;
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(
+            task.kind == 'medicacion'
+                ? 'Confirmar administración'
+                : 'Confirmar revisión',
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${stay.patientName} · Jaula ${stay.cage}\n${task.label}\n${task.instructions}\nHorario original: ${task.dueAt.toLocal()}',
+              ),
+              CheckboxListTile(
+                title: const Text(
+                  'Confirmo que ya se realizó para este paciente.',
+                ),
+                value: checked,
+                onChanged: (v) => setState(() => checked = v ?? false),
+              ),
+              const Text('El servidor registrará tu usuario y la hora actual.'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Volver'),
+            ),
+            FilledButton(
+              onPressed: checked ? () => Navigator.pop(context, true) : null,
+              child: const Text('Registrar realizado'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (yes == true && mounted) await model.perform(task);
+  }
+
+  Future<void> snooze(HospitalTask task) async {
+    int minutes = 5;
+    final amount = await showDialog<int>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Posponer el aviso'),
+          content: DropdownButton<int>(
+            value: minutes,
+            items: [5, 10, 15, 30]
+                .map(
+                  (m) => DropdownMenuItem(value: m, child: Text('$m minutos')),
+                )
+                .toList(),
+            onChanged: (m) => setState(() => minutes = m ?? minutes),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Volver'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, minutes),
+              child: const Text('Continuar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (amount == null || !mounted) return;
+    final why = await reason('Motivo de posposición');
+    if (why != null && mounted) await model.snooze(task, amount, why);
+  }
+
+  Widget taskCard(
+    HospitalStay stay,
+    HospitalTask task, {
+    bool compact = false,
+  }) {
+    final urgency = task.urgency(model.now());
+    final actionable =
+        task.state == HospitalTaskState.pending &&
+        !model.now().isBefore(task.dueAt);
+    final status = switch (urgency) {
+      TaskUrgency.done =>
+        task.kind == 'medicacion' ? 'Administrado ✓' : 'Revisado ✓',
+      TaskUrgency.cancelled => 'Cancelado',
+      TaskUrgency.scheduled => 'Programado',
+      TaskUrgency.snoozed => 'Aviso pospuesto',
+      TaskUrgency.escalated => 'Retraso · revisión prioritaria',
+      TaskUrgency.due => 'Pendiente: horario cumplido',
+    };
+    return Card(
+      child: Padding(
+        padding: EdgeInsets.all(compact ? 10 : 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${task.dueAt.toLocal().toString().substring(11, 16)} · ${task.label}',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            Text(task.instructions),
+            Text(
+              status,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color:
+                    urgency == TaskUrgency.escalated ||
+                        urgency == TaskUrgency.due
+                    ? Theme.of(context).colorScheme.error
+                    : null,
+              ),
+            ),
+            if (task.snoozedUntil?.isAfter(model.now()) ?? false)
+              Text(
+                'Aviso pospuesto hasta ${task.snoozedUntil!.toLocal().toString().substring(11, 16)} · no registrado como administrado',
+              ),
+            if (task.state == HospitalTaskState.done)
+              Text(
+                'Usuario que aplicó: ${task.performedBy}\n${task.medicationRecordId == null ? 'Hora del servidor' : 'Hora observada de aplicación'}: ${task.performedAt?.toLocal()}',
+              ),
+            if (task.state == HospitalTaskState.pending)
+              Wrap(
+                spacing: 4,
+                children: [
+                  TextButton(
+                    onPressed: model.busy || !actionable
+                        ? null
+                        : () => perform(stay, task),
+                    child: Text(
+                      task.kind == 'medicacion'
+                          ? 'Registrar administración'
+                          : 'Registrar revisión',
+                    ),
+                  ),
+                  TextButton(
+                    onPressed:
+                        model.busy || !actionable || task.snoozeCount >= 3
+                        ? null
+                        : () => snooze(task),
+                    child: const Text('Posponer aviso'),
+                  ),
+                  if (model.access.prescribe)
+                    TextButton(
+                      onPressed: model.busy
+                          ? null
+                          : () async {
+                              final why = await reason(
+                                'Cancelar esta indicación',
+                              );
+                              if (why != null && mounted) {
+                                await model.cancel(task, why);
+                              }
+                            },
+                      child: const Text('Cancelar'),
+                    ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool onDay(HospitalTask task) {
+    final local = task.dueAt.toLocal();
+    return local.year == day.year &&
+        local.month == day.month &&
+        local.day == day.day;
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: model,
+    builder: (context, _) {
+      final waiting = model.snapshot.tasks
+          .where(
+            (t) => [
+              TaskUrgency.due,
+              TaskUrgency.escalated,
+            ].contains(t.urgency(model.now())),
+          )
+          .length;
+      final tasks = model.snapshot.tasks.where(onDay).toList();
+      final hours = tasks.map((t) => t.dueAt.toLocal().hour).toSet().toList()
+        ..sort();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Hospitalización',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          const SizedBox(height: 16),
+          if (waiting > 0)
+            Semantics(
+              liveRegion: true,
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    '$waiting tareas pendientes con horario cumplido. Revisa la hoja antes de administrar.',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          Text(widget.alerts.status),
+          Text(widget.alerts.backend.timingNotice),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (widget.alerts.backend.supported)
+                OutlinedButton(
+                  onPressed: () async {
+                    await widget.alerts.enable();
+                    await model.refresh();
+                  },
+                  child: const Text('Activar / revisar permisos de avisos'),
+                ),
+              if (widget.alerts.enabled)
+                TextButton(
+                  onPressed: widget.alerts.disable,
+                  child: const Text('Desactivar avisos'),
+                ),
+              if (model.access.prescribe)
+                FilledButton.icon(
+                  onPressed: model.busy ? null : admit,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Ingresar paciente'),
+                ),
+              OutlinedButton(
+                onPressed: model.busy ? null : () => model.refresh(),
+                child: const Text('Actualizar hoja'),
+              ),
+            ],
+          ),
+          if (model.busy) const LinearProgressIndicator(),
+          if (model.error != null)
+            Text(
+              model.error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          if (model.alarmError != null)
+            Text(
+              model.alarmError!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            children: [
+              TextButton.icon(
+                onPressed: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: day,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                  );
+                  if (date != null && mounted) setState(() => day = date);
+                },
+                icon: const Icon(Icons.calendar_today),
+                label: Text('Fecha: ${day.toIso8601String().substring(0, 10)}'),
+              ),
+              ChoiceChip(
+                label: const Text('Fichas por jaula'),
+                selected: !table,
+                onSelected: (_) => setState(() => table = false),
+              ),
+              ChoiceChip(
+                label: const Text('Paciente × hora'),
+                selected: table,
+                onSelected: (_) => setState(() => table = true),
+              ),
+            ],
+          ),
+          if (model.snapshot.stays.isEmpty &&
+              !model.busy &&
+              model.error == null)
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Text('No hay pacientes hospitalizados en esta clínica.'),
+            ),
+          if (table && hours.isNotEmpty)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Table(
+                defaultColumnWidth: const FixedColumnWidth(300),
+                border: TableBorder.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+                children: [
+                  TableRow(
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Text('Paciente / jaula'),
+                      ),
+                      for (final h in hours)
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Text('${h.toString().padLeft(2, '0')}:00'),
+                        ),
+                    ],
+                  ),
+                  for (final stay in model.snapshot.stays)
+                    TableRow(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Text(
+                            '${stay.patientName}\nJaula ${stay.cage}',
+                          ),
+                        ),
+                        for (final h in hours)
+                          Column(
+                            children: [
+                              for (final task in tasks.where(
+                                (t) =>
+                                    t.stayId == stay.id &&
+                                    t.dueAt.toLocal().hour == h,
+                              ))
+                                taskCard(stay, task, compact: true),
+                            ],
+                          ),
+                      ],
+                    ),
+                ],
+              ),
+            )
+          else
+            for (final stay in model.snapshot.stays)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Jaula ${stay.cage} · ${stay.patientName}',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      Text(stay.species),
+                      if (model.access.prescribe)
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            TextButton(
+                              onPressed: model.busy
+                                  ? null
+                                  : () => prescribe(stay),
+                              child: const Text(
+                                'Añadir tratamiento / revisión',
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: model.busy
+                                  ? null
+                                  : () async {
+                                      final why = await reason(
+                                        'Registrar alta y cancelar todas las tareas pendientes',
+                                      );
+                                      if (why != null && mounted) {
+                                        await model.discharge(stay, why);
+                                      }
+                                    },
+                              child: const Text('Registrar alta'),
+                            ),
+                          ],
+                        ),
+                      if (!tasks.any((t) => t.stayId == stay.id))
+                        const Text('Sin tratamientos en la fecha elegida.'),
+                      for (final task in tasks.where(
+                        (t) => t.stayId == stay.id,
+                      ))
+                        taskCard(stay, task),
+                    ],
+                  ),
+                ),
+              ),
+        ],
+      );
+    },
+  );
+}
