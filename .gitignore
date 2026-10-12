@@ -55,3 +55,6 @@ supabase/config.local.json
 
 # Local renderer test dependencies
 **/node_modules/
+
+# Separate local connections for test environments
+supabase/config.*.local.json
