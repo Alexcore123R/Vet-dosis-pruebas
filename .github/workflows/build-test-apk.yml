@@ -1,6 +1,12 @@
 name: Compilar APK de pruebas
 on:
   workflow_dispatch:
+    inputs:
+      enable_google:
+        description: Activar Google solo después de configurarlo en Supabase
+        type: boolean
+        default: false
+        required: true
 permissions:
   contents: read
 concurrency:
@@ -11,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
+      VETDOSIS_GOOGLE_ENABLED: ${{ inputs.enable_google && 'true' || 'false' }}
       SUPABASE_TEST_URL: https://wtrelwtztkddfktrfdpb.supabase.co
       SUPABASE_TEST_PUBLISHABLE_KEY: ${{ vars.SUPABASE_TEST_PUBLISHABLE_KEY || secrets.SUPABASE_TEST_PUBLISHABLE_KEY }}
     steps:
@@ -28,16 +35,23 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PY'
-          import json, os
+          import json, os, urllib.request
           from pathlib import Path
           key = os.environ.get('SUPABASE_TEST_PUBLISHABLE_KEY', '').strip()
           if not key.startswith('sb_publishable_'):
               raise SystemExit('Falta la variable SUPABASE_TEST_PUBLISHABLE_KEY; usar únicamente la clave publicable.')
+          google_enabled = os.environ.get('VETDOSIS_GOOGLE_ENABLED') == 'true'
+          if google_enabled:
+              request = urllib.request.Request(os.environ['SUPABASE_TEST_URL'] + '/auth/v1/settings', headers={'apikey': key})
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  settings = json.load(response)
+              if settings.get('external', {}).get('google') is not True:
+                  raise SystemExit('Google todavía no está habilitado en Supabase; no se generará un APK con un botón inoperante.')
           Path('supabase/config.test.local.json').write_text(json.dumps({
               'SUPABASE_URL': os.environ['SUPABASE_TEST_URL'],
               'SUPABASE_PUBLISHABLE_KEY': key,
               'SUPABASE_EXISTING_SCHEMA': True,
-              'SUPABASE_GOOGLE_ENABLED': False,
+              'SUPABASE_GOOGLE_ENABLED': google_enabled,
           }))
           PY
       - run: flutter pub get
