@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 45
     env:
       SUPABASE_TEST_URL: https://wtrelwtztkddfktrfdpb.supabase.co
-      SUPABASE_TEST_PUBLISHABLE_KEY: ${{ vars.SUPABASE_TEST_PUBLISHABLE_KEY }}
+      SUPABASE_TEST_PUBLISHABLE_KEY: ${{ vars.SUPABASE_TEST_PUBLISHABLE_KEY || secrets.SUPABASE_TEST_PUBLISHABLE_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -30,7 +30,7 @@ jobs:
           python3 - <<'PY'
           import json, os
           from pathlib import Path
-          key = os.environ.get('SUPABASE_TEST_PUBLISHABLE_KEY', '')
+          key = os.environ.get('SUPABASE_TEST_PUBLISHABLE_KEY', '').strip()
           if not key.startswith('sb_publishable_'):
               raise SystemExit('Falta la variable SUPABASE_TEST_PUBLISHABLE_KEY; usar únicamente la clave publicable.')
           Path('supabase/config.test.local.json').write_text(json.dumps({
