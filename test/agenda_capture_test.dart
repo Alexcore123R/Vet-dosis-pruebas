@@ -176,6 +176,20 @@ void main() {
       final form = tester.widget<RxEntryScreen>(find.byType(RxEntryScreen));
       expect(form.initial['patient_id'], 'p1');
       expect(form.fields.any((f) => f.key == 'patient_name'), false);
+      await expectLater(
+        form.submit({
+          ...form.initial,
+          'starts_at': '2026-10-12T17:56:00-06:00',
+          'ends_at': '2026-10-12T09:31:00-06:00',
+        }, 'invalid-time-test'),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('posteriores'),
+          ),
+        ),
+      );
     },
   );
   testWidgets('Patient capture can be kept on Back and discarded explicitly', (

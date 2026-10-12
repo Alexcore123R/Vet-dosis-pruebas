@@ -40,6 +40,8 @@ String operationError(Object e) {
   if (planMessage != null) return planMessage;
   final text = e.toString();
   const errors = {
+    'clinic_appointments_check':
+        'Revisa el horario: el fin debe ser posterior al inicio y la cita no puede durar más de 24 horas.',
     'invalid_display_name': 'Usa un nombre de entre 2 y 120 caracteres.',
     'patient_wrong_clinic':
         'El paciente no pertenece a esta clínica. Vuelve a seleccionarlo.',
@@ -60,4 +62,22 @@ String operationError(Object e) {
     if (text.contains(entry.key)) return entry.value;
   }
   return 'No se pudo guardar o consultar. Revisa los datos, la conexión y tus permisos.';
+}
+
+void validateAppointmentTimes(Map<String, dynamic> data) {
+  final start = DateTime.tryParse('${data['starts_at'] ?? ''}');
+  final end = DateTime.tryParse('${data['ends_at'] ?? ''}');
+  if (start == null || end == null) {
+    throw const FormatException(
+      'Selecciona las fechas y horas de inicio y fin.',
+    );
+  }
+  if (!end.isAfter(start)) {
+    throw const FormatException(
+      'La fecha y hora de fin deben ser posteriores al inicio.',
+    );
+  }
+  if (end.difference(start) > const Duration(hours: 24)) {
+    throw const FormatException('La cita no puede durar más de 24 horas.');
+  }
 }

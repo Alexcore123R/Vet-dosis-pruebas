@@ -69,6 +69,9 @@ class _OperationsScreenState extends State<OperationsScreen> {
           fields: fields,
           initial: initial,
           submit: (d, op) async {
+            if (action == 'appointment' || action == 'appointment_reschedule') {
+              validateAppointmentTimes(d);
+            }
             try {
               await widget.repository.write(
                 widget.member.clinicId,
@@ -333,7 +336,7 @@ class _OperationsScreenState extends State<OperationsScreen> {
                   '${a['patient_name']} · ${a['kind']}${a['patient_id'] == null ? '' : ' · Vinculado al expediente'}',
                 ),
                 subtitle: Text(
-                  '${DateTime.parse(a['starts_at'] as String).toLocal()} · ${appointmentStateLabel(a['state'] as String)}\n${a['notes']}',
+                  '${DateTime.parse(a['starts_at'] as String).toLocal()} · ${appointmentStateLabel(a['state'] as String)}\n${a['notes'] ?? ''}',
                 ),
                 trailing: PopupMenuButton<String>(
                   onSelected: (state) => state == 'reprogramar'

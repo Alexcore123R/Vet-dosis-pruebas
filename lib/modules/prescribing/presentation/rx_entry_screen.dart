@@ -171,7 +171,9 @@ class _RxEntryScreenState extends State<RxEntryScreen> {
         child: ListTile(
           title: Text('${f.label}${f.required ? ' *' : ''}'),
           subtitle: Text(
-            instant?.toString() ?? 'Selecciona fecha y hora local',
+            instant == null
+                ? 'Selecciona fecha y hora local'
+                : '${instant.day.toString().padLeft(2, '0')}/${instant.month.toString().padLeft(2, '0')}/${instant.year} · ${instant.hour.toString().padLeft(2, '0')}:${instant.minute.toString().padLeft(2, '0')}',
           ),
           trailing: const Icon(Icons.calendar_month),
           onTap: busy
