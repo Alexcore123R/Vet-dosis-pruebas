@@ -1,0 +1,58 @@
+name: Compilar APK de pruebas
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: vetdosis-test-apk
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SUPABASE_TEST_URL: https://wtrelwtztkddfktrfdpb.supabase.co
+      SUPABASE_TEST_PUBLISHABLE_KEY: ${{ vars.SUPABASE_TEST_PUBLISHABLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+      - name: Preparar configuración pública de pruebas
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          key = os.environ.get('SUPABASE_TEST_PUBLISHABLE_KEY', '')
+          if not key.startswith('sb_publishable_'):
+              raise SystemExit('Falta la variable SUPABASE_TEST_PUBLISHABLE_KEY; usar únicamente la clave publicable.')
+          Path('supabase/config.test.local.json').write_text(json.dumps({
+              'SUPABASE_URL': os.environ['SUPABASE_TEST_URL'],
+              'SUPABASE_PUBLISHABLE_KEY': key,
+              'SUPABASE_EXISTING_SCHEMA': True,
+              'SUPABASE_GOOGLE_ENABLED': False,
+          }))
+          PY
+      - run: flutter pub get
+      - run: flutter analyze
+      - name: Pruebas unitarias y de interfaz
+        run: flutter test --timeout 5m
+      - name: Generar APKs Android para pruebas
+        run: flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64 --dart-define-from-file=supabase/config.test.local.json
+      - name: Huellas de los instaladores
+        run: sha256sum build/app/outputs/flutter-apk/app-*-release.apk > build/app/outputs/flutter-apk/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vetdosis-pruebas-apks
+          path: |
+            build/app/outputs/flutter-apk/app-*-release.apk
+            build/app/outputs/flutter-apk/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
