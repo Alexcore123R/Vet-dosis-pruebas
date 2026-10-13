@@ -350,6 +350,8 @@ class CoreShell extends StatelessWidget {
                             ClinicRole.mvz,
                           ].contains(auth!.active?.role)
                       ? CalculationScreen(
+                          showAviculture:
+                              model.branch == ClinicalBranch.production,
                           key: ValueKey(model.branch),
                           initialTool: model.branch == ClinicalBranch.exotic
                               ? 'metabolic'

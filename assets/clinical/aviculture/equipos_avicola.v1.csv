@@ -1,0 +1,8 @@
+etapa,equipo,aves_por_unidad_min,aves_por_unidad_max,nota,fuente,estado
+inicio_primeros_8_12_dias,minitolva,100,100,capacidad 3.5-4 kg por cada 100 aves,Apuntes Prod. Avicola,sin_verificar
+inicio_primeros_8_12_dias,vitrolero,100,100,capacidad 4 L por cada 100 aves,Apuntes Prod. Avicola,sin_verificar
+crianza,bebedero_campana,80,100,,Apuntes Prod. Avicola,sin_verificar
+crianza_postura,comedero_automatico_plato,45,55,,Apuntes Prod. Avicola,sin_verificar
+crianza_postura,bebedero_niple,8,12,por confirmar el rango,Apuntes Prod. Avicola,sin_verificar
+crianza_postura,bebedero_copita,6,8,por confirmar el rango,Apuntes Prod. Avicola,sin_verificar
+inicio,criadora_calefactor,1500,2500,40000 BTU/h por criadora,Apuntes Prod. Avicola,sin_verificar

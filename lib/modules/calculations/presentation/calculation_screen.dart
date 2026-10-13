@@ -1,3 +1,4 @@
+import '../../aviculture/presentation/aviculture_screen.dart';
 import 'package:flutter/material.dart';
 import '../../doses/data/catalog_repository.dart';
 import '../../doses/domain/quantity.dart';
@@ -12,10 +13,12 @@ class CalculationScreen extends StatefulWidget {
     this.repository,
     this.doses,
     this.initialTool = 'fluids',
+    this.showAviculture = false,
   });
   final CalculationRepository? repository;
   final CatalogRepository? doses;
   final String initialTool;
+  final bool showAviculture;
   @override
   State<CalculationScreen> createState() => _CalculationScreenState();
 }
@@ -145,6 +148,17 @@ class _CalculationScreenState extends State<CalculationScreen> {
             'Cálculos clínicos',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
+          if (widget.showAviculture)
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const AvicultureScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.agriculture_outlined),
+              label: const Text('Aves · Capacidad e instalaciones'),
+            ),
           const SizedBox(height: 12),
           const Text(
             'Los parámetros son indicados por el MVZ. La app no selecciona tratamientos. Los resultados no se guardan en el expediente ni emiten recetas automáticamente.',

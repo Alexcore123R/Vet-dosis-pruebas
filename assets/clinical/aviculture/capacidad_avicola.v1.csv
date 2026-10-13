@@ -1,0 +1,13 @@
+etapa,sem_desde,sem_hasta,sistema,parametro,min,max,unidad,fuente,estado
+crianza,0,6,piso,densidad,12,15,aves_por_m2,Clase Prod. Avicola Postura 15-sep-2026,sin_verificar
+crianza,0,6,jaula_bateria,espacio_por_ave,250,350,cm2,Clase Prod. Avicola Postura 15-sep-2026,sin_verificar
+crianza,0,6,ambos,bebedero_lineal,1.5,1.5,cm_por_ave,Clase Prod. Avicola Postura 15-sep-2026,sin_verificar
+crianza,0,6,ambos,comedero_lineal,3,3,cm_por_ave,Clase Prod. Avicola Postura 15-sep-2026,sin_verificar
+desarrollo,7,12,piso,densidad,8,10,aves_por_m2,Clase Prod. Avicola Postura 15-sep-2026,sin_verificar
+desarrollo,7,12,jaula_bateria,espacio_por_ave,350,450,cm2,Clase Prod. Avicola Postura 15-sep-2026,sin_verificar
+desarrollo,7,12,ambos,bebedero_lineal,2.5,2.5,cm_por_ave,Clase Prod. Avicola Postura 15-sep-2026,sin_verificar
+desarrollo,7,12,ambos,comedero_lineal,5,5,cm_por_ave,Clase Prod. Avicola Postura 15-sep-2026,sin_verificar
+postura,13,,piso,densidad,6,8,aves_por_m2,Clase Prod. Avicola Postura 15-sep-2026,sin_verificar
+postura,13,,jaula_bateria,espacio_por_ave,450,550,cm2,Clase Prod. Avicola Postura 15-sep-2026,sin_verificar
+postura,13,,ambos,bebedero_lineal,5,5,cm_por_ave,Clase Prod. Avicola Postura 15-sep-2026,sin_verificar
+postura,13,,ambos,comedero_lineal,7,7,cm_por_ave,Clase Prod. Avicola Postura 15-sep-2026,sin_verificar

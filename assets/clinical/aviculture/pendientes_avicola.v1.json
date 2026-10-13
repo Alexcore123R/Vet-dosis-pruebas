@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "especie": "gallina",
+  "parametros": [
+    {"parametro": "comedero_tolva", "min": null, "max": null, "unidad": null, "fuente": null, "estado": "pendiente"},
+    {"parametro": "temperatura_por_edad", "min": null, "max": null, "unidad": null, "fuente": null, "estado": "pendiente"},
+    {"parametro": "presion_agua", "min": null, "max": null, "unidad": null, "fuente": null, "estado": "pendiente"}
+  ],
+  "incubacion": [
+    {"parametro": "volteo_angulo", "valor": "45", "unidad": "grados", "fuente": "Clase Prod. Avicola 15-sep-2026 (corregido por el profesor en clase)", "estado": "sin_verificar"},
+    {"parametro": "volteo_minimo", "valor": "8", "unidad": "veces_por_dia", "fuente": "Clase Prod. Avicola 15-sep-2026 (corregido por el profesor en clase)", "estado": "sin_verificar"},
+    {"parametro": "volteo_recomendado", "valor": "24", "unidad": "veces_por_dia", "fuente": "Clase Prod. Avicola 15-sep-2026 (corregido por el profesor en clase)", "estado": "sin_verificar"}
+  ]
+}
