@@ -1,3 +1,4 @@
+import '../../incubation/presentation/incubation_screen.dart';
 import '../../aviculture/presentation/aviculture_screen.dart';
 import 'package:flutter/material.dart';
 import '../../doses/data/catalog_repository.dart';
@@ -158,6 +159,17 @@ class _CalculationScreenState extends State<CalculationScreen> {
               ),
               icon: const Icon(Icons.agriculture_outlined),
               label: const Text('Aves · Capacidad e instalaciones'),
+            ),
+          if (widget.showAviculture)
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const IncubationScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.egg_outlined),
+              label: const Text('Aves · Incubación'),
             ),
           const SizedBox(height: 12),
           const Text(
