@@ -209,6 +209,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('1990.00 MXN'), findsOneWidget);
       expect(find.textContaining('Abrir pago seguro'), findsNothing);
+      await tester.ensureVisible(find.text('Registrar interés (sin cobro)'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Registrar interés (sin cobro)'));
       await tester.pumpAndSettle();
       expect(repo.requests, 1);
