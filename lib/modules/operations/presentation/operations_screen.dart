@@ -18,9 +18,11 @@ class OperationsScreen extends StatefulWidget {
     required this.repository,
     required this.member,
     this.onOpenPatient,
+    this.initialSection = 'appointments',
   });
   final Future<void> Function(String)? onOpenPatient;
   final OperationsRepository repository;
+  final String initialSection;
   final ClinicMembership member;
   @override
   State<OperationsScreen> createState() => _OperationsScreenState();
@@ -46,6 +48,7 @@ class _OperationsScreenState extends State<OperationsScreen> {
   @override
   void initState() {
     super.initState();
+    section = widget.initialSection;
     model.load();
   }
 

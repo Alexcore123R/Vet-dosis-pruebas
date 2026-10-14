@@ -1,3 +1,4 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -89,9 +90,14 @@ class NativeAlarmBackend implements AlarmBackend {
               ?.canScheduleExactNotifications() ??
           false;
     }
+    final prefs = await SharedPreferences.getInstance();
+    final sound = prefs.getBool('hospital.alert.sound.v2') ?? true;
+    final vibration = prefs.getBool('hospital.alert.vibration.v2') ?? true;
     await plugin.zonedSchedule(
       id: id,
-      title: job.escalated
+      title: job.advance
+          ? 'Hospitalización · Próximo horario'
+          : job.escalated
           ? 'Hospitalización · Revisión prioritaria'
           : 'Hospitalización · Revisa la hoja',
       body:
@@ -102,18 +108,18 @@ class NativeAlarmBackend implements AlarmBackend {
             : DateTime.now().add(const Duration(seconds: 2)),
         tz.UTC,
       ),
-      notificationDetails: const NotificationDetails(
+      notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
-          'hospital_v1',
+          'hospital_v2_s${sound ? 1 : 0}_v${vibration ? 1 : 0}',
           'Hospitalización',
           channelDescription: 'Avisos de tratamientos y revisiones pendientes',
           importance: Importance.max,
           priority: Priority.high,
-          playSound: true,
-          enableVibration: true,
+          playSound: sound,
+          enableVibration: vibration,
           visibility: NotificationVisibility.private,
         ),
-        iOS: DarwinNotificationDetails(presentAlert: true, presentSound: true),
+        iOS: DarwinNotificationDetails(presentAlert: true, presentSound: sound),
       ),
       androidScheduleMode: exact
           ? AndroidScheduleMode.exactAllowWhileIdle

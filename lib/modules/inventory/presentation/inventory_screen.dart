@@ -21,10 +21,12 @@ class InventoryScreen extends StatefulWidget {
     required this.repository,
     required this.member,
     this.initialSearch = '',
+    this.initialSection = 'stock',
   });
   final InventoryRepository repository;
   final ClinicMembership member;
   final String initialSearch;
+  final String initialSection;
   @override
   State<InventoryScreen> createState() => _InventoryScreenState();
 }
@@ -36,6 +38,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   @override
   void initState() {
     super.initState();
+    section = widget.initialSection;
     search = widget.initialSearch;
     searchController.text = search;
     model = InventoryViewModel(widget.repository, widget.member);

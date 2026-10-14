@@ -181,8 +181,8 @@ void main() {
       expect(find.text('Estadísticas y respaldo'), findsNothing);
       await tester.tap(find.text('Cálculos').last);
       await tester.pumpAndSettle();
-      expect(find.text('Cálculos clínicos'), findsOneWidget);
-      await tester.tap(find.text('Cálculos clínicos'));
+      expect(find.text('Cálculos clínicos').last, findsOneWidget);
+      await tester.tap(find.text('Cálculos clínicos').last);
       await tester.pumpAndSettle();
       expect(model.screen, 'Cálculos clínicos');
       await tester.tap(find.byTooltip('Asistente IA'));

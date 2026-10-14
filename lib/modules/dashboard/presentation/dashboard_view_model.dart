@@ -1,3 +1,7 @@
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tzdata;
+import '../../doses/domain/quantity.dart';
+import '../../inventory/domain/inventory_models.dart';
 import 'package:flutter/foundation.dart';
 import '../../auth/domain/clinic_membership.dart';
 import '../../core/domain/navigation_access.dart';
@@ -113,6 +117,115 @@ class DashboardViewModel extends ChangeNotifier {
     result.sort((a, b) => starts(b)!.compareTo(starts(a)!));
     return result;
   }
+
+  static bool _zonesReady = false;
+  String? get clinicTimezone =>
+      (stock?['timezone'] ?? statistics?['timezone']) as String?;
+  DateTime localTime(DateTime value) {
+    final zone = clinicTimezone;
+    if (zone == null) return value.toLocal();
+    if (!_zonesReady) {
+      tzdata.initializeTimeZones();
+      _zonesReady = true;
+    }
+    try {
+      return tz.TZDateTime.from(value, tz.getLocation(zone));
+    } catch (_) {
+      return value.toLocal();
+    }
+  }
+
+  List<Map<String, dynamic>> get todayAppointments {
+    final today = localTime(now());
+    return upcoming
+        .where((a) {
+          final date = localTime(starts(a)!);
+          return date.year == today.year &&
+              date.month == today.month &&
+              date.day == today.day;
+        })
+        .take(4)
+        .toList();
+  }
+
+  Map<String, Quantity>? get stockByUnit {
+    if (stock == null) return null;
+    try {
+      final result = <String, Quantity>{};
+      for (final p in products) {
+        final unit = p['stock_unit'] as String?;
+        if (unit == null || unit.isEmpty) return null;
+        final qty = Quantity.parse('${p['available_stock']}');
+        final before = result[unit] ?? Quantity.parse('0');
+        result[unit] = Quantity(
+          before.n * qty.d + qty.n * before.d,
+          before.d * qty.d,
+        );
+      }
+      return result;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Money? get valueAtSale {
+    if (stock == null) return null;
+    try {
+      var sum = Money(BigInt.zero);
+      for (final p in products) {
+        sum =
+            sum +
+            Money.parse(
+              '${p['precio_venta']}',
+            ).times(Quantity.parse('${p['available_stock']}'));
+      }
+      return sum;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Money? get valueAtCost {
+    if (stock == null) return null;
+    try {
+      var sum = Money(BigInt.zero);
+      for (final p in products) {
+        if (p['lots'] is! List) return null;
+        for (final lot in (p['lots'] as List).cast<Map>()) {
+          if (lot['expired'] == true ||
+              (lot['caducidad'] == null && p['m8_kind'] != 'producto')) {
+            continue;
+          }
+          sum =
+              sum +
+              Money.parse(
+                '${lot['costo_unitario']}',
+              ).times(Quantity.parse('${lot['cantidad']}'));
+        }
+      }
+      return sum;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Money? get potentialMargin => valueAtSale != null && valueAtCost != null
+      ? valueAtSale! - valueAtCost!
+      : null;
+  Map<String, dynamic>? get dayTotals => stock?['day_totals'] is Map
+      ? Map<String, dynamic>.from(stock!['day_totals'] as Map)
+      : null;
+  Map<String, dynamic>? get ownShift => rows(stock, 'shifts')
+      .where((s) => s['cashier_id'] == member?.userId && s['closed_at'] == null)
+      .firstOrNull;
+  List<Map<String, dynamic>> get recentCuts => rows(
+    stock,
+    'shifts',
+  ).where((s) => s['closed_at'] != null).take(3).toList();
+  List<Map<String, dynamic>> get pendingTasks =>
+      rows(agenda, 'tasks').where((t) => t['completed_at'] == null).toList();
+  List<Map<String, dynamic>> get messages =>
+      rows(agenda, 'messages').reversed.take(4).toList();
 
   DateTime effectiveTime(HospitalTask task) =>
       task.snoozedUntil != null && task.snoozedUntil!.isAfter(task.dueAt)

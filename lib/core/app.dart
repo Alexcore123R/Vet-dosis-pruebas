@@ -1,3 +1,4 @@
+import '../modules/dashboard/presentation/alert_preferences_panel.dart';
 import 'widgets/workspace_panel.dart';
 import '../modules/dashboard/presentation/dashboard_screen.dart';
 import '../modules/dashboard/presentation/dashboard_view_model.dart';
@@ -566,7 +567,7 @@ class CoreShell extends StatelessWidget {
                       : const Text(
                           'Conecta tu cuenta y verifica el acceso a inventario para escanear productos.',
                         )
-                else if (model.screen == 'Inventario')
+                else if (model.screen == 'Inventario' || model.screen == 'Caja')
                   inventory != null && auth?.active != null
                       ? auth!.offline
                             ? const Text(
@@ -577,17 +578,29 @@ class CoreShell extends StatelessWidget {
                                 'Inventario y caja requieren permiso operativo de la clínica.',
                               )
                             : InventoryScreen(
+                                key: ValueKey('inventory:${model.screen}'),
+                                initialSection: model.screen == 'Caja'
+                                    ? 'cash'
+                                    : 'stock',
                                 repository: inventory!,
                                 member: auth!.active!,
                               )
                       : const Text(
                           'Conecta tu cuenta y clínica para abrir inventario.',
                         )
-                else if (model.screen == 'Agenda')
+                else if (model.screen == 'Agenda' ||
+                    model.screen == 'Equipo y avisos' ||
+                    model.screen == 'Pendientes del equipo')
                   operations != null &&
                           auth?.active != null &&
                           auth?.offline != true
                       ? OperationsScreen(
+                          key: ValueKey('operations:${model.screen}'),
+                          initialSection: model.screen == 'Equipo y avisos'
+                              ? 'messages'
+                              : model.screen == 'Pendientes del equipo'
+                              ? 'tasks'
+                              : 'appointments',
                           repository: operations!,
                           member: auth!.active!,
                           onOpenPatient:
@@ -750,6 +763,7 @@ class CoreShell extends StatelessWidget {
         backup: backup,
       ),
       offline: auth?.offline ?? false,
+      alerts: hospitalAlerts,
       onNavigate: model.navigate,
     ),
     FirstStepsBanner(
@@ -892,6 +906,14 @@ class CoreShell extends StatelessWidget {
           trailing: const Icon(Icons.chevron_right),
           onTap: () => model.navigate(option.$3),
         ),
+    if (navigationAllowed('Hospitalización', auth?.active)) ...[
+      const Divider(),
+      Text(
+        'Alertas y recordatorios',
+        style: Theme.of(context).textTheme.titleLarge,
+      ),
+      AlertPreferencesPanel(alerts: hospitalAlerts),
+    ],
     const Text('VetDosis Pro · Versión de pruebas · 0.1.0'),
   ];
 

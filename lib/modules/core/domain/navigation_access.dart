@@ -12,10 +12,13 @@ bool navigationAllowed(String page, ClinicMembership? member) {
       ClinicRole.mvz,
       ClinicRole.auxiliar,
     ].contains(role),
-    'Inventario' || 'Escanear producto' => role != ClinicRole.estilista,
+    'Inventario' ||
+    'Caja' ||
+    'Escanear producto' => role != ClinicRole.estilista,
     'Estadísticas' ||
     'Respaldo' ||
     'Estadísticas y respaldo' => role == ClinicRole.admin,
+    'Equipo y avisos' || 'Pendientes del equipo' => !member.isPersonal,
     'Checado' => !member.isPersonal,
     _ => true,
   };

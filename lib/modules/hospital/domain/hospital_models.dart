@@ -135,17 +135,24 @@ String hospitalText(String value, {int max = 300}) {
 }
 
 class AlarmJob {
-  const AlarmJob(this.taskId, this.at, this.escalated, {this.summary = false});
+  const AlarmJob(
+    this.taskId,
+    this.at,
+    this.escalated, {
+    this.summary = false,
+    this.advance = false,
+  });
   final String taskId;
   final DateTime at;
   final bool escalated;
-  final bool summary;
+  final bool summary, advance;
 }
 
 List<AlarmJob> planHospitalAlarms(
   List<HospitalTask> tasks,
   DateTime now, {
   int limit = 60,
+  int leadMinutes = 0,
 }) {
   final jobs = <AlarmJob>[];
   bool overdue = false;
@@ -159,6 +166,17 @@ List<AlarmJob> planHospitalAlarms(
     final escalation = next.isAfter(originalEscalation)
         ? next
         : originalEscalation;
+    if (leadMinutes > 0 &&
+        next.subtract(Duration(minutes: leadMinutes)).isAfter(now)) {
+      jobs.add(
+        AlarmJob(
+          task.id,
+          next.subtract(Duration(minutes: leadMinutes)),
+          false,
+          advance: true,
+        ),
+      );
+    }
     if (next.isAfter(now)) {
       jobs.add(AlarmJob(task.id, next, !next.isBefore(originalEscalation)));
     }

@@ -120,6 +120,40 @@ class HospitalAlerts extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool get sound => preferences.getBool('hospital.alert.sound.v2') ?? true;
+  bool get stockWarnings =>
+      preferences.getBool('hospital.alert.stock.v2') ?? true;
+  bool get vibration =>
+      preferences.getBool('hospital.alert.vibration.v2') ?? true;
+  int get leadMinutes => preferences.getInt('hospital.alert.lead.v2') ?? 0;
+  Future<void> updateOptions({
+    bool? sound,
+    bool? vibration,
+    bool? stockWarnings,
+    int? leadMinutes,
+  }) async {
+    if (leadMinutes != null && ![0, 5, 10, 15, 30].contains(leadMinutes)) {
+      throw const FormatException('Anticipación no válida.');
+    }
+    if (sound != null &&
+        !await preferences.setBool('hospital.alert.sound.v2', sound)) {
+      throw StateError('settings_write_failed');
+    }
+    if (vibration != null &&
+        !await preferences.setBool('hospital.alert.vibration.v2', vibration)) {
+      throw StateError('settings_write_failed');
+    }
+    if (leadMinutes != null &&
+        !await preferences.setInt('hospital.alert.lead.v2', leadMinutes)) {
+      throw StateError('settings_write_failed');
+    }
+    if (stockWarnings != null &&
+        !await preferences.setBool('hospital.alert.stock.v2', stockWarnings)) {
+      throw StateError('settings_write_failed');
+    }
+    notifyListeners();
+  }
+
   Future<void> reconcile(String expectedScope, List<HospitalTask> tasks) async {
     if (scope != expectedScope || !enabled || !backend.supported) return;
     final generation = _generation;
@@ -128,12 +162,22 @@ class HospitalAlerts extends ChangeNotifier {
         return;
       }
       final current = now();
-      final all = planHospitalAlarms(tasks, current, limit: 100000);
+      final all = planHospitalAlarms(
+        tasks,
+        current,
+        limit: 100000,
+        leadMinutes: leadMinutes,
+      );
       final jobs = all.take(60).toList();
       final records = _records;
       final wanted = <String>{
         for (final job in jobs)
-          jsonEncode([expectedScope, job.taskId, job.escalated]),
+          jsonEncode([
+            expectedScope,
+            job.taskId,
+            job.escalated,
+            if (job.advance) 'advance',
+          ]),
       };
       for (final key in records.keys.toList()) {
         if (!wanted.contains(key)) {
@@ -145,7 +189,12 @@ class HospitalAlerts extends ChangeNotifier {
         if (generation != _generation || scope != expectedScope || !enabled) {
           return;
         }
-        final key = jsonEncode([expectedScope, job.taskId, job.escalated]);
+        final key = jsonEncode([
+          expectedScope,
+          job.taskId,
+          job.escalated,
+          if (job.advance) 'advance',
+        ]);
         final task = job.summary
             ? null
             : tasks.firstWhere((t) => t.id == job.taskId);
@@ -164,8 +213,8 @@ class HospitalAlerts extends ChangeNotifier {
                 .toList()
               ..sort();
         final fingerprint = overdue
-            ? 'overdue:${summaryIds.join(',')}'
-            : '${job.at.toUtc().toIso8601String()}:${task!.version}';
+            ? 'overdue:${summaryIds.join(',')}:$sound:$vibration'
+            : '${job.at.toUtc().toIso8601String()}:${task!.version}:$sound:$vibration';
         final record = records[key] as Map?;
         if (record?['fingerprint'] == fingerprint) continue;
         var id = record?['id'] as int?;

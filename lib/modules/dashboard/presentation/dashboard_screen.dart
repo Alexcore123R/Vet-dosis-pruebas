@@ -1,8 +1,15 @@
-import '../../../core/widgets/workspace_panel.dart';
+import '../../doses/domain/quantity.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../core/widgets/workspace_panel.dart';
 import '../../core/domain/navigation_access.dart';
+import '../../auth/domain/clinic_membership.dart';
+import '../../auth/domain/staff_labels.dart';
+import '../../inventory/domain/inventory_models.dart';
+import '../../hospital/application/hospital_alerts.dart';
+import '../../prescribing/presentation/rx_entry_screen.dart';
 import 'dashboard_view_model.dart';
+import 'alert_preferences_panel.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
@@ -11,17 +18,21 @@ class DashboardScreen extends StatefulWidget {
     required this.onNavigate,
     this.offline = false,
     this.statisticsOnly = false,
+    this.alerts,
   });
   final DashboardViewModel model;
   final ValueChanged<String> onNavigate;
   final bool offline, statisticsOnly;
+  final HospitalAlerts? alerts;
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
   late final DashboardViewModel model = widget.model;
+  final search = TextEditingController();
   Timer? timer;
+  bool openingCash = false;
   @override
   void initState() {
     super.initState();
@@ -34,12 +45,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void dispose() {
     timer?.cancel();
+    search.dispose();
     model.dispose();
     super.dispose();
   }
 
   String time(DateTime date) {
-    final d = date.toLocal();
+    final d = model.localTime(date);
     return '${d.day}/${d.month}/${d.year} · ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
   }
 
@@ -52,6 +64,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               Row(
                 children: [
+                  Icon(
+                    sectionIcon(page),
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       title,
@@ -76,37 +93,121 @@ class _DashboardScreenState extends State<DashboardScreen> {
       : loaded
       ? content
       : const Text('Resumen no disponible.');
+  Widget metrics(List<(String, String)> values) => LayoutBuilder(
+    builder: (context, c) {
+      final cols =
+          c.maxWidth >= 330 && MediaQuery.textScalerOf(context).scale(1) < 1.4
+          ? 2
+          : 1;
+      return Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: [
+          for (final v in values)
+            SizedBox(
+              width: (c.maxWidth - 12 * (cols - 1)) / cols,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(v.$2, style: Theme.of(context).textTheme.titleLarge),
+                    Text(v.$1),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      );
+    },
+  );
+  String money(dynamic value) {
+    try {
+      return Money.parse('$value', signed: true).display;
+    } catch (_) {
+      return 'No disponible';
+    }
+  }
+
+  Future<void> openCash() async {
+    if (widget.offline ||
+        model.member == null ||
+        model.inventory == null ||
+        model.stock == null ||
+        model.busy ||
+        openingCash) {
+      return;
+    }
+    setState(() => openingCash = true);
+    try {
+      final saved = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RxEntryScreen(
+            title: 'Abrir turno de caja',
+            fields: const [
+              RxField(
+                'opening',
+                'Fondo inicial de efectivo MXN',
+                required: true,
+              ),
+            ],
+            submit: (data, op) async {
+              try {
+                await model.inventory!.write('inv_shift_open', {
+                  'p_clinic': model.member!.clinicId,
+                  'p_opening': Money.parse(data['opening']).decimal,
+                  'p_operation': op,
+                });
+              } on FormatException {
+                rethrow;
+              } catch (_) {
+                throw const FormatException(
+                  'No se pudo abrir el turno. Actualiza y revisa conexión y permisos.',
+                );
+              }
+            },
+          ),
+        ),
+      );
+      if (saved == true && mounted) await model.load(offline: widget.offline);
+    } finally {
+      if (mounted) setState(() => openingCash = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: model,
+    listenable: Listenable.merge([model, ?widget.alerts]),
     builder: (context, _) {
       final m = model;
       final stats = m.statistics;
-      final statsPanel = panel('Estadísticas', 'Estadísticas', [
+      final totals = m.dayTotals;
+      final statisticsPanel = panel('Estadísticas', 'Estadísticas', [
         unavailable(
           'Estadísticas',
           stats != null,
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Ventas mensuales netas de devoluciones · MXN'),
-              const Text('Estos importes no representan utilidad neta.'),
-              for (final row
+              const Text(
+                'Ventas mensuales netas de devoluciones · MXN. No representan utilidad neta.',
+              ),
+              for (final s
                   in m
                       .rows(stats, 'sales')
                       .reversed
                       .take(widget.statisticsOnly ? 12 : 3))
                 ListTile(
-                  title: Text('${row['month']}'),
-                  trailing: Text('\$${row['amount']}'),
+                  title: Text('${s['month']}'),
+                  trailing: Text(money(s['amount'])),
                 ),
               if (widget.statisticsOnly) ...[
-                const Divider(),
                 const Text('Citas no canceladas del mes por especie'),
-                for (final row in m.rows(stats, 'species'))
+                for (final s in m.rows(stats, 'species'))
                   ListTile(
-                    title: Text('${row['species']}'),
-                    trailing: Text('${row['count']}'),
+                    title: Text('${s['species']}'),
+                    trailing: Text('${s['count']}'),
                   ),
               ],
             ],
@@ -141,129 +242,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const Text(
               'Conecta tu cuenta y elige una clínica para consultar sus datos.',
             ),
-          if (m.updated != null)
-            Text(
-              'Última consulta: ${time(m.updated!)} · Actualiza para ver cambios.',
-            ),
+          if (m.updated != null) Text('Última consulta: ${time(m.updated!)}'),
           if (m.busy) const LinearProgressIndicator(),
+          if (navigationAllowed('Estadísticas', m.member)) statisticsPanel,
           if (!widget.statisticsOnly) ...[
-            const SizedBox(height: 16),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final columns = constraints.maxWidth >= 700
-                    ? 3
-                    : constraints.maxWidth >= 330 &&
-                          MediaQuery.textScalerOf(context).scale(1) <= 1.3
-                    ? 2
-                    : 1;
-                final width =
-                    (constraints.maxWidth - 16 * (columns - 1)) / columns;
-                return Wrap(
-                  spacing: 16,
-                  runSpacing: 12,
-                  children: [
-                    for (final entry in <(String, String, String)>[
-                      (
-                        'Agenda',
-                        'Agenda',
-                        m.agenda == null
-                            ? 'Consulta citas y horarios'
-                            : '${m.upcoming.length} citas futuras agendadas',
-                      ),
-                      (
-                        'Cálculos',
-                        'Cálculos clínicos',
-                        'Fluidoterapia, infusión y producción',
-                      ),
-                      (
-                        'Estadísticas',
-                        'Estadísticas',
-                        'Ventas y actividad de la clínica',
-                      ),
-                      (
-                        'Asistente IA',
-                        'Asistente IA',
-                        'Abrir conversación y herramientas',
-                      ),
-                      (
-                        'Escáner',
-                        'Escanear producto',
-                        'Buscar productos por código',
-                      ),
-                    ])
-                      if (navigationAllowed(entry.$2, m.member))
-                        SizedBox(
-                          width: width,
-                          child: WorkspacePanel(
-                            child: InkWell(
-                              onTap: () => widget.onNavigate(entry.$2),
-                              child: Padding(
-                                padding: const EdgeInsets.all(20),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(
-                                      sectionIcon(entry.$2),
-                                      size: 32,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      entry.$1,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleMedium,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(entry.$3),
-                                    const SizedBox(height: 12),
-                                    const Text('Abrir'),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                  ],
-                );
-              },
-            ),
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final action in <(String, IconData, String)>[
-                  ('Inventario', Icons.inventory_2_outlined, 'Inventario'),
-                  ('Estadísticas', Icons.bar_chart, 'Estadísticas'),
-                  ('Recetas', Icons.description_outlined, 'Receta'),
-                  ('Formatos', Icons.folder_outlined, 'Formatos'),
-                  ('Pacientes', Icons.pets, 'Pacientes'),
-                  ('Agenda', Icons.calendar_month, 'Agenda'),
-                  (
-                    'Hospitalización',
-                    Icons.local_hospital_outlined,
-                    'Hospitalización',
-                  ),
-                  (
-                    'Cálculo rápido',
-                    Icons.calculate_outlined,
-                    'Cálculo rápido',
-                  ),
+                for (final action in <(String, String)>[
+                  ('Inventario', 'Inventario'),
+                  ('Estadísticas', 'Estadísticas'),
+                  ('Recetas', 'Receta'),
+                  ('Formatos', 'Formatos'),
+                  ('Pacientes', 'Pacientes'),
+                  ('Agenda', 'Agenda'),
+                  ('Hospitalización', 'Hospitalización'),
+                  ('Cálculo rápido', 'Cálculo rápido'),
+                  ('Cálculos clínicos', 'Cálculos clínicos'),
+                  ('Escáner', 'Escanear producto'),
                 ])
-                  if (navigationAllowed(action.$3, m.member))
-                    ActionChip(
-                      avatar: Icon(action.$2),
-                      label: Text(action.$1),
-                      onPressed: () => widget.onNavigate(action.$3),
+                  if (navigationAllowed(action.$2, m.member))
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.sizeOf(context).width - 48,
+                      ),
+                      child: WorkspacePanel(
+                        child: InkWell(
+                          onTap: () => widget.onNavigate(action.$2),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(sectionIcon(action.$2), size: 20),
+                                const SizedBox(width: 8),
+                                Flexible(child: Text(action.$1)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
               ],
             ),
-            const SizedBox(height: 16),
             panel(
-              'Alertas',
+              'Alertas y recordatorios',
               navigationAllowed('Hospitalización', m.member)
                   ? 'Hospitalización'
                   : 'Agenda',
@@ -272,57 +300,95 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   unavailable(
                     'Hospitalización',
                     m.ward != null,
-                    Text(
-                      '${m.overdue.length} dosis pendientes cuyo horario ya llegó.',
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          '${m.overdue.length} dosis pendientes cuyo horario ya llegó.',
+                        ),
+                        for (final t in m.overdue.take(3))
+                          ListTile(
+                            title: Text('${m.patient(t)} · ${t.label}'),
+                            subtitle: Text(
+                              'Horario: ${time(m.effectiveTime(t))}',
+                            ),
+                            onTap: () => widget.onNavigate('Hospitalización'),
+                          ),
+                      ],
                     ),
                   ),
-                if (navigationAllowed('Inventario', m.member))
+                if (navigationAllowed('Inventario', m.member) &&
+                    widget.alerts?.stockWarnings != false)
                   unavailable(
                     'Inventario',
                     m.stock != null,
-                    Text(
-                      '${m.lowStock.length} productos con stock disponible bajo o igual al mínimo.',
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          '${m.lowStock.length} productos con stock disponible bajo o igual al mínimo.',
+                        ),
+                        for (final p in m.lowStock.take(3))
+                          ListTile(
+                            title: Text('${p['nombre']}'),
+                            subtitle: Text(
+                              'Disponible: ${p['available_stock']} · mínimo ${p['stock_minimo']}',
+                            ),
+                            onTap: () => widget.onNavigate('Inventario'),
+                          ),
+                      ],
                     ),
                   ),
-                for (final p in m.lowStock.take(3))
-                  ListTile(
-                    title: Text('${p['nombre']}'),
-                    subtitle: Text(
-                      'Disponible: ${p['available_stock']} · mínimo: ${p['stock_minimo']}',
+                if ((widget.alerts?.leadMinutes ?? 0) > 0)
+                  for (final t
+                      in m.nextDoses
+                          .where(
+                            (t) =>
+                                m.effectiveTime(t).difference(m.now()) <=
+                                Duration(minutes: widget.alerts!.leadMinutes),
+                          )
+                          .take(3))
+                    ListTile(
+                      title: Text(
+                        'Próxima dosis · ${m.patient(t)} · ${t.label}',
+                      ),
+                      subtitle: Text(time(m.effectiveTime(t))),
+                      onTap: () => widget.onNavigate('Hospitalización'),
                     ),
-                    onTap: () => widget.onNavigate('Inventario'),
+                if (navigationAllowed('Hospitalización', m.member))
+                  ExpansionTile(
+                    title: const Text('Configurar avisos en este dispositivo'),
+                    children: [
+                      AlertPreferencesPanel(
+                        alerts: widget.alerts,
+                        onUpdated: () async {
+                          final a = widget.alerts;
+                          if (a?.scope != null && m.ward != null) {
+                            await a!.reconcile(
+                              '${m.member!.userId}:${m.member!.clinicId}:${m.member!.role.name}',
+                              m.ward!.tasks,
+                            );
+                          }
+                        },
+                      ),
+                    ],
                   ),
               ],
             ),
-            if (m.member?.role.name != 'estilista')
-              panel('Pacientes', 'Pacientes', [
-                unavailable(
-                  'Pacientes',
-                  m.patientCount != null,
-                  Text('${m.patientCount} pacientes registrados.'),
-                ),
-              ]),
-            if (navigationAllowed('Inventario', m.member))
-              panel('Inventario', 'Inventario', [
-                unavailable(
-                  'Inventario',
-                  m.stock != null,
-                  Text(
-                    '${m.products.length} productos activos · ${m.lowStock.length} por revisar.',
-                  ),
-                ),
-              ]),
-            panel('Próximas citas', 'Agenda', [
+            panel('Próximas citas de hoy', 'Agenda', [
+              Text(
+                m.clinicTimezone == null
+                    ? 'Día y horas del teléfono'
+                    : 'Zona de la clínica: ${m.clinicTimezone}',
+              ),
               unavailable(
                 'Agenda',
                 m.agenda != null,
                 Column(
                   children: [
-                    if (m.upcoming.isEmpty)
-                      const Text(
-                        'No hay citas futuras agendadas en los datos consultados.',
-                      ),
-                    for (final a in m.upcoming.take(5))
+                    if (m.todayAppointments.isEmpty)
+                      const Text('No hay citas futuras agendadas para hoy.'),
+                    for (final a in m.todayAppointments)
                       ListTile(
                         title: Text('${a['patient_name']}'),
                         subtitle: Text('${time(m.starts(a)!)} · ${a['kind']}'),
@@ -352,14 +418,163 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ]),
-            if (navigationAllowed('Hospitalización', m.member)) ...[
-              panel('Hospitalización', 'Hospitalización', [
+            if (navigationAllowed('Inventario', m.member)) ...[
+              panel('Inventario', 'Inventario', [
                 unavailable(
-                  'Hospitalización',
-                  m.ward != null,
-                  Text('${m.ward?.stays.length} pacientes hospitalizados.'),
+                  'Inventario',
+                  m.stock != null,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        '${m.products.length} artículos activos · ${m.lowStock.length} por revisar',
+                      ),
+                      if (m.member?.role == ClinicRole.admin)
+                        metrics([
+                          (
+                            'Valor a costo',
+                            m.valueAtCost?.display ?? 'No disponible',
+                          ),
+                          (
+                            'Valor a venta',
+                            m.valueAtSale?.display ?? 'No disponible',
+                          ),
+                          (
+                            'Margen potencial',
+                            m.potentialMargin?.display ?? 'No disponible',
+                          ),
+                        ]),
+                      const Text(
+                        'Existencias disponibles por unidad; no incluye lotes caducados.',
+                      ),
+                      if (m.stockByUnit == null)
+                        const Text('Existencias por unidad no disponibles.'),
+                      for (final e
+                          in (m.stockByUnit ?? <String, Quantity>{}).entries)
+                        Text('${e.value.display()} ${e.key}'),
+                      const Text(
+                        'Margen potencial antes de comisiones y gastos; no es utilidad neta.',
+                      ),
+                      TextField(
+                        controller: search,
+                        decoration: const InputDecoration(
+                          labelText: 'Buscar producto por nombre o código',
+                          prefixIcon: Icon(Icons.search),
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      if (search.text.trim().isNotEmpty)
+                        for (final p
+                            in m.products
+                                .where(
+                                  (p) =>
+                                      '${p['nombre']} ${p['codigo_barras'] ?? ''}'
+                                          .toLowerCase()
+                                          .contains(
+                                            search.text.trim().toLowerCase(),
+                                          ),
+                                )
+                                .take(5))
+                          ListTile(
+                            title: Text('${p['nombre']}'),
+                            subtitle: Text(
+                              'Disponible: ${p['available_stock']} ${p['stock_unit']}',
+                            ),
+                            onTap: () => widget.onNavigate('Inventario'),
+                          ),
+                    ],
+                  ),
                 ),
               ]),
+              panel('Caja del turno', 'Caja', [
+                unavailable(
+                  'Inventario',
+                  m.stock != null,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (m.ownShift == null) ...[
+                        const Text(
+                          'Tu caja está cerrada. Captura el fondo inicial al abrir.',
+                        ),
+                        FilledButton.icon(
+                          onPressed: widget.offline || m.busy || openingCash
+                              ? null
+                              : openCash,
+                          icon: const Icon(Icons.lock_open),
+                          label: const Text('Abrir caja'),
+                        ),
+                      ] else ...[
+                        Text(
+                          'Tu caja está abierta · fondo inicial: ${money(m.ownShift!['opening_cash'])}',
+                        ),
+                        FilledButton(
+                          onPressed: () => widget.onNavigate('Caja'),
+                          child: const Text('Venta o revisión del turno'),
+                        ),
+                      ],
+                      const Text('Últimos cortes visibles'),
+                      if (m.recentCuts.isEmpty)
+                        const Text(
+                          'No hay cortes cerrados en los datos consultados.',
+                        ),
+                      for (final sh in m.recentCuts)
+                        ListTile(
+                          title: Text(
+                            'Cierre: ${time(DateTime.parse(sh['closed_at']))}',
+                          ),
+                          subtitle: Text(
+                            'Contado: ${money(sh['counted_cash'])}',
+                          ),
+                          onTap: () => widget.onNavigate('Caja'),
+                        ),
+                    ],
+                  ),
+                ),
+              ]),
+              if (m.member?.role == ClinicRole.admin)
+                panel('Ventas de hoy', 'Caja', [
+                  unavailable(
+                    'Inventario',
+                    totals != null,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Día de la clínica: ${m.stock?['today'] ?? 'no disponible'}',
+                        ),
+                        metrics([
+                          ('Ventas menos reversos', money(totals?['gross'])),
+                          (
+                            'Margen tras costos y comisiones',
+                            money(totals?['margin']),
+                          ),
+                          (
+                            'Resultado con gastos capturados',
+                            money(totals?['recorded_net']),
+                          ),
+                        ]),
+                        const Text(
+                          'Número de ventas y ticket promedio: no disponibles en la consulta actual.',
+                        ),
+                        for (final entry in [
+                          ('Efectivo', 'cash'),
+                          ('Tarjeta', 'card'),
+                          ('Transferencia', 'transfer'),
+                        ])
+                          ListTile(
+                            title: Text(entry.$1),
+                            trailing: Text(money(totals?[entry.$2])),
+                          ),
+                        const Text(
+                          'Importes netos de reversos. No acreditan que estén incluidos todos los gastos ni costos pendientes.',
+                        ),
+                      ],
+                    ),
+                  ),
+                ]),
+            ],
+            if (navigationAllowed('Hospitalización', m.member))
               panel('Próximas dosis', 'Hospitalización', [
                 unavailable(
                   'Hospitalización',
@@ -380,9 +595,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
               ]),
-            ],
+            if (m.member?.isPersonal == false)
+              panel('Equipo y avisos', 'Equipo y avisos', [
+                unavailable(
+                  'Agenda',
+                  m.agenda != null,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text('Pendientes del equipo'),
+                      if (m.pendingTasks.isEmpty)
+                        const Text('No hay pendientes visibles.'),
+                      for (final t in m.pendingTasks.take(4))
+                        ListTile(
+                          title: Text('${t['title']} · ${t['priority']}'),
+                          subtitle: Text(
+                            t['assigned_to'] == null
+                                ? 'Para el equipo'
+                                : staffLabel(
+                                    '${t['assigned_to']}',
+                                    m.rows(m.agenda, 'people'),
+                                  ),
+                          ),
+                          onTap: () =>
+                              widget.onNavigate('Pendientes del equipo'),
+                        ),
+                      TextButton(
+                        onPressed: () =>
+                            widget.onNavigate('Pendientes del equipo'),
+                        child: const Text('Crear o revisar pendientes'),
+                      ),
+                      const Text('Avisos recientes'),
+                      if (m.messages.isEmpty)
+                        const Text('No hay mensajes del equipo.'),
+                      for (final msg in m.messages)
+                        ListTile(
+                          title: Text('${msg['category']} · ${msg['body']}'),
+                          subtitle: Text(
+                            '${staffLabel('${msg['author_id']}', m.rows(m.agenda, 'people'))} · ${time(DateTime.parse(msg['created_at']))}',
+                          ),
+                        ),
+                      TextButton(
+                        onPressed: () => widget.onNavigate('Equipo y avisos'),
+                        child: const Text('Escribir aviso al equipo'),
+                      ),
+                    ],
+                  ),
+                ),
+              ]),
           ],
-          if (navigationAllowed('Estadísticas', m.member)) statsPanel,
           const SizedBox(height: 16),
         ],
       );
