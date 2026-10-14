@@ -1,3 +1,4 @@
+import 'widgets/workspace_panel.dart';
 import '../modules/dashboard/presentation/dashboard_screen.dart';
 import '../modules/dashboard/presentation/dashboard_view_model.dart';
 import '../modules/core/domain/navigation_access.dart';
@@ -90,8 +91,24 @@ class VetDosisApp extends StatelessWidget {
     final dark = brightness == Brightness.dark;
     return ThemeData(
       useMaterial3: true,
+      inputDecorationTheme: model.settings.visualStyle == 'neu'
+          ? InputDecorationTheme(
+              filled: true,
+              fillColor: dark
+                  ? const Color(0xFF28333B)
+                  : const Color(0xFFE5EBEF),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            )
+          : null,
+      extensions: [
+        WorkspaceStyle(neumorphic: model.settings.visualStyle == 'neu'),
+      ],
       colorScheme: ColorScheme.fromSeed(
-        seedColor: paletteColors[model.settings.palette],
+        seedColor: model.settings.visualStyle == 'neu'
+            ? const Color(0xFF087D89)
+            : paletteColors[model.settings.palette],
         brightness: brightness,
       ),
       scaffoldBackgroundColor: dark
@@ -257,6 +274,7 @@ class CoreShell extends StatelessWidget {
                     for (final page in ['Cálculo rápido', 'Cálculos clínicos'])
                       if (navigationAllowed(page, auth?.active))
                         ListTile(
+                          leading: Icon(sectionIcon(page)),
                           title: Text(page),
                           selected: model.screen == page,
                           onTap: () {
@@ -284,6 +302,7 @@ class CoreShell extends StatelessWidget {
               ])
                 if (navigationAllowed(page, auth?.active))
                   ListTile(
+                    leading: Icon(sectionIcon(page)),
                     title: Text(page),
                     selected: model.screen == page,
                     onTap: () {
@@ -743,6 +762,24 @@ class CoreShell extends StatelessWidget {
   List<Widget> settings(BuildContext context) => [
     Text('Ajustes', style: Theme.of(context).textTheme.headlineMedium),
     const SizedBox(height: 24),
+    Text('Estilo visual', style: Theme.of(context).textTheme.titleLarge),
+    const SizedBox(height: 12),
+    Wrap(
+      spacing: 12,
+      children: [
+        ChoiceChip(
+          label: const Text('Clásico'),
+          selected: model.settings.visualStyle == 'standard',
+          onSelected: (_) => model.updateSettings(visualStyle: 'standard'),
+        ),
+        ChoiceChip(
+          label: const Text('Neu · relieve suave'),
+          selected: model.settings.visualStyle == 'neu',
+          onSelected: (_) => model.updateSettings(visualStyle: 'neu'),
+        ),
+      ],
+    ),
+    const SizedBox(height: 24),
     Text('Elige tu tema', style: Theme.of(context).textTheme.titleLarge),
     const SizedBox(height: 12),
     Wrap(
@@ -849,6 +886,7 @@ class CoreShell extends StatelessWidget {
     ])
       if (navigationAllowed(option.$3, auth?.active))
         ListTile(
+          leading: Icon(sectionIcon(option.$3)),
           title: Text(option.$1),
           subtitle: Text(option.$2),
           trailing: const Icon(Icons.chevron_right),

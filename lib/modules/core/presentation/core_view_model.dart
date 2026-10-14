@@ -37,9 +37,14 @@ class CoreViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateSettings({int? palette, String? brightness}) async {
+  Future<void> updateSettings({
+    int? palette,
+    String? brightness,
+    String? visualStyle,
+  }) async {
     settings = AppSettings(
       palette: palette ?? settings.palette,
+      visualStyle: visualStyle ?? settings.visualStyle,
       brightness: brightness ?? settings.brightness,
     );
     saveError = null;

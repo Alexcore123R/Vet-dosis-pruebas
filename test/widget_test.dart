@@ -24,13 +24,14 @@ void main() {
     expect(model.branch, ClinicalBranch.management);
     await tester.tap(find.byTooltip('Ajustes'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Océano'));
     await tester.tap(find.text('Océano'));
     await tester.pumpAndSettle();
     expect((await repository.load()).palette, 1);
     await model.updateSettings(brightness: 'dark');
     await tester.pumpAndSettle();
     expect(
-      Theme.of(tester.element(find.text('Elige tu tema'))).brightness,
+      Theme.of(tester.element(find.byTooltip('Ajustes'))).brightness,
       Brightness.dark,
     );
     expect(tester.takeException(), isNull);

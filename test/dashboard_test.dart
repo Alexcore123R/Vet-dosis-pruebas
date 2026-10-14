@@ -176,10 +176,10 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.tap(find.byIcon(Icons.menu));
       await tester.pumpAndSettle();
-      expect(find.text('Cálculos'), findsOneWidget);
+      expect(find.text('Cálculos').last, findsOneWidget);
       expect(find.text('Planes'), findsNothing);
       expect(find.text('Estadísticas y respaldo'), findsNothing);
-      await tester.tap(find.text('Cálculos'));
+      await tester.tap(find.text('Cálculos').last);
       await tester.pumpAndSettle();
       expect(find.text('Cálculos clínicos'), findsOneWidget);
       await tester.tap(find.text('Cálculos clínicos'));

@@ -1,3 +1,4 @@
+import '../../../core/widgets/workspace_panel.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/domain/navigation_access.dart';
@@ -42,32 +43,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return '${d.day}/${d.month}/${d.year} · ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
   }
 
-  Widget panel(String title, String page, List<Widget> children) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+  Widget panel(String title, String page, List<Widget> children) =>
+      WorkspacePanel(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Abrir $title',
+                    onPressed: () => widget.onNavigate(page),
+                    icon: const Icon(Icons.chevron_right),
+                  ),
+                ],
               ),
-              IconButton(
-                tooltip: 'Abrir $title',
-                onPressed: () => widget.onNavigate(page),
-                icon: const Icon(Icons.chevron_right),
-              ),
+              ...children,
             ],
           ),
-          ...children,
-        ],
-      ),
-    ),
-  );
+        ),
+      );
   Widget unavailable(String name, bool loaded, Widget content) =>
       model.errors[name] != null
       ? Text(model.errors[name]!)
@@ -145,6 +147,89 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           if (m.busy) const LinearProgressIndicator(),
           if (!widget.statisticsOnly) ...[
+            const SizedBox(height: 16),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final columns = constraints.maxWidth >= 700
+                    ? 3
+                    : constraints.maxWidth >= 330 &&
+                          MediaQuery.textScalerOf(context).scale(1) <= 1.3
+                    ? 2
+                    : 1;
+                final width =
+                    (constraints.maxWidth - 16 * (columns - 1)) / columns;
+                return Wrap(
+                  spacing: 16,
+                  runSpacing: 12,
+                  children: [
+                    for (final entry in <(String, String, String)>[
+                      (
+                        'Agenda',
+                        'Agenda',
+                        m.agenda == null
+                            ? 'Consulta citas y horarios'
+                            : '${m.upcoming.length} citas futuras agendadas',
+                      ),
+                      (
+                        'Cálculos',
+                        'Cálculos clínicos',
+                        'Fluidoterapia, infusión y producción',
+                      ),
+                      (
+                        'Estadísticas',
+                        'Estadísticas',
+                        'Ventas y actividad de la clínica',
+                      ),
+                      (
+                        'Asistente IA',
+                        'Asistente IA',
+                        'Abrir conversación y herramientas',
+                      ),
+                      (
+                        'Escáner',
+                        'Escanear producto',
+                        'Buscar productos por código',
+                      ),
+                    ])
+                      if (navigationAllowed(entry.$2, m.member))
+                        SizedBox(
+                          width: width,
+                          child: WorkspacePanel(
+                            child: InkWell(
+                              onTap: () => widget.onNavigate(entry.$2),
+                              child: Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(
+                                      sectionIcon(entry.$2),
+                                      size: 32,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      entry.$1,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleMedium,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(entry.$3),
+                                    const SizedBox(height: 12),
+                                    const Text('Abrir'),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                  ],
+                );
+              },
+            ),
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,
