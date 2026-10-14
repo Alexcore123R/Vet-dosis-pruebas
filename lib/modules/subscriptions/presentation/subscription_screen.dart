@@ -1,3 +1,4 @@
+import 'storage_budget_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../auth/domain/clinic_membership.dart';
@@ -142,6 +143,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           ),
           Text(
             'Uso estimado de datos: ${storageSize(model.data['usage_bytes'])} de ${storageSize((model.data['effective'] as Map)['storage_bytes'])}',
+          ),
+          StorageBudgetPanel(
+            used: model.data['usage_bytes'],
+            limit: (model.data['effective'] as Map)['storage_bytes'],
+            personal: (model.data['workspace'] as Map)['kind'] == 'personal',
           ),
           Text(
             'Consultas con clave propia por día: ${(model.data['effective'] as Map)['ai_daily']} · créditos de lealtad: ${model.data['reward_points']}',
