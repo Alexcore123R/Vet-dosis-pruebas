@@ -1,5 +1,7 @@
 # Propuesta revisable: beta, permisos y recuperación — v1
 
+Actualización: [v1.1](esquema-beta-permisos-v1.1.md) incorpora ajustes aprobados el 14 de octubre y prevalece en las diferencias. Se conserva v1 como antecedente.
+
 Fecha: 14 de octubre de 2026. Estado: diseño para revisión; sin SQL ejecutado, sin cambios en Android y sin nuevas credenciales generadas. Decisiones de producto aprobadas por la usuaria; nombres, relaciones y mecanismos de esta propuesta sujetos a revisión. No incorporar referencias clínicas ni normativa como verificadas por aprobar este diseño.
 
 ## 1. Decisiones y secuencia
