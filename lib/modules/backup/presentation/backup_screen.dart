@@ -16,9 +16,11 @@ class BackupScreen extends StatefulWidget {
     super.key,
     required this.repository,
     required this.member,
+    this.backupOnly = false,
   });
   final BackupRepository repository;
   final ClinicMembership member;
+  final bool backupOnly;
   @override
   State<BackupScreen> createState() => _BackupScreenState();
 }
@@ -176,7 +178,7 @@ class _BackupScreenState extends State<BackupScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Estadísticas y respaldo',
+                widget.backupOnly ? 'Respaldo' : 'Estadísticas y respaldo',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               if (model.busy || working) const LinearProgressIndicator(),
@@ -185,32 +187,34 @@ class _BackupScreenState extends State<BackupScreen> {
                 onPressed: working ? null : model.load,
                 icon: const Icon(Icons.refresh),
               ),
-              const Text(
-                'Ventas mensuales netas de devoluciones registradas en el mes, en MXN. No representan utilidad neta.',
-              ),
-              for (final s in model.data['sales'] as List? ?? [])
-                metric(
-                  '${s['month']}',
-                  double.parse('${s['amount']}'),
-                  salesMaximum(),
+              if (!widget.backupOnly) ...[
+                const Text(
+                  'Ventas mensuales netas de devoluciones registradas en el mes, en MXN. No representan utilidad neta.',
                 ),
-              const Divider(),
-              const Text('Citas no canceladas del mes por especie'),
-              for (final s in model.data['species'] as List? ?? [])
-                metric(
-                  '${s['species']}',
-                  (s['count'] as num).toDouble(),
-                  speciesMaximum(),
-                ),
-              const Divider(),
-              const Text('Productos en stock mínimo o inferior'),
-              for (final p in model.data['low_stock'] as List? ?? [])
-                ListTile(
-                  leading: const Icon(Icons.inventory_2_outlined),
-                  title: Text('${p['name']}'),
-                  subtitle: Text('${p['stock']} · mínimo ${p['minimum']}'),
-                ),
-              const Divider(),
+                for (final s in model.data['sales'] as List? ?? [])
+                  metric(
+                    '${s['month']}',
+                    double.parse('${s['amount']}'),
+                    salesMaximum(),
+                  ),
+                const Divider(),
+                const Text('Citas no canceladas del mes por especie'),
+                for (final s in model.data['species'] as List? ?? [])
+                  metric(
+                    '${s['species']}',
+                    (s['count'] as num).toDouble(),
+                    speciesMaximum(),
+                  ),
+                const Divider(),
+                const Text('Productos en stock mínimo o inferior'),
+                for (final p in model.data['low_stock'] as List? ?? [])
+                  ListTile(
+                    leading: const Icon(Icons.inventory_2_outlined),
+                    title: Text('${p['name']}'),
+                    subtitle: Text('${p['stock']} · mínimo ${p['minimum']}'),
+                  ),
+                const Divider(),
+              ],
               const Text(
                 'El respaldo operacional incluye registros y PDF históricos; agrega las fotos de inventario. Excluye credenciales, firmas reutilizables y fichas médicas de otros empleados. Drive, restauración y respaldo integral del servidor quedan para la integración final.',
               ),

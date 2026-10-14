@@ -13,6 +13,8 @@ bool navigationAllowed(String page, ClinicMembership? member) {
       ClinicRole.auxiliar,
     ].contains(role),
     'Inventario' || 'Escanear producto' => role != ClinicRole.estilista,
+    'Estadísticas' ||
+    'Respaldo' ||
     'Estadísticas y respaldo' => role == ClinicRole.admin,
     'Checado' => !member.isPersonal,
     _ => true,

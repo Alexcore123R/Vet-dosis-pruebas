@@ -1,3 +1,5 @@
+import '../modules/dashboard/presentation/dashboard_screen.dart';
+import '../modules/dashboard/presentation/dashboard_view_model.dart';
 import '../modules/core/domain/navigation_access.dart';
 import '../modules/inventory/presentation/quick_scan_screen.dart';
 import '../modules/support/domain/support_repository.dart';
@@ -242,23 +244,41 @@ class CoreShell extends StatelessWidget {
                   },
                 ),
               const Divider(),
+              if (navigationAllowed('Cálculo rápido', auth?.active) ||
+                  navigationAllowed('Cálculos clínicos', auth?.active))
+                ExpansionTile(
+                  leading: const Icon(Icons.calculate_outlined),
+                  title: const Text('Cálculos'),
+                  initiallyExpanded: [
+                    'Cálculo rápido',
+                    'Cálculos clínicos',
+                  ].contains(model.screen),
+                  children: [
+                    for (final page in ['Cálculo rápido', 'Cálculos clínicos'])
+                      if (navigationAllowed(page, auth?.active))
+                        ListTile(
+                          title: Text(page),
+                          selected: model.screen == page,
+                          onTap: () {
+                            model.navigate(page);
+                            Navigator.pop(context);
+                          },
+                        ),
+                  ],
+                ),
               for (final page in [
                 'Inicio',
-                'Cálculo rápido',
                 'Escanear producto',
                 'Hospitalización',
-                'Cálculos clínicos',
                 'Pacientes',
                 'Formatos',
                 'Receta',
                 'Agenda',
                 if (auth?.active?.isPersonal != true) 'Checado',
-                'Asistente IA',
-                'Planes',
+
                 'Producto y costos',
                 'Inicio guiado',
-                'Ayuda y soporte',
-                'Estadísticas y respaldo',
+                'Estadísticas',
                 'Inventario',
                 'Ajustes',
               ])
@@ -275,12 +295,30 @@ class CoreShell extends StatelessWidget {
           ),
         ),
       ),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'assistant',
+            tooltip: 'Asistente IA',
+            onPressed: () => model.navigate('Asistente IA'),
+            child: const Icon(Icons.auto_awesome),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton.small(
+            heroTag: 'support',
+            tooltip: 'Ayuda y soporte',
+            onPressed: () => model.navigate('Ayuda y soporte'),
+            child: const Icon(Icons.help_outline),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1100),
             child: ListView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 160),
               children: [
                 if (auth?.offline == true) ...[
                   const SoftPanel(
@@ -575,11 +613,31 @@ class CoreShell extends StatelessWidget {
                       : const Text(
                           'El checado requiere conexión con el servidor.',
                         )
-                else if (model.screen == 'Estadísticas y respaldo')
+                else if (model.screen == 'Estadísticas')
+                  DashboardScreen(
+                    key: ValueKey(
+                      'stats:${auth?.active?.userId}:${auth?.active?.clinicId}:${auth?.offline}',
+                    ),
+                    model: DashboardViewModel(
+                      member: auth?.active,
+                      backup: navigationAllowed('Estadísticas', auth?.active)
+                          ? backup
+                          : null,
+                    ),
+                    offline: auth?.offline ?? false,
+                    statisticsOnly: true,
+                    onNavigate: model.navigate,
+                  )
+                else if (model.screen == 'Respaldo' ||
+                    model.screen == 'Estadísticas y respaldo')
                   backup != null &&
                           auth?.active?.role == ClinicRole.admin &&
                           auth?.offline != true
-                      ? BackupScreen(repository: backup!, member: auth!.active!)
+                      ? BackupScreen(
+                          repository: backup!,
+                          member: auth!.active!,
+                          backupOnly: model.screen == 'Respaldo',
+                        )
                       : const Text(
                           'Las estadísticas y el respaldo requieren conexión y acceso admin de la clínica.',
                         )
@@ -660,144 +718,25 @@ class CoreShell extends StatelessWidget {
   );
 
   List<Widget> home(BuildContext context) => [
-    Text(
-      'Todo comienza con un buen cuidado.',
-      style: Theme.of(context).textTheme.headlineMedium,
-    ),
-    const SizedBox(height: 8),
-    Wrap(
-      spacing: 8,
-      children: [
-        TextButton(
-          onPressed: () => model.navigate('Inicio guiado'),
-          child: const Text('Primeros pasos'),
-        ),
-        TextButton(
-          onPressed: () => model.navigate('Producto y costos'),
-          child: const Text('Conoce VetDosis Pro'),
-        ),
-        TextButton(
-          onPressed: () => model.navigate('Ayuda y soporte'),
-          child: const Text('Ayuda y contacto'),
-        ),
-      ],
-    ),
-    Text(model.branch.label, style: Theme.of(context).textTheme.titleMedium),
-    const Text(
-      'La rama organiza accesos. Confirma especie, paciente y presentación en cada cálculo.',
-    ),
-    if (navigationAllowed('Cálculos clínicos', auth?.active))
-      TextButton.icon(
-        onPressed: () => model.navigate('Cálculos clínicos'),
-        icon: Icon(model.branch.icon),
-        label: Text(switch (model.branch) {
-          ClinicalBranch.exotic => 'Peso metabólico y referencias de exóticos',
-          ClinicalBranch.production =>
-            'Agua, alimento y cálculos de producción',
-          ClinicalBranch.management => 'Abrir cálculos clínicos',
-          ClinicalBranch.small => 'Fluidoterapia, CRI y referencias clínicas',
-        }),
+    DashboardScreen(
+      key: ValueKey(
+        'dashboard:${auth?.active?.userId}:${auth?.active?.clinicId}:${auth?.active?.role}:${auth?.offline}',
       ),
-    if (model.branch == ClinicalBranch.management)
-      Wrap(
-        spacing: 8,
-        children: [
-          for (final p in ['Agenda', 'Inventario', 'Estadísticas y respaldo'])
-            if (navigationAllowed(p, auth?.active))
-              TextButton(onPressed: () => model.navigate(p), child: Text(p)),
-        ],
+      model: DashboardViewModel(
+        member: auth?.active,
+        operations: operations,
+        inventory: inventory,
+        hospital: hospital,
+        patients: patients,
+        backup: backup,
       ),
-    const SizedBox(height: 24),
-    LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth > 700
-            ? 4
-            : constraints.maxWidth >= 330 &&
-                  MediaQuery.textScalerOf(context).scale(1) <= 1.2
-            ? 2
-            : 1;
-        final width = (constraints.maxWidth - 16 * (columns - 1)) / columns;
-        return Wrap(
-          spacing: 16,
-          runSpacing: 16,
-          children: [
-            for (final action in <(String, IconData, String)>[
-              (
-                'Cálculo rápido',
-                Icons.calculate_outlined,
-                'Por paciente y presentación',
-              ),
-              (
-                'Escanear producto',
-                Icons.qr_code_scanner,
-                'Cámara y código de barras',
-              ),
-              ('Receta', Icons.description_outlined, 'Indicaciones y PDF'),
-              (
-                'Hospitalización',
-                Icons.local_hospital_outlined,
-                'Hoja de tratamientos',
-              ),
-            ])
-              if (navigationAllowed(action.$1, auth?.active))
-                SizedBox(
-                  width: width,
-                  child: SoftPanel(
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(24),
-                      onTap: () => model.navigate(action.$1),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              action.$2,
-                              size: 32,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              action.$1,
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(action.$3),
-                            const SizedBox(height: 12),
-                            const Text('Abrir'),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-          ],
-        );
-      },
+      offline: auth?.offline ?? false,
+      onNavigate: model.navigate,
     ),
-    const SizedBox(height: 16),
     FirstStepsBanner(
       key: ValueKey('guide:${auth?.active?.userId}:${auth?.active?.clinicId}'),
       scope: '${auth?.active?.userId}:${auth?.active?.clinicId}',
       onOpen: () => model.navigate('Inicio guiado'),
-    ),
-    const SizedBox(height: 28),
-    SoftPanel(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(auth?.active?.clinicName ?? 'Estamos preparando tu clínica'),
-            const SizedBox(height: 8),
-            Text(
-              auth?.active != null
-                  ? 'Tu rol en esta clínica: ${auth!.active!.role.label}'
-                  : 'El acceso a tu clínica estará disponible al conectar tu cuenta.',
-            ),
-          ],
-        ),
-      ),
     ),
   ];
 
@@ -899,7 +838,7 @@ class CoreShell extends StatelessWidget {
       (
         'Exportación y respaldo',
         'Consulta límites y genera tus archivos.',
-        'Estadísticas y respaldo',
+        'Respaldo',
       ),
       (
         'Ayuda y contacto',
