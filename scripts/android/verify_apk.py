@@ -8,6 +8,21 @@ import subprocess
 from prepare_ci import PACKAGE
 
 
+def certificate_fingerprints(output):
+    # Android 36: "Signer #1 certificate ..."; Android 37: "V3.0 Signer: certificate ...".
+    # Only certificate digests, never the distinct public-key digest. Require exact SHA-256.
+    return {value.lower() for value in re.findall(
+        r'^[^\r\n]*certificate SHA-256 digest:\s*([0-9a-fA-F]{64})[ \t]*$', output, re.MULTILINE)}
+
+
+def stable_apksigner(sdk):
+    tools = [p for p in (Path(sdk) / 'build-tools').glob('*/apksigner')
+             if re.fullmatch(r'\d+\.\d+\.\d+', p.parent.name)]
+    if not tools:
+        raise ValueError('No hay herramientas Android estables para verificar la firma.')
+    return max(tools, key=lambda p: tuple(int(v) for v in p.parent.name.split('.')))
+
+
 def inspect_apk(apk, expected_code, expected_certificate, aapt, apksigner):
     def tool(*args):
         result = subprocess.run(args, capture_output=True, text=True)
@@ -15,9 +30,11 @@ def inspect_apk(apk, expected_code, expected_certificate, aapt, apksigner):
             raise ValueError('No se pudo verificar el APK; no se publicará.')
         return result.stdout
     certificate = tool(str(apksigner), 'verify', '--verbose', '--print-certs', str(apk))
-    match = re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]+)', certificate)
+    certificates = certificate_fingerprints(certificate)
     expected = expected_certificate.replace(':', '').strip().lower()
-    if not match or match[1].lower() != expected:
+    if not certificates:
+        raise ValueError('El verificador no reconoció una huella de certificado en la salida de apksigner.')
+    if certificates != {expected}:
         raise ValueError('Firma diferente a la huella de beta esperada.')
     badging = tool(str(aapt), 'dump', 'badging', str(apk))
     match = re.search(r"package: name='([^']+)' versionCode='(\d+)'", badging)
@@ -33,10 +50,7 @@ def inspect_apk(apk, expected_code, expected_certificate, aapt, apksigner):
 
 
 if __name__ == '__main__':
-    tools = list((Path(os.environ['ANDROID_HOME']) / 'build-tools').glob('*/apksigner'))
-    if not tools:
-        raise SystemExit('No hay herramientas Android para verificar la firma.')
-    apksigner = max(tools, key=lambda p: tuple(int(v) for v in re.findall(r'\d+', p.parent.name)))
+    apksigner = stable_apksigner(os.environ['ANDROID_HOME'])
     aapt = apksigner.parent / 'aapt'
     folder = Path('build/app/outputs/flutter-apk')
     apks = sorted(folder.glob('app-*-beta-release.apk'))

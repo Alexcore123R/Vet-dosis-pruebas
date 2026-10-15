@@ -71,3 +71,11 @@ Verificador de APK: apksigner comprueba firma, certificado esperado, aapt compru
 - Pendiente crear firma real, descargar copia cifrada, configurar secretos y URL de redirección, ejecutar build y validar ambos APK con herramientas reales.
 - En teléfono: instalar beta junto a anterior, identificar etiqueta/ID, comprobar cuenta/proyecto, abrir enlace real de correo y generar una segunda versión para probar actualización con misma firma y conservación de datos. No desinstalar para resolver una firma incompatible.
 - Firma estable no implementa todavía admisiones beta, caducidad de build en servidor ni nuevos permisos. Esas fases siguen separadas.
+
+## Corrección del verificador — 15 de octubre
+
+El primer build firmado generó ambos APK, pero no los publicó al fallar la verificación del certificado. La comprobación aislada 38681456086 confirmó que el certificado real del keystore coincide exactamente con la huella pública configurada. No se cambiaron secretos ni se generó otra llave.
+
+Se reprodujo una incompatibilidad del parser con herramientas Android 37: la etiqueta pasó de `Signer #1 certificate SHA-256 digest` a `V3.0 Signer: certificate SHA-256 digest`. El parser ahora lee únicamente hashes completos del certificado (excluye la huella distinta de la clave pública) y exige que todos los certificados encontrados coincidan con el esperado. Se excluyen versiones RC/preview al escoger herramientas. Las herramientas oficiales 36 y 37 se probaron localmente con firmas reales de un ZIP sintético temporal no instalable, sin usar la llave de la usuaria. No se dispone todavía del SDK completo para compilar Android localmente.
+
+Además, se endureció la creación/comprobación de huellas exportando el certificado a archivo DER antes de calcular SHA-256, para evitar contaminación por mensajes de JVM en stdout. Es una prevención adicional: la comprobación aislada confirmó que la huella existente de la usuaria ya era correcta. Se añadió una comprobación temprana del keystore en CI antes de compilar; el verificador final permanece obligatorio.

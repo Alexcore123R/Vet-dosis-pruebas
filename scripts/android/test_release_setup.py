@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 from unittest.mock import patch
 
 from prepare_ci import EPOCH, PACKAGE, prepare, version_code
-from verify_apk import inspect_apk
+from verify_apk import inspect_apk, certificate_fingerprints, stable_apksigner
 from create_signing import create, run
 from check_keystore import certificate_fingerprint
 import hashlib
@@ -82,6 +82,21 @@ class ReleaseSetupTest(unittest.TestCase):
             bad_manifest = subprocess.CompletedProcess([],0,stdout='android:allowBackup(0x01010280)=(type 0x12)0xffffffff',stderr='')
             with patch('verify_apk.subprocess.run', side_effect=[good_cert,good_badging,bad_manifest]):
                 with self.assertRaisesRegex(ValueError,'allowBackup'): inspect_apk(apk,123,cert,'aapt','apksigner')
+
+    def test_android37_signer_label_and_public_key_digest_are_distinct(self):
+        expected = 'a'*64
+        output = f"V3.0 Signer: certificate SHA-256 digest: {expected}\nV3.0 Signer: public key SHA-256 digest: {'b'*64}\n"
+        self.assertEqual(certificate_fingerprints(output), {expected})
+        self.assertEqual(certificate_fingerprints(f"Signer #1 certificate SHA-256 digest: {expected}\n"), {expected})
+        self.assertEqual(certificate_fingerprints('certificate SHA-256 digest: aaaa'), set())
+        self.assertEqual(certificate_fingerprints(output + f"Signer #2 certificate SHA-256 digest: {'c'*64}\n"), {expected,'c'*64})
+
+    def test_stable_sdk_is_selected_instead_of_rc(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for version in ['36.0.0','37.0.0','37.0.0-rc2','38.0.0-preview']:
+                path = Path(tmp)/'build-tools'/version/'apksigner'
+                path.parent.mkdir(parents=True);path.touch()
+            self.assertEqual(stable_apksigner(tmp).parent.name,'37.0.0')
 
     def test_certificate_hash_ignores_jvm_console_warnings(self):
         with tempfile.TemporaryDirectory() as tmp:
