@@ -1,9 +1,10 @@
+import { betaAccess } from "../_shared/beta_access.ts";
 import { createClient } from "@supabase/supabase-js";
 import { checkoutParameters } from "../_shared/subscription_billing.mjs";
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, apikey, content-type, x-client-info",
+    "authorization, apikey, content-type, x-client-info, x-vetdosis-build",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 Deno.serve(async (req) => {
@@ -26,7 +27,7 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_ANON_KEY")!,
     {
-      global: { headers: { Authorization: authorization } },
+      global: { headers: { Authorization: authorization, "x-vetdosis-build": req.headers.get("x-vetdosis-build") ?? "" } },
       auth: { persistSession: false },
     },
   );
@@ -34,6 +35,7 @@ Deno.serve(async (req) => {
   if (authError || !identity.user) {
     return reply({ error: "authentication_required" }, 401);
   }
+  if (!await betaAccess(user, true)) return reply({ error: "beta_write_denied" }, 403);
   try {
     const text = await req.text();
     if (text.length > 2000) return reply({ error: "request_too_large" }, 413);

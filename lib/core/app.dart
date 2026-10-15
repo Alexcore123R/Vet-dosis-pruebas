@@ -1,3 +1,5 @@
+import '../modules/beta/domain/beta_repository.dart';
+import '../modules/beta/presentation/beta_boundary.dart';
 import '../modules/identity/domain/identity_repository.dart';
 import '../modules/identity/presentation/identity_panel.dart';
 import '../modules/dashboard/presentation/alert_preferences_panel.dart';
@@ -58,6 +60,7 @@ class VetDosisApp extends StatelessWidget {
     required this.model,
     this.auth,
     this.requireAuth = false,
+    this.beta,
     this.personalDoses,
     this.patients,
     this.hospital,
@@ -77,6 +80,7 @@ class VetDosisApp extends StatelessWidget {
   final CoreViewModel model;
   final AuthViewModel? auth;
   final bool requireAuth;
+  final BetaRepository? beta;
   final PersonalDoseRepository? personalDoses;
   final PatientRepository? patients;
   final HospitalRepository? hospital;
@@ -138,34 +142,49 @@ class VetDosisApp extends StatelessWidget {
       darkTheme: theme(Brightness.dark),
       themeMode: model.themeMode,
       home:
-          requireAuth &&
-              (auth == null ||
-                  auth!.loadingMemberships ||
-                  !auth!.signedIn ||
-                  auth!.recoveringPassword ||
-                  auth!.active == null)
-          ? AuthScreen(model: auth, configured: auth != null)
-          : CoreShell(
-              model: model,
-              auth: auth,
-              personalDoses: personalDoses,
-              patients: patients,
-              hospital: hospital,
-              hospitalAlerts: hospitalAlerts,
-              forms: forms,
-              identity: identity,
-              clinical: clinical,
-              prescribing: prescribing,
-              inventory: inventory,
-              operations: operations,
-              attendance: attendance,
-              backup: backup,
-              ai: ai,
-              subscriptions: subscriptions,
-              support: support,
-            ),
+          beta != null &&
+              auth?.signedIn == true &&
+              auth?.recoveringPassword != true
+          ? BetaBoundary(
+              key: ValueKey('beta:${auth!.repository.userId}'),
+              repository: beta!,
+              clinicId: auth!.active?.clinicId,
+              canSponsor: auth!.active?.role == ClinicRole.admin,
+              onSignOut: auth!.repository.signOut,
+              onRefresh: () => auth!.refresh(),
+              child: shell(context),
+            )
+          : shell(context),
     ),
   );
+
+  Widget shell(BuildContext context) =>
+      requireAuth &&
+          (auth == null ||
+              auth!.loadingMemberships ||
+              !auth!.signedIn ||
+              auth!.recoveringPassword ||
+              auth!.active == null)
+      ? AuthScreen(model: auth, configured: auth != null)
+      : CoreShell(
+          model: model,
+          auth: auth,
+          personalDoses: personalDoses,
+          patients: patients,
+          hospital: hospital,
+          hospitalAlerts: hospitalAlerts,
+          forms: forms,
+          identity: identity,
+          clinical: clinical,
+          prescribing: prescribing,
+          inventory: inventory,
+          operations: operations,
+          attendance: attendance,
+          backup: backup,
+          ai: ai,
+          subscriptions: subscriptions,
+          support: support,
+        );
 }
 
 class CoreShell extends StatelessWidget {

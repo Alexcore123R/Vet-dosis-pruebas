@@ -1,3 +1,4 @@
+import { betaAccess } from "../_shared/beta_access.ts";
 import {
   credentialMaster,
   openCredential,
@@ -14,7 +15,7 @@ import {
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, apikey, content-type, x-client-info",
+    "authorization, apikey, content-type, x-client-info, x-vetdosis-build",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const label = (provider: string, scope: string, owner: string) =>
@@ -39,7 +40,7 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_ANON_KEY")!,
     {
-      global: { headers: { Authorization: authorization } },
+      global: { headers: { Authorization: authorization, "x-vetdosis-build": req.headers.get("x-vetdosis-build") ?? "" } },
       auth: { persistSession: false },
     },
   );
@@ -47,6 +48,7 @@ Deno.serve(async (req) => {
   if (authError || !identity.user) {
     return reply({ error: "authentication_required" }, 401);
   }
+  if (!await betaAccess(user, true)) return reply({ error: "beta_write_denied" }, 403);
   const actor = identity.user.id;
   const server = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -62,6 +64,7 @@ Deno.serve(async (req) => {
       Deno.env.get("AI_KEY_ENCRYPTION_SECRET"),
     );
     if (input.action === "save_key") {
+      if (!await betaAccess(user, true, input.scope === "clinic" ? input.clinic : null)) return reply({error:"beta_write_denied"},403);
       if (
         !providerNames.includes(input.provider) ||
         !["personal", "clinic"].includes(input.scope) ||

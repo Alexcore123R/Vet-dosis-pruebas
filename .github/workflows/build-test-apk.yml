@@ -81,7 +81,7 @@ jobs:
           ANDROID_BETA_STORE_PASSWORD: ${{ secrets.ANDROID_BETA_STORE_PASSWORD }}
           ANDROID_BETA_KEY_ALIAS: ${{ secrets.ANDROID_BETA_KEY_ALIAS }}
           ANDROID_BETA_KEY_PASSWORD: ${{ secrets.ANDROID_BETA_KEY_PASSWORD }}
-        run: flutter build apk --release --flavor beta --build-number "$BETA_VERSION_CODE" -Pforce-version-code-ignoring-abi=true --split-per-abi --target-platform android-arm,android-arm64 --dart-define=APP_CHANNEL=beta --dart-define-from-file=supabase/config.test.local.json
+        run: flutter build apk --release --flavor beta --build-number "$BETA_VERSION_CODE" -Pforce-version-code-ignoring-abi=true --split-per-abi --target-platform android-arm,android-arm64 --dart-define=APP_CHANNEL=beta --dart-define=BETA_BUILD="$BETA_VERSION_CODE" --dart-define-from-file=supabase/config.test.local.json
       - name: Verificar identidad, versión y firma de ambos APK
         env:
           ANDROID_BETA_CERT_SHA256: ${{ vars.ANDROID_BETA_CERT_SHA256 }}
@@ -95,6 +95,10 @@ jobs:
             build/app/outputs/flutter-apk/BUILD-INFO.json
           if-no-files-found: error
           retention-days: 14
+      - name: Registrar publicación beta verificada sin renovar versiones existentes
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: python3 scripts/supabase/publish_beta_build.py
       - name: Eliminar material de firma temporal
         if: always()
         shell: bash

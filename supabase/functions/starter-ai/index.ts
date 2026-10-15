@@ -1,3 +1,4 @@
+import { betaAccess } from "../_shared/beta_access.ts";
 import { createClient } from "@supabase/supabase-js";
 import { providerRequest, providerText } from "../_shared/ai_providers.mjs";
 import {
@@ -8,7 +9,7 @@ import {
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization,apikey,content-type,x-client-info",
+    "authorization,apikey,content-type,x-client-info,x-vetdosis-build",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 Deno.serve(async (req) => {
@@ -31,7 +32,7 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_ANON_KEY")!,
     {
-      global: { headers: { Authorization: token } },
+      global: { headers: { Authorization: token, "x-vetdosis-build": req.headers.get("x-vetdosis-build") ?? "" } },
       auth: { persistSession: false },
     },
   );
@@ -39,6 +40,7 @@ Deno.serve(async (req) => {
   if (authError || !identity.user) {
     return reply({ error: "authentication_required" }, 401);
   }
+  if (!await betaAccess(user, true)) return reply({ error: "beta_write_denied" }, 403);
   const server = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -50,6 +52,7 @@ Deno.serve(async (req) => {
     const body = await req.text();
     if (body.length > 2000) return reply({ error: "request_too_large" }, 413);
     const input = JSON.parse(body);
+    if (!await betaAccess(user, true, input.clinic ?? null)) return reply({error:"beta_write_denied"},403);
     const runtime = starterRuntime((name: string) => Deno.env.get(name));
     if (input.action === "status") {
       const { data, error } = await user.rpc("starter_ai_status", {

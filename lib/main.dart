@@ -1,3 +1,5 @@
+import 'modules/beta/domain/beta_repository.dart';
+import 'modules/beta/data/supabase_beta_repository.dart';
 import 'modules/identity/domain/identity_repository.dart';
 import 'modules/identity/data/supabase_identity_repository.dart';
 import 'modules/core/domain/build_channel.dart';
@@ -56,6 +58,7 @@ Future<void> main() async {
   );
   const googleEnabled = bool.fromEnvironment('SUPABASE_GOOGLE_ENABLED');
   AuthViewModel? auth;
+  BetaRepository? beta;
   SyncEngine? sync;
   PersonalDoseRepository? personalDoses;
   PatientRepository? patients;
@@ -72,7 +75,15 @@ Future<void> main() async {
   SubscriptionRepository? subscriptions;
   SupportRepository? support;
   if (url.isNotEmpty && key.isNotEmpty) {
-    await Supabase.initialize(url: url, publishableKey: key);
+    const build = int.fromEnvironment('BETA_BUILD');
+    await Supabase.initialize(
+      url: url,
+      publishableKey: key,
+      headers: channel == 'beta' ? {'x-vetdosis-build': '$build'} : null,
+    );
+    if (channel == 'beta') {
+      beta = SupabaseBetaRepository(Supabase.instance.client, build);
+    }
     personalDoses = SupabasePersonalDoseRepository(Supabase.instance.client);
     patients = SupabasePatientRepository(Supabase.instance.client);
     hospital = SupabaseHospitalRepository(Supabase.instance.client);
@@ -138,6 +149,7 @@ Future<void> main() async {
     VetDosisApp(
       model: core,
       auth: auth,
+      beta: beta,
       personalDoses: personalDoses,
       patients: patients,
       hospital: hospital,
