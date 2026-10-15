@@ -34,6 +34,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Comprobar certificado antes de compilar
+        env:
+          ANDROID_BETA_STORE_PASSWORD: ${{ secrets.ANDROID_BETA_STORE_PASSWORD }}
+          ANDROID_BETA_KEY_ALIAS: ${{ secrets.ANDROID_BETA_KEY_ALIAS }}
+          ANDROID_BETA_CERT_SHA256: ${{ vars.ANDROID_BETA_CERT_SHA256 }}
+        run: python3 scripts/android/check_keystore.py
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.47.6'

@@ -38,9 +38,11 @@ def create(output, backup_password):
              '-alias', alias, '-keyalg', 'RSA', '-keysize', '3072', '-validity', '10000',
              '-dname', 'CN=VetDosis Beta', '-storepass:env', 'VET_STORE',
              '-keypass:env', 'VET_KEY', '-noprompt'], env=env)
-        cert = run(['keytool', '-exportcert', '-keystore', str(keystore), '-alias', alias,
-                    '-storepass:env', 'VET_STORE'], env=env)
-        fingerprint = hashlib.sha256(cert).hexdigest()
+        # Some JVMs print container warnings to stdout. Hash the DER file only.
+        certificate = root / 'certificate.der'
+        run(['keytool', '-exportcert', '-keystore', str(keystore), '-alias', alias,
+             '-storepass:env', 'VET_STORE', '-file', str(certificate)], env=env)
+        fingerprint = hashlib.sha256(certificate.read_bytes()).hexdigest()
         values = {'ANDROID_BETA_KEYSTORE_BASE64': base64.b64encode(keystore.read_bytes()).decode(),
                   'ANDROID_BETA_STORE_PASSWORD': store, 'ANDROID_BETA_KEY_ALIAS': alias,
                   'ANDROID_BETA_KEY_PASSWORD': key, 'ANDROID_BETA_CERT_SHA256': fingerprint}

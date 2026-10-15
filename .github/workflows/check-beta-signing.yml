@@ -1,0 +1,32 @@
+name: Comprobar certificado beta
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Preparar llave sin mostrar secretos
+        env:
+          ANDROID_BETA_KEYSTORE_BASE64: ${{ secrets.ANDROID_BETA_KEYSTORE_BASE64 }}
+          ANDROID_BETA_STORE_PASSWORD: ${{ secrets.ANDROID_BETA_STORE_PASSWORD }}
+          ANDROID_BETA_KEY_ALIAS: ${{ secrets.ANDROID_BETA_KEY_ALIAS }}
+          ANDROID_BETA_KEY_PASSWORD: ${{ secrets.ANDROID_BETA_KEY_PASSWORD }}
+          ANDROID_BETA_CERT_SHA256: ${{ vars.ANDROID_BETA_CERT_SHA256 }}
+        run: python3 scripts/android/prepare_ci.py
+      - name: Comparar certificado con huella pública
+        env:
+          ANDROID_BETA_STORE_PASSWORD: ${{ secrets.ANDROID_BETA_STORE_PASSWORD }}
+          ANDROID_BETA_KEY_ALIAS: ${{ secrets.ANDROID_BETA_KEY_ALIAS }}
+          ANDROID_BETA_CERT_SHA256: ${{ vars.ANDROID_BETA_CERT_SHA256 }}
+        run: python3 scripts/android/check_keystore.py
+      - name: Retirar llave temporal
+        if: always()
+        run: rm -f -- "$RUNNER_TEMP/vetdosis-beta.jks"
