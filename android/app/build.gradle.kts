@@ -4,8 +4,18 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val signingValues = listOf(
+    "ANDROID_BETA_KEYSTORE_PATH", "ANDROID_BETA_STORE_PASSWORD",
+    "ANDROID_BETA_KEY_ALIAS", "ANDROID_BETA_KEY_PASSWORD"
+).associateWith { System.getenv(it)?.takeIf(String::isNotBlank) }
+val signingReady = signingValues.values.all { it != null }
+val releaseRequested = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
+if (releaseRequested && !signingReady) {
+    throw GradleException("Falta la firma propia de beta. Configura los secretos ANDROID_BETA_*; no se usara firma debug.")
+}
+
 android {
-    namespace = "com.example.vetdosis_pro"
+    namespace = "io.github.alexcore123r.vetdosis"
     compileSdk = maxOf(36, flutter.compileSdkVersion)
     ndkVersion = flutter.ndkVersion
 
@@ -16,8 +26,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.vetdosis_pro"
+        applicationId = "io.github.alexcore123r.vetdosis"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = maxOf(24, flutter.minSdkVersion)
@@ -30,11 +39,26 @@ android {
         versionName = flutter.versionName
     }
 
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("beta") {
+            dimension = "distribution"
+            applicationIdSuffix = ".beta"
+            manifestPlaceholders["appLabel"] = "VetDosis Pro Beta"
+        }
+    }
+    signingConfigs {
+        create("betaRelease") {
+            // Missing configuration also fails signing if a generic task requests release.
+            storeFile = file(signingValues["ANDROID_BETA_KEYSTORE_PATH"] ?: ".signing-not-configured.jks")
+            storePassword = signingValues["ANDROID_BETA_STORE_PASSWORD"] ?: "not-configured"
+            keyAlias = signingValues["ANDROID_BETA_KEY_ALIAS"] ?: "not-configured"
+            keyPassword = signingValues["ANDROID_BETA_KEY_PASSWORD"] ?: "not-configured"
+        }
+    }
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("betaRelease")
         }
     }
 }

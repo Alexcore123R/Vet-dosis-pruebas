@@ -1,4 +1,4 @@
-package com.example.vetdosis_pro
+package io.github.alexcore123r.vetdosis
 
 import io.flutter.embedding.android.FlutterActivity
 

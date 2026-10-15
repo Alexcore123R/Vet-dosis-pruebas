@@ -58,3 +58,12 @@ supabase/config.local.json
 
 # Separate local connections for test environments
 supabase/config.*.local.json
+
+# Signing material and recovery files: never commit.
+.signing/
+*.jks
+*.keystore
+*.p12
+*.pfx
+**/key.properties
+*.signing-backup.gpg

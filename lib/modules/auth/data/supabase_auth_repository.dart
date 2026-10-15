@@ -1,3 +1,4 @@
+import '../../core/domain/build_channel.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:http/http.dart' as http;
@@ -34,7 +35,7 @@ class SupabaseAuthRepository
 
   String? get redirect => kIsWeb
       ? Uri.base.replace(query: '', fragment: '').toString()
-      : 'com.vetdosis.pro://login-callback/';
+      : nativeAuthRedirect(const String.fromEnvironment('APP_CHANNEL'));
   @override
   String? get userId => client.auth.currentUser?.id;
   @override

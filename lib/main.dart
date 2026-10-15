@@ -1,3 +1,4 @@
+import 'modules/core/domain/build_channel.dart';
 import 'modules/support/domain/support_repository.dart';
 import 'modules/support/data/supabase_support_repository.dart';
 import 'modules/ai/domain/ai_repository.dart';
@@ -45,6 +46,8 @@ Future<void> main() async {
   final settings = await repository.load();
   const url = String.fromEnvironment('SUPABASE_URL');
   const key = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
+  const channel = String.fromEnvironment('APP_CHANNEL');
+  validateBuildBackend(channel, url);
   const existingSchema = bool.fromEnvironment(
     'SUPABASE_EXISTING_SCHEMA',
     defaultValue: true,
