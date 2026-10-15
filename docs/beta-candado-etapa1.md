@@ -60,3 +60,7 @@ El flujo `Preparar beta cerrada en Supabase de pruebas` aplica únicamente 09A +
 - `deno check` correcto para las cuatro Edge Functions modificadas.
 - APK con panel y versión de build: https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38770694873. Su estado se consulta en el flujo; registrar la publicación no abre admisiones.
 - No se han abierto admisiones, publicado términos, verificado una cédula ni migrado permisos clínicos en esta etapa.
+
+### Comprobación posterior de cuenta de plataforma
+
+La cuenta indicada por la propietaria ya está registrada y confirmada, pero tiene membresía en una clínica (no es un espacio personal). El bootstrap se detuvo por la separación de cuentas aprobada. No se retiraron membresías ni se eliminaron espacios. Se requiere otra identidad Auth sin membresías o una transición expresamente revisada. No se habilitó plataforma por el simple hecho de confirmar el correo. Diagnóstico: flujo 38809047402. Once pruebas de despliegue correctas, incluyendo rechazo de una cuenta con membresía sin alterarla y aceptación de una cuenta confirmada separada.
