@@ -24,6 +24,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Probar protecciones del despliegue
+        run: python3 -m unittest discover -s scripts/supabase -p 'test_*.py'
       - name: Probar migración y políticas en PostgreSQL aislado
         run: bash supabase/tests/run_identity.sh
       - name: Revisar o aplicar identidad en el proyecto de pruebas
