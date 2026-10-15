@@ -13,7 +13,7 @@ class ClosedBetaDeployment(unittest.TestCase):
         return state
 
     def test_inspection_never_changes_policy(self):
-        with patch.dict(os.environ, {'BETA_ACTION':'inspect'}), patch.object(beta,'query',return_value=[self.state()]) as query, contextlib.redirect_stdout(io.StringIO()):
+        with patch.dict(os.environ, {'BETA_ACTION':'inspect','BETA_ADMIN_EMAIL':''}), patch.object(beta,'query',return_value=[self.state()]) as query, contextlib.redirect_stdout(io.StringIO()):
             beta.main()
             self.assertEqual(query.call_count,1)
 

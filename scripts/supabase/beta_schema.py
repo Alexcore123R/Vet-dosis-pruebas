@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 from identity_schema import query
+from review_platform_clinic import review
 
 ROOT = Path(__file__).resolve().parents[2]
 PREFLIGHT = """select to_regclass('private.beta_policy') is not null as foundation,
@@ -18,6 +19,9 @@ def main():
     state = query(PREFLIGHT)[0]
     print('Estado del proyecto de pruebas:', state)
     if mode == 'inspect':
+        email = os.environ.get('BETA_ADMIN_EMAIL', '').strip()
+        if email:
+            review(email)
         return
     if os.environ.get('BETA_CONFIRMATION') != 'PREPARAR_BETA_CERRADA':
         raise SystemExit('Confirmación incorrecta.')
