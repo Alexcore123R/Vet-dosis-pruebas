@@ -1,0 +1,43 @@
+name: Convertir clínica vacía revisada en cuenta de plataforma
+on:
+  workflow_dispatch:
+    inputs:
+      clinic_id:
+        description: UUID exacto de la clínica revisada y aprobada
+        type: string
+        required: true
+      clinic_name:
+        description: Nombre exacto de esa clínica
+        type: string
+        required: true
+      account_email:
+        description: Cuenta confirmada que se conserva
+        type: string
+        required: true
+      confirmation:
+        description: ELIMINAR_SOLO_CLINICA_VACIA_Y_CONSERVAR_CUENTA
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: supabase-test-beta-preparation
+  cancel-in-progress: false
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar protecciones del operador
+        run: python3 -m unittest discover -s scripts/supabase -p 'test_*.py'
+      - name: Probar conversión protegida en PostgreSQL aislado
+        run: bash supabase/tests/run_empty_clinic_conversion.sh
+      - name: Convertir únicamente la clínica vacía aprobada
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          CONVERSION_CLINIC_ID: ${{ inputs.clinic_id }}
+          CONVERSION_CLINIC_NAME: ${{ inputs.clinic_name }}
+          CONVERSION_EMAIL: ${{ inputs.account_email }}
+          CONVERSION_CONFIRMATION: ${{ inputs.confirmation }}
+        run: python3 scripts/supabase/convert_empty_clinic.py
