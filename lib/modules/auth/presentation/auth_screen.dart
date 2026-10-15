@@ -298,7 +298,12 @@ class _AuthScreenState extends State<AuthScreen> {
 }
 
 class ClinicAccountScreen extends StatefulWidget {
-  const ClinicAccountScreen({super.key, required this.model});
+  const ClinicAccountScreen({
+    super.key,
+    required this.model,
+    this.identityBuilder,
+  });
+  final Widget Function(BuildContext context)? identityBuilder;
   final AuthViewModel model;
   @override
   State<ClinicAccountScreen> createState() => _ClinicAccountScreenState();
@@ -327,6 +332,8 @@ class _ClinicAccountScreenState extends State<ClinicAccountScreen> {
         body: ListView(
           padding: const EdgeInsets.all(24),
           children: [
+            if (widget.identityBuilder != null)
+              widget.identityBuilder!(context),
             if (model.personalAvailable)
               TextButton.icon(
                 onPressed: model.busy ? null : model.createPersonalWorkspace,

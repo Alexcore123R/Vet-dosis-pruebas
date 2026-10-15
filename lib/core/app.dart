@@ -1,3 +1,4 @@
+import '../modules/identity/presentation/identity_panel.dart';
 import '../modules/dashboard/presentation/alert_preferences_panel.dart';
 import 'widgets/workspace_panel.dart';
 import '../modules/dashboard/presentation/dashboard_screen.dart';
@@ -228,11 +229,33 @@ class CoreShell extends StatelessWidget {
           if (auth != null)
             IconButton(
               tooltip: 'Mi cuenta y clínicas',
-              icon: const Icon(Icons.account_circle_outlined),
+              icon: AccountAvatar(
+                userId: auth!.repository.userId ?? 'signed-out',
+              ),
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute<void>(
-                  builder: (_) => ClinicAccountScreen(model: auth!),
+                  builder: (_) => ClinicAccountScreen(
+                    model: auth!,
+                    identityBuilder: (_) => Column(
+                      children: [
+                        if (auth!.repository.userId != null)
+                          ProfileAppearance(
+                            key: ValueKey(auth!.repository.userId),
+                            userId: auth!.repository.userId!,
+                          ),
+                        if (auth!.active != null)
+                          ClinicIdentity(
+                            key: ValueKey(
+                              '${auth!.active!.clinicId}:${auth!.active!.role}',
+                            ),
+                            member: auth!.active!,
+                            repository: forms,
+                            editable: true,
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -318,6 +341,15 @@ class CoreShell extends StatelessWidget {
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (navigationAllowed('Escanear producto', auth?.active)) ...[
+            FloatingActionButton.small(
+              heroTag: 'scanner',
+              tooltip: 'Escáner',
+              onPressed: () => model.navigate('Escanear producto'),
+              child: const Icon(Icons.qr_code_scanner),
+            ),
+            const SizedBox(height: 12),
+          ],
           FloatingActionButton.small(
             heroTag: 'assistant',
             tooltip: 'Asistente IA',
@@ -338,7 +370,7 @@ class CoreShell extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1100),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 160),
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 220),
               children: [
                 if (auth?.offline == true) ...[
                   const SoftPanel(
@@ -750,6 +782,15 @@ class CoreShell extends StatelessWidget {
   );
 
   List<Widget> home(BuildContext context) => [
+    if (auth?.active != null)
+      ClinicIdentity(
+        key: ValueKey(
+          "identity:${auth!.active!.userId}:${auth!.active!.clinicId}:${auth!.active!.role}",
+        ),
+        member: auth!.active!,
+        repository: forms,
+      ),
+    _ModuleSearch(member: auth?.active, onNavigate: model.navigate),
     DashboardScreen(
       key: ValueKey(
         'dashboard:${auth?.active?.userId}:${auth?.active?.clinicId}:${auth?.active?.role}:${auth?.offline}',
@@ -962,6 +1003,76 @@ class SoftPanel extends StatelessWidget {
         ],
       ),
       child: child,
+    );
+  }
+}
+
+class _ModuleSearch extends StatefulWidget {
+  const _ModuleSearch({required this.member, required this.onNavigate});
+  final ClinicMembership? member;
+  final ValueChanged<String> onNavigate;
+  @override
+  State<_ModuleSearch> createState() => _ModuleSearchState();
+}
+
+class _ModuleSearchState extends State<_ModuleSearch> {
+  String query = '';
+  static const pages = [
+    'Agenda',
+    'Pacientes',
+    'Hospitalización',
+    'Inventario',
+    'Caja',
+    'Receta',
+    'Formatos',
+    'Cálculo rápido',
+    'Cálculos clínicos',
+    'Estadísticas',
+    'Escanear producto',
+    'Equipo y avisos',
+    'Pendientes del equipo',
+    'Asistente IA',
+    'Ayuda y soporte',
+    'Ajustes',
+    'Respaldo',
+  ];
+  String normalize(String value) => value
+      .toLowerCase()
+      .replaceAll('á', 'a')
+      .replaceAll('é', 'e')
+      .replaceAll('í', 'i')
+      .replaceAll('ó', 'o')
+      .replaceAll('ú', 'u');
+  @override
+  Widget build(BuildContext context) {
+    final results = pages
+        .where(
+          (p) =>
+              navigationAllowed(p, widget.member) &&
+              normalize(p).contains(normalize(query.trim())),
+        )
+        .toList();
+    return Column(
+      children: [
+        TextField(
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.search),
+            labelText: 'Buscar apartados y herramientas',
+          ),
+          onChanged: (value) => setState(() => query = value),
+        ),
+        if (query.trim().isNotEmpty) ...[
+          if (results.isEmpty)
+            const ListTile(title: Text('No hay apartados con ese nombre.')),
+          for (final page in results)
+            ListTile(
+              leading: Icon(sectionIcon(page)),
+              title: Text(page),
+              onTap: () => widget.onNavigate(page),
+            ),
+        ],
+        const SizedBox(height: 16),
+      ],
     );
   }
 }
