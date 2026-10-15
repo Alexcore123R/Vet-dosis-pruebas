@@ -4,8 +4,8 @@
 
 - Implementado y probado localmente: buscador por apartados tolerante a acentos; escáner flotante; avatar por cuenta; identidad clínica; cliente de sincronización; exportadores PDF y XLSX reales.
 - Preparado localmente: `supabase/proposed/10_identity.sql`, prueba aislada `bash supabase/tests/run_identity.sh`. No modifica datos clínicos ni permisos de documentos.
-- Remoto: siguen los RPC de membrete y el generador de PDF existentes. Esta entrega no acredita haber desplegado el esquema nuevo ni haber probado sincronización entre dos teléfonos.
-- Pendiente de activación: ejecutar la migración revisada una vez en el proyecto de pruebas, recargar el esquema de PostgREST y probar con dos cuentas y dos teléfonos. No usar la fixture de pruebas en Supabase.
+- Aplicado en remoto el 15-oct-2026: esquema de identidad y generador PDF v2 en el proyecto de pruebas. Verificadas las rutas nuevas contra acceso anónimo (HTTP 401). No se ha probado todavía sincronización entre dos teléfonos con sesión real.
+- Pendiente de prueba real: subir foto y comprobar sincronización con dos cuentas y dos teléfonos. La migración ya se aplicó; no repetirla ni usar la fixture de pruebas en Supabase.
 
 ## Esquema concreto para revisión
 
@@ -35,13 +35,23 @@ La migración es aditiva y no depende del modelo de permisos beta propuesto. Req
 - PDF: generación con fuente Unicode, nombre/membrete, logo y tablas anchas; texto extraído con pdftotext.
 - Pendiente real: subida de foto desde el celular, dos dispositivos con la misma cuenta, otro usuario sin acceso al avatar, y dos clínicas con logos distintos en cada exportación.
 
-## Activación desde el celular
+## Prueba desde el celular (servidor ya activado)
 
-1. Abrir el proyecto Supabase de pruebas (`wtrelwtztkddfktrfdpb`), SQL Editor y una consulta nueva.
-2. Revisar y pegar únicamente `supabase/proposed/10_identity.sql`; ejecutarlo una vez. Incluye la notificación de recarga de esquema. No copiar `bootstrap.sql`, fixtures ni pruebas.
+1. La migración ya se aplicó mediante el flujo de GitHub, usando el secreto del servicio. No hace falta copiar SQL.
+2. Para revisar el estado se puede ejecutar «Identidad en Supabase de pruebas» con acción `inspect`. La acción `apply` comprueba dependencias, se niega a sobrescribir un esquema parcial y no repite una migración completa existente.
 3. Instalar el APK nuevo firmado. Abrir Mi cuenta y clínicas, elegir icono/foto y comprobar el mensaje de sincronización.
 4. Entrar con la misma cuenta en otro dispositivo; comprobar la imagen. Con otra cuenta, comprobar que no se puede descargar el avatar ajeno.
 5. En dos clínicas con logos diferentes, comprobar inicio, perfil y una exportación PDF/XLSX de cada una. Una cuenta de recepción puede ver el logo y no editar el membrete.
 6. El generador de formatos se despliega por el flujo existente «Desplegar PDF en Supabase de pruebas». No necesita copiar secretos al chat.
 
-Sin ejecutar el SQL, el código de sincronización está preparado pero no activado en remoto.
+La activación remota fue correcta. Las sesiones reales y la carga binaria de una foto desde el celular todavía requieren la prueba del dispositivo.
+
+## Evidencia de esta entrega
+
+- Migración aplicada y verificada: https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38765183079
+- Despliegue PDF v2 correcto: https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38764680547
+- APK con la nueva implementación: https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38764737968 (su estado de compilación se consulta en GitHub).
+- 240 pruebas de Flutter en la suite completa; comprobaciones dirigidas posteriores de identidad, exportación y formatos correctas. Análisis sin observaciones.
+- 8 pruebas del generador de PDF; políticas SQL probadas localmente y de nuevo en el flujo remoto antes de aplicar; 6 pruebas de protecciones del despliegue.
+- HTTP sin sesión contra `account_identity_get`, `account_identity_save` y `clinic_identity_get`: 401 en las tres rutas, después del despliegue.
+- No se crean usuarios ni registros clínicos reales para estas comprobaciones. No se prueban como cumplidas las sesiones reales entre clínicas ni la transferencia binaria de fotos.
