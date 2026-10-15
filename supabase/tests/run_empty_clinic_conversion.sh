@@ -32,7 +32,7 @@ from pathlib import Path
 Path(sys.argv[2]).write_text(statement('conversion@example.test',sys.argv[1],'Empty synthetic'))
 PY
 if docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 < "$work_dir/convert.sql" > "$work_dir/blocked.log" 2>&1;then echo 'ERROR: nonempty clinic conversion succeeded';exit 1;fi
-rg 'clinic_no_longer_empty' "$work_dir/blocked.log" >/dev/null
+grep -F 'clinic_no_longer_empty' "$work_dir/blocked.log" >/dev/null
 # A rejected conversion must roll back bookkeeping changes and preserve the account.
 docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 <<'SQL'
 do $$begin
