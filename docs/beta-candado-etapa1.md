@@ -64,3 +64,11 @@ El flujo `Preparar beta cerrada en Supabase de pruebas` aplica únicamente 09A +
 ### Comprobación posterior de cuenta de plataforma
 
 La cuenta indicada por la propietaria ya está registrada y confirmada, pero tiene membresía en una clínica (no es un espacio personal). El bootstrap se detuvo por la separación de cuentas aprobada. No se retiraron membresías ni se eliminaron espacios. Se requiere otra identidad Auth sin membresías o una transición expresamente revisada. No se habilitó plataforma por el simple hecho de confirmar el correo. Diagnóstico: flujo 38809047402. Once pruebas de despliegue correctas, incluyendo rechazo de una cuenta con membresía sin alterarla y aceptación de una cuenta confirmada separada.
+
+### Conversión autorizada de clínica vacía a cuenta de plataforma
+
+La propietaria confirmó expresamente eliminar únicamente su clínica vacía y conservar la cuenta original. Se repitió la revisión bajo bloqueo transaccional: una integrante, sin datos clínicos, comerciales ni archivos, solo configuración y dos eventos de creación. La operación conservó esos eventos en la auditoría de plataforma, eliminó esa clínica y habilitó la cuenta confirmada sin membresías. La protección de última administración quedó activa.
+
+Resultado remoto verificado: https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38812732110. Las cinco comprobaciones fueron verdaderas: clínica eliminada, cuenta confirmada conservada, plataforma habilitada, ausencia de membresías y protección de membresías activa. Quince pruebas Python y prueba PostgreSQL aislada correctas, incluida detención ante datos, reversión, preservación de otra clínica y reintento idempotente. El primer flujo se detuvo antes de la operación remota por falta de `rg` en el runner; se corrigió usando una herramienta disponible.
+
+Pendiente: la propietaria debe completar 2FA dentro de la app. Habilitar la cuenta no abre admisiones ni activa el candado global; los permisos profesionales y la revisión de términos siguen pendientes.
