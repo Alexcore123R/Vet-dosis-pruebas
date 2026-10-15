@@ -49,7 +49,10 @@ def main():
         account = query(f"""select
  exists(select 1 from auth.users where lower(btrim(email))=lower(btrim('{literal}'))) as registered,
  exists(select 1 from auth.users where lower(btrim(email))=lower(btrim('{literal}')) and email_confirmed_at is not null) as confirmed,
- exists(select 1 from public.clinic_members m join auth.users u on u.id=m.user_id where lower(btrim(u.email))=lower(btrim('{literal}'))) as has_membership""")[0]
+ exists(select 1 from public.clinic_members m join auth.users u on u.id=m.user_id where lower(btrim(u.email))=lower(btrim('{literal}'))) as has_membership,
+ exists(select 1 from public.clinic_members m join auth.users u on u.id=m.user_id join public.account_workspaces w on w.clinic_id=m.clinic_id where lower(btrim(u.email))=lower(btrim('{literal}')) and w.kind='personal') as has_personal_space,
+ exists(select 1 from public.clinic_members m join auth.users u on u.id=m.user_id left join public.account_workspaces w on w.clinic_id=m.clinic_id where lower(btrim(u.email))=lower(btrim('{literal}')) and coalesce(w.kind,'clinic')<>'personal') as has_clinic_space,
+ exists(select 1 from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace join pg_proc p on p.oid=t.tgfoid where n.nspname='auth' and c.relname='users' and not t.tgisinternal and (p.prosrc ilike '%clinic%' or p.prosrc ilike '%workspace%')) as automatic_workspace_trigger""")[0]
         print('Comprobación de cuenta separada:', account)
         if account['has_membership']:
             raise SystemExit('La cuenta pertenece a un espacio personal o clínica. No se alteraron membresías; se requiere una cuenta de plataforma separada.')

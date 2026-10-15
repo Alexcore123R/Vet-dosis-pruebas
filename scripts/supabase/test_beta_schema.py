@@ -33,4 +33,20 @@ class ClosedBetaDeployment(unittest.TestCase):
             self.assertNotIn('admissions_enabled=true',sql)
 
 
+    def test_membership_blocks_admin_bootstrap_without_removing_it(self):
+        states = [[self.state(foundation=True,gate=True)], [], [{'admissions_enabled':False,'enforcement_enabled':False}], [{'registered':True,'confirmed':True,'has_membership':True}]]
+        with patch.dict(os.environ, {'BETA_ACTION':'prepare','BETA_CONFIRMATION':'PREPARAR_BETA_CERRADA','BETA_ADMIN_EMAIL':'synthetic@example.test'}), patch.object(beta,'query',side_effect=states) as query, contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaisesRegex(SystemExit,'No se alteraron membresías'):
+                beta.main()
+            self.assertEqual(query.call_count,4)
+            self.assertFalse(any('select private.beta_bootstrap_admin' in call.args[0] for call in query.call_args_list))
+
+    def test_confirmed_separate_account_can_be_bootstrapped(self):
+        states = [[self.state(foundation=True,gate=True)], [], [{'admissions_enabled':False,'enforcement_enabled':False}], [{'registered':True,'confirmed':True,'has_membership':False}], [{'ready':True}]]
+        with patch.dict(os.environ, {'BETA_ACTION':'prepare','BETA_CONFIRMATION':'PREPARAR_BETA_CERRADA','BETA_ADMIN_EMAIL':'synthetic@example.test'}), patch.object(beta,'query',side_effect=states) as query, contextlib.redirect_stdout(io.StringIO()):
+            beta.main()
+            self.assertEqual(query.call_count,5)
+            self.assertIn('select private.beta_bootstrap_admin',query.call_args.args[0])
+
+
 if __name__=='__main__': unittest.main()
