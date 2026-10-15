@@ -138,6 +138,12 @@ class _BetaBoundaryState extends State<BetaBoundary> {
                 if (value == null && error == null)
                   const Center(child: CircularProgressIndicator()),
                 if (error != null) Text(error!),
+                if (value?.mode == 'email_review_required')
+                  const Text(
+                    'Tu correo cambió o necesita confirmación. Solicita revisión a administración.',
+                  ),
+                if (value?.mode == 'denied')
+                  const Text('No tienes acceso a esta clínica.'),
                 if (value?.mode == 'revoked')
                   const Text(
                     'Tu acceso beta fue revocado. Consulta con administración de plataforma.',

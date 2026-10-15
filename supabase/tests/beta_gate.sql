@@ -131,3 +131,10 @@ reset role;
 select set_config('request.jwt.claim.sub','',false);
 insert into auth.users(id,email,email_confirmed_at) values('00000000-0000-0000-0000-000000000016','race.gate@example.test',now());
 insert into private.beta_invites(email,token_hash,expires_at,created_by) values('race.gate@example.test',encode(sha256(convert_to('SYNTHETIC-RACE-TOKEN','UTF8')),'hex'),clock_timestamp()+interval '1 day','00000000-0000-0000-0000-000000000014');
+update auth.users set email='changed@example.test' where id='00000000-0000-0000-0000-000000000012';
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000012',false);
+set role authenticated;
+do $$begin
+ if public.beta_status(100)->>'mode'<>'email_review_required' then raise exception 'changed_email_kept_access';end if;
+end$$;
+reset role;

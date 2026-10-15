@@ -29,6 +29,7 @@ begin
  if not (select enforcement_enabled from private.beta_policy) then return jsonb_build_object('mode','internal','enforcement',false);end if;
  select * into e from private.beta_enrollments where user_id=auth.uid();
  if e.user_id is null then return jsonb_build_object('mode','not_enrolled','enforcement',true);end if;
+ if not exists(select 1 from auth.users where id=auth.uid() and email_confirmed_at is not null and lower(btrim(email))=e.email) then return jsonb_build_object('mode','email_review_required','enforcement',true);end if;
  if v_build is null then
   begin v_build=nullif(coalesce(nullif(current_setting('request.headers',true),''),'{}')::jsonb->>'x-vetdosis-build','')::bigint;exception when others then v_build=null;end;
   if v_build is null then select version_code into v_build from private.beta_session_builds where session_id=nullif(auth.jwt()->>'session_id','')::uuid and user_id=auth.uid();end if;
