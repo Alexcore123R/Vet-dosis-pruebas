@@ -2,6 +2,8 @@
 
 14 de octubre de 2026. Complementa y prevalece sobre v1 donde difiere. No acredita despliegue remoto ni apertura de beta.
 
+Actualización de implementación del 15-oct-2026: consultar [candado beta, etapa 1](../beta-candado-etapa1.md). El estado al cierre descrito al final de este documento corresponde al 14 de octubre.
+
 ## Decisiones incorporadas
 
 1. Antes de abrir la beta: A1 instalador/firma; candado beta; nuevo modelo de permisos. Después de abrir: transferencias, restauración y catálogo global de controlados. Hasta tener este último, conservar restricciones actuales y no habilitar emisión/controlados sin fuentes verificadas.

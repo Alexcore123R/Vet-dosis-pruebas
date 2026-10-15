@@ -49,3 +49,14 @@ El flujo `Preparar beta cerrada en Supabase de pruebas` aplica únicamente 09A +
 3. Migrar permisos por persona y procedimiento y habilitación con evidencia, sin promociones automáticas.
 4. Cerrar cobertura de todas las rutas y pruebas de aislamiento/concurrencia/vencimiento.
 5. Publicar términos y versión mínima; abrir admisiones solo después de esos pasos.
+
+## Evidencia remota, 15-oct-2026
+
+- Preparación correcta: https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38770604752. Aplicados 09A/09B y hook REST compatible; `admissions_enabled=false`, `enforcement_enabled=false`.
+- Cuenta de plataforma pendiente de registro/confirmación: el bootstrap no asignó administración a una cuenta inexistente o sin confirmar. No se enviaron correos ni se creó contraseña.
+- Despliegue forms-pdf con comprobación beta correcto: https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38770690537. AI/starter/billing tienen cambios preparados, sin acreditar despliegue.
+- Las llamadas sin sesión a `beta_status`, `beta_enroll` y `platform_beta_list` dieron HTTP 401 / SQLSTATE 42501; la clave publicable se verificó antes con HTTP 200 de Auth.
+- 246 pruebas Flutter de la suite completa y comprobación dirigida posterior de la pantalla beta. Análisis sin observaciones. Ocho pruebas del generador PDF y nueve de despliegue; SQL y carrera de inscripción se repitieron en el flujo remoto antes de aplicar.
+- `deno check` correcto para las cuatro Edge Functions modificadas.
+- APK con panel y versión de build: https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38770694873. Su estado se consulta en el flujo; registrar la publicación no abre admisiones.
+- No se han abierto admisiones, publicado términos, verificado una cédula ni migrado permisos clínicos en esta etapa.
