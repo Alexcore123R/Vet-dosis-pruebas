@@ -46,6 +46,16 @@ def main():
         if len(email) > 254 or '\n' in email or '@' not in email:
             raise SystemExit('Correo de administración inválido.')
         literal = email.replace("'", "''")
+        account = query(f"""select
+ exists(select 1 from auth.users where lower(btrim(email))=lower(btrim('{literal}'))) as registered,
+ exists(select 1 from auth.users where lower(btrim(email))=lower(btrim('{literal}')) and email_confirmed_at is not null) as confirmed,
+ exists(select 1 from public.clinic_members m join auth.users u on u.id=m.user_id where lower(btrim(u.email))=lower(btrim('{literal}'))) as has_membership""")[0]
+        print('Comprobación de cuenta separada:', account)
+        if account['has_membership']:
+            raise SystemExit('La cuenta pertenece a un espacio personal o clínica. No se alteraron membresías; se requiere una cuenta de plataforma separada.')
+        if not account['confirmed']:
+            print('Administración de plataforma: pendiente de registrar y confirmar la cuenta separada')
+            return
         enrolled = query(f"select private.beta_bootstrap_admin('{literal}') as ready")[0]['ready']
         print('Administración de plataforma:', 'cuenta confirmada preparada; exige MFA' if enrolled else 'pendiente de registrar y confirmar la cuenta separada')
 
