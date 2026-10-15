@@ -24,7 +24,9 @@ Deno.serve(async req => {
       // This RPC validates schema locks and verifies admin/responsible-MVZ access.
       const {data,error}=await user.rpc('form_template_preview_check',{p_clinic:input.clinic,p_schema:input.schema,p_branding:input.branding??{}});
       if(error || data!==true)return reply({error:'template_access_or_schema_denied'},403);
-      const rendered=await renderForm({schema:input.schema,branding:input.branding??{}},font,{templatePreview:true});
+      const {data:clinic,error:clinicError}=await user.from('clinics').select('name').eq('id',input.clinic).single();
+      if(clinicError || !clinic)return reply({error:'clinic_identity_denied'},403);
+      const rendered=await renderForm({schema:input.schema,branding:input.branding??{},clinic_name:clinic.name},font,{templatePreview:true});
       return reply({pdf:base64(rendered.bytes),hash:rendered.hash});
     }
     if(input.action==='rx') {

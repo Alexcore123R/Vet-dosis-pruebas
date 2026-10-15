@@ -1,3 +1,6 @@
+import '../../identity/domain/identity_repository.dart';
+import '../../exports/domain/branded_export.dart';
+import '../../exports/presentation/branded_export_action.dart';
 import '../domain/backup_cipher.dart';
 import '../domain/backup_recovery_report.dart';
 import 'backup_password_dialog.dart';
@@ -16,10 +19,12 @@ class BackupScreen extends StatefulWidget {
     super.key,
     required this.repository,
     required this.member,
+    this.identity,
     this.backupOnly = false,
   });
   final BackupRepository repository;
   final ClinicMembership member;
+  final IdentityRepository? identity;
   final bool backupOnly;
   @override
   State<BackupScreen> createState() => _BackupScreenState();
@@ -104,7 +109,7 @@ class _BackupScreenState extends State<BackupScreen> {
     }
   }
 
-  Future<void> csv() async {
+  Future<void> csv({String format = 'csv'}) async {
     final snapshot =
         jsonDecode(await widget.repository.snapshot(widget.member.clinicId))
             as Map;
@@ -113,7 +118,7 @@ class _BackupScreenState extends State<BackupScreen> {
     final selected = await showDialog<String>(
       context: context,
       builder: (c) => SimpleDialog(
-        title: const Text('Tabla para CSV / Excel'),
+        title: Text('Tabla para ${format.toUpperCase()}'),
         children: [
           for (final name in tables.keys)
             SimpleDialogOption(
@@ -129,6 +134,30 @@ class _BackupScreenState extends State<BackupScreen> {
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList(),
     );
+    if (format != 'csv') {
+      final branding = await widget.identity!.clinic(widget.member.clinicId);
+      final brand = ExportBranding.fromMap(widget.member.clinicName, branding);
+      final rows = csvRows(data);
+      final bytes = format == 'xlsx'
+          ? brandedXlsx(
+              brand,
+              'Tabla: $selected · Exportación de consulta',
+              rows,
+            )
+          : await brandedPdf(
+              brand,
+              'Tabla: $selected · Exportación de consulta',
+              rows,
+            );
+      if (!mounted) return;
+      await FilePicker.saveFile(
+        fileName: '$selected.$format',
+        bytes: bytes,
+        type: FileType.custom,
+        allowedExtensions: [format],
+      );
+      return;
+    }
     await FilePicker.saveFile(
       dialogTitle: 'Exportar tabla',
       fileName: '$selected.csv',
@@ -253,9 +282,16 @@ class _BackupScreenState extends State<BackupScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: ack && !working ? () => run(csv) : null,
-                    child: const Text('Tabla CSV / Excel'),
+                    onPressed: ack && !working ? () => run(() => csv()) : null,
+                    child: const Text('Tabla CSV'),
                   ),
+                  for (final format in ['pdf', 'xlsx'])
+                    TextButton(
+                      onPressed: ack && !working && widget.identity != null
+                          ? () => run(() => csv(format: format))
+                          : null,
+                      child: Text('Tabla ${format.toUpperCase()} con membrete'),
+                    ),
                   TextButton(
                     onPressed: working ? null : () => run(verify),
                     child: const Text('Revisar respaldo para recuperación'),

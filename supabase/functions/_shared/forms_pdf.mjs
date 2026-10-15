@@ -2,7 +2,7 @@ import { PDFDocument, PDFName, PDFArray, PDFString, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { PNG } from 'pngjs';
 
-export const rendererVersion = 'vetdosis-pdf-1';
+export const rendererVersion = 'vetdosis-pdf-2';
 export async function pdfHash(bytes) {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(v => v.toString(16).padStart(2, '0')).join('');
 }
@@ -59,6 +59,7 @@ export async function renderForm(snapshot, fontBytes, { templatePreview = false 
   let page,y;
   const addPage=()=>{
     page=pdf.addPage([595.28,841.89]);y=790;
+    if(snapshot.clinic_name){let label=Array.from(String(snapshot.clinic_name));while(label.length && font.widthOfTextAtSize(label.join(''),10)>390)label.pop();page.drawText(label.join(''),{x:44,y:775,size:10,font});}
     if(logo){const scale=Math.min(100/logo.width,50/logo.height);page.drawImage(logo,{x:448,y:774,width:logo.width*scale,height:logo.height*scale});}
     page.drawLine({start:{x:44,y:752},end:{x:551,y:752},thickness:1,color:rgb(.4,.4,.4)});
     page.drawText(`VetDosis Pro · ${templatePreview?'Vista previa de plantilla':snapshot.document_id}`,{x:44,y:25,size:8,font,color:rgb(.3,.3,.3)});
@@ -85,7 +86,9 @@ export async function renderForm(snapshot, fontBytes, { templatePreview = false 
       line(current,size);
     }
   };
-  paragraph(brand.header||snapshot.clinic_name||'[Membrete configurable]',11);
+  if(snapshot.clinic_name)paragraph(snapshot.clinic_name,11);
+  if(brand.header && brand.header!==snapshot.clinic_name)paragraph(brand.header,11);
+  if(!brand.header && !snapshot.clinic_name)paragraph('[Membrete configurable]',11);
   paragraph(schema.title,15);
   if(templatePreview)paragraph('VISTA PREVIA DE PLANTILLA · SIN FIRMAR',11);
   paragraph(`Versión de plantilla: ${snapshot.template_version??'propuesta'} · Contenido de referencia revisable por la clínica.`,9);

@@ -1,3 +1,4 @@
+import '../../identity/presentation/identity_events.dart';
 import '../../core/presentation/unsaved_form_scope.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -119,6 +120,7 @@ class _BrandingEditorState extends State<BrandingEditor> {
     try {
       if (reviewed != jsonEncode(brand)) throw StateError('Preview required');
       await widget.repository.saveBranding(widget.clinicId, brand);
+      clinicIdentityEvents.saved(widget.clinicId);
       if (mounted) exit.close(context, true);
     } catch (_) {
       if (mounted) {

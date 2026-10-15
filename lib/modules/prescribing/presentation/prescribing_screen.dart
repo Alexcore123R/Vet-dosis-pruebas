@@ -1,3 +1,6 @@
+import '../../identity/domain/identity_repository.dart';
+import '../../exports/domain/branded_export.dart';
+import '../../exports/presentation/branded_export_action.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
@@ -20,6 +23,7 @@ class PrescribingScreen extends StatefulWidget {
     required this.clinical,
     required this.forms,
     required this.member,
+    this.identity,
     this.patientId,
     this.initialCase,
     this.initialTask,
@@ -28,6 +32,7 @@ class PrescribingScreen extends StatefulWidget {
   final ClinicalRepository clinical;
   final FormRepository forms;
   final ClinicMembership member;
+  final IdentityRepository? identity;
   final String? patientId, initialCase, initialTask;
   @override
   State<PrescribingScreen> createState() => _PrescribingScreenState();
@@ -1096,6 +1101,16 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
                           TextButton(
                             onPressed: model.busy ? null : () => csv(r),
                             child: const Text('Exportar CSV para Excel'),
+                          ),
+                        if (r['state'] == 'issued')
+                          BrandedExportAction(
+                            repository: widget.identity,
+                            clinicId: widget.member.clinicId,
+                            clinicName: widget.member.clinicName,
+                            title:
+                                'Registro de control · basado en Anexo 5, no oficial · Exportación de consulta',
+                            fileName: 'control-${r["id"]}',
+                            rows: () async => csvRows(reportCsv(r)),
                           ),
                       ],
                     ),

@@ -1,3 +1,5 @@
+import 'identity_events.dart';
+import '../domain/identity_repository.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -17,26 +19,20 @@ const profileIcons = [
   Icons.agriculture,
 ];
 
-/// Personal appearance stays on this device, scoped to the signed-in account.
+/// Private account identity with a scoped local fallback and explicit upload retry.
 class AccountAvatar extends StatelessWidget {
-  const AccountAvatar({super.key, required this.userId});
+  const AccountAvatar({super.key, required this.userId, this.repository});
   final String userId;
+  final IdentityRepository? repository;
   @override
   Widget build(BuildContext context) => ValueListenableBuilder<int>(
     valueListenable: identityChanges,
-    builder: (context, value, _) => FutureBuilder<SharedPreferences>(
+    builder: (context, value, _) => FutureBuilder<AccountIdentity>(
       key: ValueKey('$userId:$value'),
-      future: SharedPreferences.getInstance(),
+      future: _account(userId, repository),
       builder: (context, snapshot) {
-        final prefs = snapshot.data;
-        final photo = prefs?.getString('profile.photo.$userId');
-        final index = prefs?.getInt('profile.icon.$userId') ?? 0;
-        Uint8List? photoBytes;
-        try {
-          if (photo != null && photo.length <= 667000) {
-            photoBytes = base64Decode(photo);
-          }
-        } catch (_) {}
+        final index = snapshot.data?.icon ?? 0;
+        final photoBytes = snapshot.data?.photo;
         return CircleAvatar(
           backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
           child: photoBytes != null
@@ -66,23 +62,44 @@ class ClinicIdentity extends StatefulWidget {
     required this.member,
     this.repository,
     this.editable = false,
+    this.identity,
   });
   final ClinicMembership member;
   final FormRepository? repository;
   final bool editable;
+  final IdentityRepository? identity;
   @override
   State<ClinicIdentity> createState() => _ClinicIdentityState();
 }
 
 class _ClinicIdentityState extends State<ClinicIdentity> {
   late Future<Map<String, dynamic>> brand = load();
-  Future<Map<String, dynamic>> load() =>
-      widget.repository != null &&
-          [
-            ClinicRole.admin,
-            ClinicRole.mvz,
-            ClinicRole.auxiliar,
-          ].contains(widget.member.role)
+  @override
+  void initState() {
+    super.initState();
+    clinicIdentityEvents.addListener(refreshIdentity);
+  }
+
+  void refreshIdentity() {
+    if (mounted && clinicIdentityEvents.clinicId == widget.member.clinicId) {
+      setState(() => brand = load());
+    }
+  }
+
+  @override
+  void dispose() {
+    clinicIdentityEvents.removeListener(refreshIdentity);
+    super.dispose();
+  }
+
+  Future<Map<String, dynamic>> load() => widget.identity != null
+      ? widget.identity!.clinic(widget.member.clinicId)
+      : widget.repository != null &&
+            [
+              ClinicRole.admin,
+              ClinicRole.mvz,
+              ClinicRole.auxiliar,
+            ].contains(widget.member.role)
       ? widget.repository!.branding(widget.member.clinicId)
       : Future.value({});
   @override
@@ -91,14 +108,15 @@ class _ClinicIdentityState extends State<ClinicIdentity> {
     if (oldWidget.member.clinicId != widget.member.clinicId ||
         oldWidget.member.userId != widget.member.userId ||
         oldWidget.member.role != widget.member.role ||
-        oldWidget.repository != widget.repository) {
+        oldWidget.repository != widget.repository ||
+        oldWidget.identity != widget.identity) {
       brand = load();
     }
   }
 
   Future<void> edit() async {
     try {
-      final data = await load();
+      final data = await widget.repository!.branding(widget.member.clinicId);
       final templates = await widget.repository!.templates(
         widget.member.clinicId,
       );
@@ -115,7 +133,6 @@ class _ClinicIdentityState extends State<ClinicIdentity> {
           ),
         ),
       );
-      if (mounted) setState(() => brand = load());
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -131,6 +148,9 @@ class _ClinicIdentityState extends State<ClinicIdentity> {
 
   @override
   Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>>(
+    key: ValueKey(
+      '${widget.member.userId}:${widget.member.clinicId}:${widget.member.role}',
+    ),
     future: brand,
     builder: (context, snapshot) {
       Uint8List? bytes;
@@ -179,14 +199,44 @@ class _ClinicIdentityState extends State<ClinicIdentity> {
 }
 
 class ProfileAppearance extends StatefulWidget {
-  const ProfileAppearance({super.key, required this.userId});
+  const ProfileAppearance({super.key, required this.userId, this.repository});
   final String userId;
+  final IdentityRepository? repository;
   @override
   State<ProfileAppearance> createState() => _ProfileAppearanceState();
 }
 
 class _ProfileAppearanceState extends State<ProfileAppearance> {
   bool busy = false;
+  String? syncMessage;
+  Future<void> retry() async {
+    if (busy) return;
+    setState(() => busy = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!prefs.containsKey('profile.icon.${widget.userId}') &&
+          !prefs.containsKey('profile.photo.${widget.userId}')) {
+        throw const FormatException('No local selection');
+      }
+      final local = await _account(widget.userId, null);
+      await widget.repository!.saveAccount(widget.userId, local);
+      await prefs.setBool('profile.pending.${widget.userId}', false);
+      identityChanges.value++;
+      if (mounted) {
+        setState(() => syncMessage = 'Imagen sincronizada con tu cuenta.');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => syncMessage =
+              'No se pudo sincronizar. Revisa la conexión y la configuración del servidor.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> save(int? icon) async {
     final userId = widget.userId;
     setState(() => busy = true);
@@ -241,6 +291,29 @@ class _ProfileAppearanceState extends State<ProfileAppearance> {
       } else {
         await prefs.setString('profile.photo.$userId', photo!);
       }
+      await prefs.setBool('profile.pending.$userId', true);
+      if (widget.repository != null) {
+        try {
+          await widget.repository!.saveAccount(
+            userId,
+            AccountIdentity(
+              icon: icon ?? 0,
+              photo: photo == null ? null : base64Decode(photo),
+            ),
+          );
+          await prefs.setBool('profile.pending.$userId', false);
+          if (mounted) {
+            setState(() => syncMessage = 'Imagen sincronizada con tu cuenta.');
+          }
+        } catch (_) {
+          if (mounted) {
+            setState(
+              () => syncMessage =
+                  'Guardada solo en este dispositivo. No se pudo sincronizar; puedes reintentar.',
+            );
+          }
+        }
+      }
       identityChanges.value++;
     } catch (_) {
       if (mounted) {
@@ -261,8 +334,19 @@ class _ProfileAppearanceState extends State<ProfileAppearance> {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      AccountAvatar(userId: widget.userId),
-      const Text('Mi imagen · solo en este dispositivo'),
+      AccountAvatar(userId: widget.userId, repository: widget.repository),
+      const Text('Mi imagen'),
+      Text(
+        syncMessage ??
+            (widget.repository == null
+                ? 'Solo en este dispositivo'
+                : 'Se sincroniza con tu cuenta cuando hay conexión.'),
+      ),
+      if (widget.repository != null)
+        TextButton(
+          onPressed: busy ? null : retry,
+          child: const Text('Sincronizar imagen de este dispositivo'),
+        ),
       TextButton.icon(
         onPressed: busy ? null : () => save(null),
         icon: const Icon(Icons.add_photo_alternate_outlined),
@@ -280,5 +364,49 @@ class _ProfileAppearanceState extends State<ProfileAppearance> {
       ),
       const Divider(),
     ],
+  );
+}
+
+Future<AccountIdentity> _account(
+  String userId,
+  IdentityRepository? repository,
+) async {
+  final prefs = await SharedPreferences.getInstance();
+  if (repository != null && prefs.getBool('profile.pending.$userId') != true) {
+    try {
+      final revision = identityChanges.value;
+      final value = await repository.account(userId);
+      if (prefs.getBool('profile.pending.$userId') == true ||
+          revision != identityChanges.value) {
+        return await _account(userId, null);
+      }
+      // An empty new remote profile must not discard the previous app's local photo.
+      if (!value.configured &&
+          (prefs.containsKey('profile.icon.$userId') ||
+              prefs.containsKey('profile.photo.$userId'))) {
+        return await _account(userId, null);
+      }
+      await prefs.setInt('profile.icon.$userId', value.icon);
+      if (value.photo == null) {
+        await prefs.remove('profile.photo.$userId');
+      } else {
+        await prefs.setString(
+          'profile.photo.$userId',
+          base64Encode(value.photo!),
+        );
+      }
+      return value;
+    } catch (_) {
+      /* Local fallback, without automatic uploads. */
+    }
+  }
+  final photo = prefs.getString('profile.photo.$userId');
+  Uint8List? bytes;
+  try {
+    if (photo != null && photo.length <= 667000) bytes = base64Decode(photo);
+  } catch (_) {}
+  return AccountIdentity(
+    icon: prefs.getInt('profile.icon.$userId') ?? 0,
+    photo: bytes,
   );
 }

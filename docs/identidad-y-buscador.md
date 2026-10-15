@@ -1,19 +1,47 @@
-# Identidad visual y búsqueda
+# Identidad visual, buscador y exportaciones
 
-Implementación preparada en la app:
-- Escáner flotante encima de IA y soporte, filtrado por el acceso actual al inventario.
-- Buscador de apartados y herramientas en Inicio, tolerante a acentos. No busca expedientes ni sustituye la búsqueda de inventario.
-- Foto o icono personal en Mi cuenta y clínicas; almacenamiento local por identificador de cuenta, sin sincronización. La foto se decodifica y vuelve a codificar como PNG, con límites de tamaño. Un icono sustituye la foto.
-- Nombre real de la clínica activa y logo en Inicio y perfil; consulta el membrete existente, sin reutilizar información de otra clínica.
-- Administración abre el editor existente de logo/membrete desde el perfil. Mantiene la vista previa obligatoria y el versionado. Requiere una plantilla disponible para la vista previa.
-- Los PDF de formatos que ya usan el membrete conservan su implementación. No se reescriben PDF históricos. Este cambio no agrega imágenes a CSV, XLSX, respaldos ni a todos los otros exportadores.
+## Estado
 
-Sin migraciones ni cambios remotos. El nombre mostrado viene de la membresía existente; editar el texto del membrete no renombra la clínica.
+- Implementado y probado localmente: buscador por apartados tolerante a acentos; escáner flotante; avatar por cuenta; identidad clínica; cliente de sincronización; exportadores PDF y XLSX reales.
+- Preparado localmente: `supabase/proposed/10_identity.sql`, prueba aislada `bash supabase/tests/run_identity.sh`. No modifica datos clínicos ni permisos de documentos.
+- Remoto: siguen los RPC de membrete y el generador de PDF existentes. Esta entrega no acredita haber desplegado el esquema nuevo ni haber probado sincronización entre dos teléfonos.
+- Pendiente de activación: ejecutar la migración revisada una vez en el proyecto de pruebas, recargar el esquema de PostgREST y probar con dos cuentas y dos teléfonos. No usar la fixture de pruebas en Supabase.
 
-## Decisiones de esquema pendientes de aprobación
+## Esquema concreto para revisión
 
-1. Identidad visible para todo miembro: RPC de solo lectura, limitada a la clínica activa y membresía vigente, que devuelva exclusivamente nombre y logo. Hoy `form_branding` solo permite admin, MVZ y auxiliar; los demás ven nombre e icono de clínica. No ampliar acceso a documentos clínicos.
-2. Avatar sincronizado: bucket privado para imágenes personales, ruta por auth.uid(), límite de tamaño/tipo y políticas para que solo el dueño lea/escriba/elimine. Tabla de perfil con selección foto/icono y clave del objeto; URLs temporales, sin guardar URLs públicas permanentes. La migración desde el avatar local sería explícita.
-3. Exportaciones adicionales: revisar cada exportador para incorporar identidad donde el formato lo permita; conservar estructura de datos, firma/hash y documentos ya emitidos. XLSX real sigue siendo una tarea aparte.
+1. Tabla `account_identity`: propietario (auth.uid), icono 0–4, ruta opcional de foto, fecha de actualización. RLS de lectura del dueño; sin escrituras directas desde la app. RPC de lectura/escritura sin parámetro de propietario: el servidor siempre lo toma de la sesión.
+2. Bucket privado `account-avatars`: PNG hasta 500000 bytes; una ruta permitida `auth.uid()/avatar.png`. Lectura, inserción, sustitución y borrado solo por el dueño; las clínicas no ven fotos personales de otros miembros. La app decodifica y recodifica las fotos. MIME/tamaño se limitan en Storage; la prueba PostgreSQL local solo valida las políticas, no sustituye una prueba de carga binaria en Storage real.
+3. `clinic_identity_get(clinic_id)`: requiere membresía y devuelve solo id, nombre, membrete, logo y selección de incluir logo. Todos los puestos pueden consultar esa identidad. No amplía `form_branding`, edición de membretes, expedientes ni habilitación profesional.
+4. No hay borrado por vencimiento beta. Elegir icono oculta la foto; el único objeto privado puede conservarse hasta reemplazarlo o borrarlo. No se borra durante un cambio a icono para evitar eliminar una carga simultánea de otro dispositivo.
 
-La caducidad beta no elimina estas imágenes ni otros datos automáticamente. No se cambian permisos clínicos ni habilitación profesional.
+La migración es aditiva y no depende del modelo de permisos beta propuesto. Requiere M2, Forms fase 1 y Storage ya existentes. Ejecutar solo este archivo nuevo, nunca repetir adaptaciones históricas. Para revertir la interfaz se puede volver al APK anterior; no borrar tabla/bucket como reversión automática.
+
+## Comportamiento
+
+- Foto/icono: lectura remota con copia local por usuario. Una selección local pendiente no se sobrescribe al reconectar. Reintento explícito. Una cuenta remota nueva no elimina la foto de la versión local anterior ni la sube sin acción del dueño.
+- Sin servidor nuevo: el membrete antiguo sigue funcionando para sus roles actuales. El acceso para todo el personal requiere la migración. La foto se guarda localmente y se informa si no se pudo sincronizar.
+- Perfil: administración abre el editor existente con vista previa obligatoria y versionado. Necesita una plantilla para la vista previa. Cambiar el texto del membrete no renombra la clínica; el nombre mostrado es el real de la membresía activa.
+- Exportaciones nuevas PDF/XLSX: corte de caja, transacciones, tablas operacionales desde Respaldo y registro de control emitido. Se consulta el membrete autorizado al exportar; un fallo de acceso o conexión cancela la exportación. XLSX incluye imagen embebida, no un CSV renombrado. CSV mantiene su estructura de datos sin imágenes.
+- Los datos se exportan como texto en XLSX para conservar folios, ceros iniciales y precisión; nunca como fórmulas ejecutables. Para cálculos posteriores el usuario debe convertir las columnas numéricas correspondientes.
+- Tablas PDF anchas se dividen en bloques de seis columnas, conservando el orden de registros. Son exportaciones de consulta, no nuevos originales firmados.
+- Registro de control: las exportaciones nuevas se rotulan «basado en Anexo 5, no oficial». No certifican que se haya implementado el formato normativo vigente ni completan columnas ausentes en el registro actual. No se cambian los PDF originales ni su firma/hash.
+- El generador PDF v2 incluye el nombre canónico de la clínica del snapshot incluso si el membrete solo contiene contactos, y lo repite en cada página. La vista previa obtiene el nombre mediante la membresía autorizada. Requiere desplegar la Edge Function actualizada. Los PDF clínicos ya emitidos conservan sus bytes originales. Los respaldos JSON/cifrados conservan su esquema y verificación; no se les incrusta un membrete visual.
+
+## Verificación
+
+- Flutter: cambios de cuenta/clínica, datos locales dañados, navegación, recuperación remota sin subida automática, fallo y reintento de sincronización.
+- PostgreSQL aislado: anon, RLS entre dueños, rutas ajenas/adicionales, acceso de recepción sin ampliar permisos clínicos, revocación de membresía y límites del bucket.
+- XLSX: ZIP/OpenXML y relaciones de imagen; lectura independiente con openpyxl, incluyendo folios y fórmulas como texto.
+- PDF: generación con fuente Unicode, nombre/membrete, logo y tablas anchas; texto extraído con pdftotext.
+- Pendiente real: subida de foto desde el celular, dos dispositivos con la misma cuenta, otro usuario sin acceso al avatar, y dos clínicas con logos distintos en cada exportación.
+
+## Activación desde el celular
+
+1. Abrir el proyecto Supabase de pruebas (`wtrelwtztkddfktrfdpb`), SQL Editor y una consulta nueva.
+2. Revisar y pegar únicamente `supabase/proposed/10_identity.sql`; ejecutarlo una vez. Incluye la notificación de recarga de esquema. No copiar `bootstrap.sql`, fixtures ni pruebas.
+3. Instalar el APK nuevo firmado. Abrir Mi cuenta y clínicas, elegir icono/foto y comprobar el mensaje de sincronización.
+4. Entrar con la misma cuenta en otro dispositivo; comprobar la imagen. Con otra cuenta, comprobar que no se puede descargar el avatar ajeno.
+5. En dos clínicas con logos diferentes, comprobar inicio, perfil y una exportación PDF/XLSX de cada una. Una cuenta de recepción puede ver el logo y no editar el membrete.
+6. El generador de formatos se despliega por el flujo existente «Desplegar PDF en Supabase de pruebas». No necesita copiar secretos al chat.
+
+Sin ejecutar el SQL, el código de sincronización está preparado pero no activado en remoto.

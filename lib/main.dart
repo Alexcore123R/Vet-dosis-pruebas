@@ -1,3 +1,5 @@
+import 'modules/identity/domain/identity_repository.dart';
+import 'modules/identity/data/supabase_identity_repository.dart';
 import 'modules/core/domain/build_channel.dart';
 import 'modules/support/domain/support_repository.dart';
 import 'modules/support/data/supabase_support_repository.dart';
@@ -59,6 +61,7 @@ Future<void> main() async {
   PatientRepository? patients;
   HospitalRepository? hospital;
   FormRepository? forms;
+  IdentityRepository? identity;
   ClinicalRepository? clinical;
   PrescribingRepository? prescribing;
   InventoryRepository? inventory;
@@ -74,6 +77,7 @@ Future<void> main() async {
     patients = SupabasePatientRepository(Supabase.instance.client);
     hospital = SupabaseHospitalRepository(Supabase.instance.client);
     forms = SupabaseFormRepository(Supabase.instance.client);
+    identity = SupabaseIdentityRepository(Supabase.instance.client);
     clinical = SupabaseClinicalRepository(Supabase.instance.client);
     prescribing = SupabasePrescribingRepository(Supabase.instance.client);
     inventory = SupabaseInventoryRepository(Supabase.instance.client);
@@ -138,6 +142,7 @@ Future<void> main() async {
       patients: patients,
       hospital: hospital,
       forms: forms,
+      identity: identity,
       clinical: clinical,
       prescribing: prescribing,
       inventory: inventory,

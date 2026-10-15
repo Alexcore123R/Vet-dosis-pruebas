@@ -1,3 +1,6 @@
+import '../../identity/domain/identity_repository.dart';
+import '../../exports/domain/branded_export.dart';
+import '../../exports/presentation/branded_export_action.dart';
 import 'payments_screen.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -20,11 +23,13 @@ class InventoryScreen extends StatefulWidget {
     super.key,
     required this.repository,
     required this.member,
+    this.identity,
     this.initialSearch = '',
     this.initialSection = 'stock',
   });
   final InventoryRepository repository;
   final ClinicMembership member;
+  final IdentityRepository? identity;
   final String initialSearch;
   final String initialSection;
   @override
@@ -785,6 +790,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         builder: (_) => PaymentsScreen(
                           repository: widget.repository,
                           member: widget.member,
+                          identity: widget.identity,
                         ),
                       ),
                     ),
@@ -1038,6 +1044,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 TextButton(
                   onPressed: exportCut,
                   child: const Text('Exportar corte CSV para Excel'),
+                ),
+                BrandedExportAction(
+                  repository: widget.identity,
+                  clinicId: widget.member.clinicId,
+                  clinicName: widget.member.clinicName,
+                  title: 'Corte interno · No comprobante fiscal · MXN',
+                  fileName: 'corte-${model.cut!["shift_id"]}',
+                  rows: () async => csvRows(cutCsv(model.cut!)),
                 ),
                 for (final s in (model.cut!['sales'] as List).cast<Map>())
                   ListTile(

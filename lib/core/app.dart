@@ -1,3 +1,4 @@
+import '../modules/identity/domain/identity_repository.dart';
 import '../modules/identity/presentation/identity_panel.dart';
 import '../modules/dashboard/presentation/alert_preferences_panel.dart';
 import 'widgets/workspace_panel.dart';
@@ -62,6 +63,7 @@ class VetDosisApp extends StatelessWidget {
     this.hospital,
     this.hospitalAlerts,
     this.forms,
+    this.identity,
     this.clinical,
     this.prescribing,
     this.inventory,
@@ -80,6 +82,7 @@ class VetDosisApp extends StatelessWidget {
   final HospitalRepository? hospital;
   final HospitalAlerts? hospitalAlerts;
   final FormRepository? forms;
+  final IdentityRepository? identity;
   final ClinicalRepository? clinical;
   final PrescribingRepository? prescribing;
   final InventoryRepository? inventory;
@@ -150,6 +153,7 @@ class VetDosisApp extends StatelessWidget {
               hospital: hospital,
               hospitalAlerts: hospitalAlerts,
               forms: forms,
+              identity: identity,
               clinical: clinical,
               prescribing: prescribing,
               inventory: inventory,
@@ -174,6 +178,7 @@ class CoreShell extends StatelessWidget {
     this.hospital,
     this.hospitalAlerts,
     this.forms,
+    this.identity,
     this.clinical,
     this.prescribing,
     this.inventory,
@@ -191,6 +196,7 @@ class CoreShell extends StatelessWidget {
   final HospitalRepository? hospital;
   final HospitalAlerts? hospitalAlerts;
   final FormRepository? forms;
+  final IdentityRepository? identity;
   final ClinicalRepository? clinical;
   final PrescribingRepository? prescribing;
   final InventoryRepository? inventory;
@@ -231,6 +237,7 @@ class CoreShell extends StatelessWidget {
               tooltip: 'Mi cuenta y clínicas',
               icon: AccountAvatar(
                 userId: auth!.repository.userId ?? 'signed-out',
+                repository: identity,
               ),
               onPressed: () => Navigator.push(
                 context,
@@ -243,6 +250,7 @@ class CoreShell extends StatelessWidget {
                           ProfileAppearance(
                             key: ValueKey(auth!.repository.userId),
                             userId: auth!.repository.userId!,
+                            repository: identity,
                           ),
                         if (auth!.active != null)
                           ClinicIdentity(
@@ -251,6 +259,7 @@ class CoreShell extends StatelessWidget {
                             ),
                             member: auth!.active!,
                             repository: forms,
+                            identity: identity,
                             editable: true,
                           ),
                       ],
@@ -529,6 +538,7 @@ class CoreShell extends StatelessWidget {
                                                   20,
                                                 ),
                                                 child: PrescribingScreen(
+                                                  identity: identity,
                                                   repository: prescribing!,
                                                   clinical: clinical!,
                                                   forms: forms!,
@@ -563,6 +573,7 @@ class CoreShell extends StatelessWidget {
                               ].contains(auth!.active!.role)
                             ? const Text('Este módulo requiere acceso clínico.')
                             : PrescribingScreen(
+                                identity: identity,
                                 repository: prescribing!,
                                 clinical: clinical!,
                                 forms: forms!,
@@ -610,6 +621,7 @@ class CoreShell extends StatelessWidget {
                                 'Inventario y caja requieren permiso operativo de la clínica.',
                               )
                             : InventoryScreen(
+                                identity: identity,
                                 key: ValueKey('inventory:${model.screen}'),
                                 initialSection: model.screen == 'Caja'
                                     ? 'cash'
@@ -698,6 +710,7 @@ class CoreShell extends StatelessWidget {
                           auth?.active?.role == ClinicRole.admin &&
                           auth?.offline != true
                       ? BackupScreen(
+                          identity: identity,
                           repository: backup!,
                           member: auth!.active!,
                           backupOnly: model.screen == 'Respaldo',
@@ -789,6 +802,7 @@ class CoreShell extends StatelessWidget {
         ),
         member: auth!.active!,
         repository: forms,
+        identity: identity,
       ),
     _ModuleSearch(member: auth?.active, onNavigate: model.navigate),
     DashboardScreen(

@@ -66,3 +66,12 @@ test('reference control report prints incomplete status and contains only its fr
  const text=execFileSync('pdftotext',['/tmp/vetdosis-report-synthetic.pdf','-'],{encoding:'utf8'});
  for(const value of ['no oficial','INCOMPLETO','2 registros pendientes','1.250 ml'])assert.ok(text.includes(value),value);
 });
+
+test('canonical clinic name remains on every page with a custom contact letterhead',async()=>{
+ const s=snapshot();s.branding.header='Contacto de prueba sin nombre de clínica';s.values.information='Texto de prueba '.repeat(500);
+ const rendered=await renderForm(s,font);
+ const path='/tmp/vetdosis-canonical-brand.pdf';writeFileSync(path,rendered.bytes);
+ const pages=execFileSync('pdftotext',[path,'-'],{encoding:'utf8'}).split('\f').filter(p=>p.trim());
+ assert.ok(pages.length>1);for(const page of pages)assert.ok(page.includes(s.clinic_name));
+ const pdf=await PDFDocument.load(rendered.bytes,{updateMetadata:false});assert.equal(pdf.getProducer(),'vetdosis-pdf-2');
+});

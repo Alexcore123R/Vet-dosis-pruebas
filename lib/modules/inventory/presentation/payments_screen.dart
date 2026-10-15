@@ -1,3 +1,6 @@
+import '../../identity/domain/identity_repository.dart';
+import '../../exports/domain/branded_export.dart';
+import '../../exports/presentation/branded_export_action.dart';
 import 'payments_view_model.dart';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -13,9 +16,11 @@ class PaymentsScreen extends StatefulWidget {
     super.key,
     required this.repository,
     required this.member,
+    this.identity,
   });
   final InventoryRepository repository;
   final ClinicMembership member;
+  final IdentityRepository? identity;
   @override
   State<PaymentsScreen> createState() => _PaymentsScreenState();
 }
@@ -190,6 +195,15 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          BrandedExportAction(
+            repository: widget.identity,
+            clinicId: widget.member.clinicId,
+            clinicName: widget.member.clinicName,
+            title: 'Transacciones · Reporte interno · No comprobante fiscal',
+            fileName: 'transacciones',
+            rows: () async =>
+                csvRows(BackupArchive.tableCsv(rows('transactions'))),
+          ),
           const Text(
             'Las ventas ya registran efectivo, tarjeta o transferencia. Aquí se añaden referencias externas sin duplicar venta, caja o inventario. Las referencias nuevas quedan pendientes de revisión; no confirman el pago por sí mismas.',
           ),
