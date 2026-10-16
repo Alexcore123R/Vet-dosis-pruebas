@@ -27,3 +27,5 @@ La escritura serializa por clínica/identidad/documento, revisa autoridad antes 
 `test/death_permissions_test.dart` cubre ausencia de autoridad por puesto, elecciones vacías, contrato desconocido y limpieza de capacidades. El workflow manual añade el trabajo `death-attestation`.
 
 Riesgo de despliegue parcial: la pantalla nueva requiere el contrato nuevo. Debe publicarse con el corte coordinado; no hay escritura alternativa por el modelo antiguo. Quedan pendientes las pruebas de Auth/Storage/Edge y teléfono real del conjunto.
+
+Validación terminada: **343 pruebas Flutter correctas**, incluidas 4 de esta pantalla; análisis sin incidencias. PostgreSQL aislado, concurrencia e idempotencia, revocación y vencimiento tras espera correctos. GitHub Actions: [ejecución 38983533713](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38983533713), código `7ac66eb`: **20/20 trabajos correctos**. Sin despliegue a Supabase, APK ni apertura de beta.
