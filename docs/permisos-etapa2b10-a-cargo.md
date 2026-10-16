@@ -42,6 +42,8 @@ Flutter prueba contrato/desconocimiento/pérdida, selección explícita del perm
 
 Resultado local: **298 pruebas Flutter satisfactorias**, análisis sin incidencias, **15 pruebas del renderer** satisfactorias y harness PostgreSQL/PDF/concurrencia satisfactorio. Incluye una espera de bloqueo que atraviesa el vencimiento sin permitir emisión ni crear aviso.
 
+GitHub confirmó **once trabajos satisfactorios** sobre `4662b9d`: [run 38957085323](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38957085323). Incluye `prescription-standing`, la regresión individual y los nueve bloques previos. Es un workflow de pruebas aisladas, sin despliegue ni compilación de APK; las 298 pruebas Flutter corresponden a la ejecución local.
+
 Esto no acredita entrega push, prueba HTTP real de Edge Functions, aislamiento con dos clínicas en teléfono ni aplicación remota de las migraciones. Esas comprobaciones siguen pendientes del corte integral. Inventario/dispensación, reportes, formatos, Storage y rutas restantes aún deben cerrar su migración de permisos.
 
 ## Siguiente fase
