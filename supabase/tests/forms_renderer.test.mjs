@@ -73,5 +73,97 @@ test('canonical clinic name remains on every page with a custom contact letterhe
  const path='/tmp/vetdosis-canonical-brand.pdf';writeFileSync(path,rendered.bytes);
  const pages=execFileSync('pdftotext',[path,'-'],{encoding:'utf8'}).split('\f').filter(p=>p.trim());
  assert.ok(pages.length>1);for(const page of pages)assert.ok(page.includes(s.clinic_name));
- const pdf=await PDFDocument.load(rendered.bytes,{updateMetadata:false});assert.equal(pdf.getProducer(),'vetdosis-pdf-2');
+ const pdf=await PDFDocument.load(rendered.bytes,{updateMetadata:false});assert.equal(pdf.getProducer(),'vetdosis-pdf-3');
+});
+
+function consultationPrescription() {
+ const s=snapshot();s.clinical=true;s.case_id='00000000-0000-0000-0000-000000000010';
+ s.schema={type:'prescription',title:'Receta sintética · prueba de atribución',fields:[],clauses:[]};
+ s.prescription_identity_version=1;
+ s.prescription_identity={
+  controlled:false,
+  consultation:{user_id:'00000000-0000-0000-0000-000000000011',name:'Persona que atendió',position:'PUESTO-NO-IMPRIMIR',attestation_id:'00000000-0000-0000-0000-000000000012',signed_at:'2026-10-06T23:00:00Z',signature:[[.1,.2],[.3,.5],[.7,.6],null]},
+  prepared_by:{user_id:'00000000-0000-0000-0000-000000000013',name:'Persona que capturó'},
+  responsible:{user_id:'00000000-0000-0000-0000-000000000014',name:'MVZ responsable distinto',license:'CEDULA-SOLO-RESPONSABLE',profile_version_id:'00000000-0000-0000-0000-000000000015'},
+  authorization:{mode:'standing',actor_id:'00000000-0000-0000-0000-000000000014',authorized_at:'2026-10-06T22:00:00Z',valid_until:'2026-10-08T00:00:00Z',reference_id:'00000000-0000-0000-0000-000000000016',document_type:'ordinary_prescription',case_id:s.case_id},
+ };
+ s.values={mvz_name:'NOMBRE-HEREDADO-NO-USAR',mvz_license:'CEDULA-HEREDADA-NO-USAR'};
+ // These valid signatures must not be substituted for the consultation signer.
+ s.mvz_signature=[[.8,.8],[.9,.9],null];
+ return s;
+}
+
+test('new prescription PDF separates consultation signer, preparer and responsible license',async()=>{
+ const s=consultationPrescription(),r=await renderForm(s,font);
+ const path='/tmp/vetdosis-consultation-identity.pdf';writeFileSync(path,r.bytes);
+ const text=execFileSync('pdftotext',[path,'-'],{encoding:'utf8'});
+ for(const value of ['Consulta realizada por: Persona que atendió','Documento elaborado por: Persona que capturó','MVZ responsable: MVZ responsable distinto','CEDULA-SOLO-RESPONSABLE','Firma de quien realizó la consulta','Autorización previa','No consta revisión individual'])assert.ok(text.includes(value),value);
+ for(const value of ['PUESTO-NO-IMPRIMIR','NOMBRE-HEREDADO-NO-USAR','CEDULA-HEREDADA-NO-USAR','Firma del MVZ responsable','Firma del tutor'])assert.ok(!text.includes(value),value);
+ assert.deepEqual(r.consultationPng,signatureImage(s.prescription_identity.consultation.signature));
+ assert.deepEqual(r.mvzPng,r.consultationPng);
+ assert.notDeepEqual(r.consultationPng,signatureImage(s.mvz_signature));
+ assert.equal(r.tutorPng,undefined);
+});
+
+test('own consultation signature and name are mandatory despite valid legacy MVZ signature',async()=>{
+ for(const name of [undefined,null,'','   ']){
+  const s=consultationPrescription();s.prescription_identity.consultation.name=name;
+  await assert.rejects(renderForm(s,font),/consultation_name_required/);
+ }
+ for(const signature of [undefined,null,[],[[.1,.1],[.1,.1]],[[.1,.1],null,[.8,.8]]]){
+  const s=consultationPrescription();s.prescription_identity.consultation.signature=signature;
+  await assert.rejects(renderForm(s,font),/invalid_signature/);
+ }
+});
+
+test('same person who attended and prepared is not duplicated as document preparer',async()=>{
+ const s=consultationPrescription();s.prescription_identity.prepared_by={...s.prescription_identity.consultation};
+ const r=await renderForm(s,font),path='/tmp/vetdosis-same-preparer.pdf';writeFileSync(path,r.bytes);
+ const text=execFileSync('pdftotext',[path,'-'],{encoding:'utf8'});
+ assert.ok(!text.includes('Documento elaborado por:'));assert.ok(text.includes('Firma de quien realizó la consulta'));
+});
+
+test('controlled prescription rejects standing authorization and a different consultation signer',async()=>{
+ const s=consultationPrescription();s.prescription_identity.controlled=true;
+ await assert.rejects(renderForm(s,font),/controlled_responsible_only/);
+ s.prescription_identity.authorization.mode='individual';
+ await assert.rejects(renderForm(s,font),/controlled_responsible_only/);
+ s.prescription_identity.consultation.user_id=s.prescription_identity.responsible.user_id;
+ s.prescription_identity.consultation.name=s.prescription_identity.responsible.name;
+ const r=await renderForm(s,font),path='/tmp/vetdosis-controlled-own-signature.pdf';writeFileSync(path,r.bytes);
+ const text=execFileSync('pdftotext',[path,'-'],{encoding:'utf8'});
+ assert.ok(text.includes('Autorización individual'));assert.ok(!text.includes('Autorización previa'));
+});
+
+test('new identity contract cannot silently fall back to legacy signature fields',async()=>{
+ for(const mutate of [
+  s=>delete s.prescription_identity,
+  s=>delete s.prescription_identity_version,
+  s=>s.prescription_identity_version=2,
+  s=>s.schema.type='controlled_report',
+  s=>s.clinical=false,
+ ]){
+  const s=consultationPrescription();mutate(s);await assert.rejects(renderForm(s,font),/unsupported_prescription_identity/);
+ }
+});
+
+test('one account cannot be presented with inconsistent names in the same document',async()=>{
+ const s=consultationPrescription();s.prescription_identity.prepared_by.user_id=s.prescription_identity.consultation.user_id;
+ await assert.rejects(renderForm(s,font),/prescription_identity_name_mismatch/);
+});
+
+test('standing authorization is scoped and valid at preparation, without consulting current clock for historical PDFs',async()=>{
+ for(const [mutate,error] of [
+  [s=>s.prescription_identity.authorization.case_id='00000000-0000-0000-0000-000000000099',/standing_prescription_scope_required/],
+  [s=>s.prescription_identity.authorization.document_type='controlled_prescription',/standing_prescription_scope_required/],
+  [s=>s.prescription_identity.authorization.valid_until=s.prepared_at,/standing_authorization_expired_at_preparation/],
+  [s=>s.prescription_identity.authorization.actor_id='00000000-0000-0000-0000-000000000099',/responsible_authorization_required/],
+  [s=>s.prescription_identity.consultation.signed_at='2026-02-30T12:00:00Z',/invalid_prescription_identity_time/],
+  [s=>s.prescription_identity.responsible.license='',/responsible_license_required/],
+ ]){
+  const s=consultationPrescription();mutate(s);await assert.rejects(renderForm(s,font),error);
+ }
+ // The synthetic authorization is in the past. Historical rendering uses the
+ // frozen server snapshot; current permissions belong to the RPC boundary.
+ assert.ok((await renderForm(consultationPrescription(),font)).bytes.length>0);
 });

@@ -56,4 +56,4 @@ Alta revisada y seguimiento de dosis: [candidato 13G, esquema y límites](../per
 
 ## Revisión siguiente: recetas 13H, 16-oct-2026
 
-Se revisó preparación → PDF → emisión y delegaciones: [hallazgos, esquema concreto, fases y decisiones](recetas-autorizacion-13h.md). La preparación actual todavía exige autoridad de emisión y utiliza habilitación heredada; la firma compartida no distingue el acto previo de una revisión individual. Hay propuesta documentada, **sin SQL/UI 13H implementados**. Resolver alcance y firma de autorización permanente antes de código; conservar históricos y no desplegar ni abrir beta.
+Se revisó preparación → PDF → emisión y delegaciones: [hallazgos, esquema concreto, fases y decisiones](recetas-autorizacion-13h.md). La usuaria aprobó nombre y firma propia de quien realizó la consulta, datos del MVZ separados y controlados exclusivos del MVZ habilitado. Se preparó el [bloque parcial 13H1 de atestación y renderer](../permisos-etapa2b8-firma.md). **Las rutas de preparar/autorizar/emitir y Flutter todavía no lo consumen**; no declarar implementado el corte integral 13H. Conservar históricos y no desplegar ni abrir beta.
