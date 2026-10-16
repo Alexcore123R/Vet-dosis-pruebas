@@ -65,3 +65,5 @@ Sigue pendiente la sustitución de ACL por módulo, la vinculación de procedimi
 - No se publicaron términos, no se creó una aceptación ficticia, no se verificó a ningún MVZ ni se cambiaron las fechas de una beta. Las pruebas que insertan aceptaciones usan cuentas y textos sintéticos en Docker aislado.
 
 Comprobación adicional de concurrencia local: dos sesiones PostgreSQL confirmando la misma cuenta/versión anexaron una sola aceptación y conservaron la inscripción original. Una publicación iniciada antes de la confirmación obligó a esperar y validar la versión publicada al terminar: se rechazó el texto anterior y no se creó aceptación de la versión nueva. Solo se usan cuentas/textos sintéticos en el contenedor aislado. No modifica código del APK ni datos remotos.
+
+La prueba adicional de concurrencia pasó también en Actions: https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38839432317. La acción remota fue `inspect`: confirmó ambas API instaladas y beta cerrada, sin aplicar SQL ni reimportar el borrador. No se prueban sesiones Auth reales mediante las fixtures PostgreSQL.
