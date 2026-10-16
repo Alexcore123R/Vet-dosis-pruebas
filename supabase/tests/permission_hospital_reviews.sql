@@ -48,6 +48,12 @@ select public.hospital_review_schedule(:'clinic',:'stay',:'procedure','Synthetic
 select public.hospital_review_schedule(:'clinic',:'stay',:'procedure','Synthetic review','Synthetic instructions',current_setting('test.times')::jsonb,15,repeat('a',48)) as retry \gset
 select pg_temp.assert_true(:'task'=:'retry','schedule retry duplicated');
 select set_config('test.task',:'task',false);
+select pg_temp.assert_true((public.hospital_snapshot(:'clinic')->'capabilities'->>'typed_reviews')::boolean,'typed capability missing');
+select pg_temp.assert_true(jsonb_array_length(public.hospital_snapshot(:'clinic')->'review_types')=2,'active types unavailable');
+select pg_temp.assert_true((public.hospital_snapshot(:'clinic')->'permissions'->>'hospital.schedule')::boolean,'schedule permission missing');
+select pg_temp.assert_true(not (public.hospital_snapshot(:'clinic')->'permissions'->>'hospital.discharge')::boolean,'unmigrated discharge advertised');
+select pg_temp.assert_true(not (public.hospital_snapshot(:'clinic')->'tasks'->0->'actions'->>'perform')::boolean,'wrong-type authority advertised');
+select pg_temp.expect_error('select private.hospital_snapshot_before_reviews(null)','permission denied');
 select pg_temp.expect_error($q$select public.hospital_review_schedule(current_setting('test.clinic')::uuid,current_setting('test.stay')::uuid,null,'Synthetic','Synthetic',current_setting('test.times')::jsonb,15,repeat('b',48))$q$,'active_procedure_required');
 select pg_temp.expect_error($q$select public.hospital_review_schedule(current_setting('test.clinic')::uuid,current_setting('test.stay')::uuid,current_setting('test.procedure')::uuid,'Synthetic','Synthetic','[]',15,repeat('b',48))$q$,'invalid_times');
 select pg_temp.expect_error($q$select public.hospital_review_schedule(current_setting('test.clinic')::uuid,current_setting('test.stay')::uuid,current_setting('test.procedure')::uuid,'Synthetic','Synthetic',jsonb_build_array('2000-01-01T00:00:00Z'),15,repeat('b',48))$q$,'past_order_time');

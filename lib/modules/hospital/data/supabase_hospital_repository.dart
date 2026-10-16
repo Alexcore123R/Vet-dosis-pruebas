@@ -3,7 +3,10 @@ import '../domain/hospital_models.dart';
 import '../domain/hospital_repository.dart';
 
 class SupabaseHospitalRepository
-    implements HospitalRepository, HospitalLocationRepository {
+    implements
+        HospitalRepository,
+        HospitalLocationRepository,
+        HospitalReviewRepository {
   SupabaseHospitalRepository(this.client);
   final SupabaseClient client;
   @override
@@ -17,6 +20,12 @@ class SupabaseHospitalRepository
           .toList(),
       (raw['tasks'] as List)
           .map((r) => HospitalTask.read(Map<String, dynamic>.from(r as Map)))
+          .toList(),
+      typedReviews: (raw['capabilities'] as Map?)?['typed_reviews'] == true,
+      reviewTypes: ((raw['review_types'] as List?) ?? [])
+          .map(
+            (r) => HospitalReviewType(r['id'] as String, r['name'] as String),
+          )
           .toList(),
       optionalCage: (raw['capabilities'] as Map?)?['optional_cage'] == true,
       cageChanges: (raw['capabilities'] as Map?)?['cage_changes'] == true,
@@ -66,6 +75,32 @@ class SupabaseHospitalRepository
         'p_times': times.map((t) => t.toUtc().toIso8601String()).toList(),
         'p_escalation_minutes': escalationMinutes,
         'p_operation_id': operationId,
+      },
+    );
+  }
+
+  @override
+  Future<void> scheduleReview(
+    String clinic,
+    String stay,
+    String procedure,
+    String label,
+    String instructions,
+    List<DateTime> times,
+    int delay,
+    String operation,
+  ) async {
+    await client.rpc(
+      'hospital_review_schedule',
+      params: {
+        'p_clinic_id': clinic,
+        'p_stay_id': stay,
+        'p_procedure_id': procedure,
+        'p_label': label,
+        'p_instructions': instructions,
+        'p_times': times.map((t) => t.toUtc().toIso8601String()).toList(),
+        'p_escalation_minutes': delay,
+        'p_operation_id': operation,
       },
     );
   }

@@ -29,6 +29,20 @@ class HospitalViewModel extends ChangeNotifier {
       : access.prescribe;
   bool get canMoveCage =>
       explicitPermissions && snapshot.permissions?['hospital.manage'] == true;
+  bool get canSchedule => explicitPermissions
+      ? (snapshot.typedReviews &&
+            snapshot.permissions?['hospital.schedule'] == true)
+      : access.prescribe;
+  bool get canDischarge => explicitPermissions
+      ? (snapshot.permissions?['hospital.discharge'] == true)
+      : access.prescribe;
+  bool canTask(HospitalTask task, String action) => explicitPermissions
+      ? (snapshot.permissions != null &&
+            snapshot.tasks.contains(task) &&
+            task.actions?[action] == true)
+      : action == 'cancel'
+      ? access.prescribe
+      : access.clinical;
   String? error, alarmError;
   Timer? _timer;
   void changed() {
@@ -89,9 +103,11 @@ class HospitalViewModel extends ChangeNotifier {
     Future<void> Function() action, {
     bool physician = false,
     String? permission,
+    bool? explicitAllowed,
   }) async {
-    final permitted = explicitPermissions && permission != null
-        ? (snapshot.permissions?[permission] == true)
+    final permitted = explicitPermissions
+        ? (explicitAllowed ??
+              (permission != null && snapshot.permissions?[permission] == true))
         : access.clinical && (!physician || access.prescribe);
     if (disposed || busy || !permitted) {
       return false;
@@ -115,8 +131,10 @@ class HospitalViewModel extends ChangeNotifier {
     return success;
   }
 
-  Future<bool> perform(HospitalTask task) =>
-      mutate(() => repository.perform(member.clinicId, task));
+  Future<bool> perform(HospitalTask task) => mutate(
+    () => repository.perform(member.clinicId, task),
+    explicitAllowed: canTask(task, 'perform'),
+  );
   Future<bool> snooze(HospitalTask task, int minutes, String reason) => mutate(
     () => repository.snooze(
       member.clinicId,
@@ -124,6 +142,7 @@ class HospitalViewModel extends ChangeNotifier {
       minutes,
       hospitalText(reason, max: 500),
     ),
+    explicitAllowed: canTask(task, 'snooze'),
   );
   Future<bool> cancel(HospitalTask task, String reason) => mutate(
     () => repository.cancel(
@@ -132,6 +151,7 @@ class HospitalViewModel extends ChangeNotifier {
       hospitalText(reason, max: 500),
     ),
     physician: true,
+    explicitAllowed: canTask(task, 'cancel'),
   );
   Future<bool> discharge(HospitalStay stay, String reason) => mutate(
     () => repository.discharge(
@@ -140,5 +160,6 @@ class HospitalViewModel extends ChangeNotifier {
       hospitalText(reason, max: 500),
     ),
     physician: true,
+    explicitAllowed: canDischarge,
   );
 }

@@ -1,6 +1,6 @@
 # Etapa 2B5 — revisiones hospitalarias por procedimiento (13E)
 
-Estado: **candidato local para corte coordinado**, sin aplicar en Supabase, sin activar beta ni política de permisos y sin APK nuevo. Continúa el orden aprobado por la propietaria: permisos hospitalarios → medicación/frascos → consulta enfocada y servicios variables. No añade dosis, tablas clínicas, frecuencias, vías ni protocolos.
+Estado: **candidato local para corte coordinado**, sin aplicar en Supabase, sin activar beta ni política de permisos y sin APK nuevo. Incluye integración candidata de pantalla, todavía no disponible en la instalación actual. Continúa el orden aprobado por la propietaria: permisos hospitalarios → medicación/frascos → consulta enfocada y servicios variables. No añade dosis, tablas clínicas, frecuencias, vías ni protocolos.
 
 ## Qué resuelve
 
@@ -27,7 +27,9 @@ La ruta anterior `hospital_prescribe` se cierra: revisión exige la función con
 
 Siguen pendientes `rx_schedule`, registro/validación de administración, `drug.administer`, `vial.draw`, frascos, alta hospitalaria (`hospital_discharge` conserva todavía su implementación antigua), y las demás rutas clínicas/documentales listadas en el corte. No habilitar el corte ni aplicar 13E por separado: otras funciones antiguas todavía pueden modificar tareas o registros.
 
-También falta conectar en UI el selector de tipos, acciones por permiso, flujo de reautorización histórica y mensajes específicos de conflicto, y retirar los controles antiguos por puesto al completar la migración. La pantalla actual de órdenes no llama a `hospital_review_schedule`: **no presentar este bloque como un flujo disponible en el APK**. La próxima entrega de UI debe anunciar capacidad de servidor y fallar sin recuperar permisos anteriores si una instantánea conocida falla. No conceder un permiso general a todos los tipos para evitar seleccionar uno.
+La UI candidata ya consume `typed_reviews`, `review_types`, permisos globales y acciones por tarea del nuevo snapshot. El selector no elige un procedimiento ni inventa uno si no hay tipos activos; el formulario de revisión llama a `hospital_review_schedule`, no a la ruta libre. El contrato antiguo se conserva solo para el servidor que aún no anuncia permisos; una vez conocido el contrato explícito no recupera acciones por puesto. Medicación y alta quedan deshabilitadas en el contrato 13E mientras se migran sus rutas. Un fallo de lectura borra los permisos y no permite operar con una tarea retenida de una consulta anterior.
+
+La función anterior de snapshot se mueve a esquema privado y se revoca su ejecución a clientes. Las listas de tipos/acciones se sirven únicamente tras comprobar lectura hospitalaria. Falta completar navegación por permisos para puestos antes excluidos, reautorización histórica y mensajes específicos de conflictos del servidor. **No presentar el código preparado como un flujo ya disponible en el APK instalado.** No conceder un permiso general a todos los tipos para evitar seleccionar uno.
 
 No modifica las referencias extraídas del portafolio ni importa sus valores en las calculadoras. No implementa aún cotizaciones, nuevos repartos o liquidación de comisiones.
 
@@ -37,4 +39,4 @@ No modifica las referencias extraídas del portafolio ni importa sus valores en 
 
 Casos: admin sin permiso; profesional verificado sin concesión; programación/reintento sin duplicar; vínculo de autoridad; tipo ausente; fechas inválidas; tipo incorrecto al realizar; permiso sin habilitación; revisión anticipada/pospuesta; motivo y versión; cancelación separada; registro de autor/hora/concesión; histórico sin conversión; cierre de texto libre y medicación; revocación antes de reintento; aislamiento entre clínicas y anon. La prueba entre sesiones verifica primera confirmación ganadora, rechazo tras revocación y vencimiento durante espera, y ausencia de escritura/auditoría duplicadas.
 
-Resultado local: satisfactorio, incluida concurrencia entre sesiones. Evidencia CI: pendiente de registrar. No cambia Flutter en este bloque; no se repite su suite de 268 pruebas por una modificación exclusiva de SQL/pruebas/documentación.
+Resultado local: satisfactorio, incluida concurrencia entre sesiones. Evidencia CI: pendiente de registrar. La UI incorpora cuatro pruebas nuevas: ningún permiso por ser admin, acciones separadas y bloqueo tras fallo de lectura, selector vacío sin opción de medicación y ausencia de tipos inventados. Pasan las 21 pruebas focalizadas de hospitalización. Análisis y suite Flutter completa: pendientes de registrar.

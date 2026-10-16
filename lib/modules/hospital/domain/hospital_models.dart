@@ -60,8 +60,10 @@ class HospitalTask {
     this.clinicalCaseId,
     this.medicationRecordId,
     this.snoozeCount = 0,
+    this.actions,
   });
   final String id, stayId, kind, label, instructions;
+  final Map<String, dynamic>? actions;
   final DateTime dueAt;
   final int escalationMinutes, version, snoozeCount;
   final HospitalTaskState state;
@@ -89,6 +91,9 @@ class HospitalTask {
     prescriptionItemId: m['prescription_item_id'] as String?,
     clinicalCaseId: m['clinical_case_id'] as String?,
     medicationRecordId: m['medication_record_id'] as String?,
+    actions: m['actions'] is Map
+        ? Map<String, dynamic>.from(m['actions'] as Map)
+        : null,
   );
   TaskUrgency urgency(DateTime now) {
     if (state == HospitalTaskState.done) return TaskUrgency.done;
@@ -102,6 +107,11 @@ class HospitalTask {
   }
 }
 
+class HospitalReviewType {
+  const HospitalReviewType(this.id, this.name);
+  final String id, name;
+}
+
 class HospitalSnapshot {
   const HospitalSnapshot(
     this.stays,
@@ -109,8 +119,11 @@ class HospitalSnapshot {
     this.optionalCage = false,
     this.cageChanges = false,
     this.permissions,
+    this.typedReviews = false,
+    this.reviewTypes = const [],
   });
-  final bool optionalCage, cageChanges;
+  final bool optionalCage, cageChanges, typedReviews;
+  final List<HospitalReviewType> reviewTypes;
   final Map<String, dynamic>? permissions;
   final List<HospitalStay> stays;
   final List<HospitalTask> tasks;

@@ -128,7 +128,13 @@ class _HospitalAdmitFormState extends State<HospitalAdmitForm> {
 }
 
 class HospitalOrderForm extends StatefulWidget {
-  const HospitalOrderForm({super.key, required this.stay, required this.save});
+  const HospitalOrderForm({
+    super.key,
+    required this.stay,
+    required this.save,
+    this.reviewTypes,
+  });
+  final List<HospitalReviewType>? reviewTypes;
   final HospitalStay stay;
   final Future<bool> Function(
     String,
@@ -151,10 +157,11 @@ class _HospitalOrderFormState extends State<HospitalOrderForm> {
       delay.text.isNotEmpty ||
       times.isNotEmpty ||
       reviewed ||
-      kind != 'medicacion';
+      kind != (widget.reviewTypes == null ? 'medicacion' : '');
   @override
   void initState() {
     super.initState();
+    if (widget.reviewTypes != null) kind = '';
     for (final c in [label, instructions, delay]) {
       c.addListener(() {
         if (mounted) setState(() {});
@@ -221,6 +228,10 @@ class _HospitalOrderFormState extends State<HospitalOrderForm> {
           'Revisa la indicación y los horarios del paciente.',
         );
       }
+      if (widget.reviewTypes != null &&
+          !widget.reviewTypes!.any((t) => t.id == kind)) {
+        throw const FormatException('Selecciona el tipo de procedimiento.');
+      }
       final name = hospitalText(label.text),
           order = hospitalText(instructions.text, max: 4000);
       final escalation = int.tryParse(delay.text.trim());
@@ -269,19 +280,38 @@ class _HospitalOrderFormState extends State<HospitalOrderForm> {
     dirty: dirty,
     busy: busy,
     child: Scaffold(
-      appBar: AppBar(title: const Text('Indicar tratamiento / revisión')),
+      appBar: AppBar(
+        title: Text(
+          widget.reviewTypes == null
+              ? 'Indicar tratamiento / revisión'
+              : 'Programar revisión',
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          Text('${widget.stay.patientName} · Jaula ${widget.stay.cage}'),
+          Text('${widget.stay.patientName} · Jaula ${widget.stay.cageLabel}'),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            initialValue: kind,
-            decoration: const InputDecoration(labelText: 'Tipo'),
-            items: const [
-              DropdownMenuItem(value: 'medicacion', child: Text('Medicación')),
-              DropdownMenuItem(value: 'revision', child: Text('Revisión')),
-            ],
+            initialValue: kind.isEmpty ? null : kind,
+            decoration: InputDecoration(
+              labelText: widget.reviewTypes == null
+                  ? 'Tipo'
+                  : 'Tipo de procedimiento',
+            ),
+            items:
+                widget.reviewTypes
+                    ?.map(
+                      (t) => DropdownMenuItem(value: t.id, child: Text(t.name)),
+                    )
+                    .toList() ??
+                const [
+                  DropdownMenuItem(
+                    value: 'medicacion',
+                    child: Text('Medicación'),
+                  ),
+                  DropdownMenuItem(value: 'revision', child: Text('Revisión')),
+                ],
             onChanged: busy
                 ? null
                 : (v) => setState(() {
@@ -289,12 +319,18 @@ class _HospitalOrderFormState extends State<HospitalOrderForm> {
                     reviewed = false;
                   }),
           ),
+          if (widget.reviewTypes?.isEmpty == true)
+            const Text(
+              'No hay tipos activos. Solicita su configuración; no se asignan automáticamente.',
+            ),
           const SizedBox(height: 16),
           TextField(
             enabled: !busy,
             controller: label,
-            decoration: const InputDecoration(
-              labelText: 'Fármaco / revisión',
+            decoration: InputDecoration(
+              labelText: widget.reviewTypes == null
+                  ? 'Fármaco / revisión'
+                  : 'Revisión',
               border: OutlineInputBorder(),
             ),
             onChanged: (_) => setState(() => reviewed = false),
@@ -304,10 +340,11 @@ class _HospitalOrderFormState extends State<HospitalOrderForm> {
             enabled: !busy,
             controller: instructions,
             maxLines: 4,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Indicación del MVZ',
-              helperText:
-                  'Medicación: captura presentación, cantidad, unidad, vía y cuidados indicados.',
+              helperText: widget.reviewTypes == null
+                  ? 'Medicación: captura presentación, cantidad, unidad, vía y cuidados indicados.'
+                  : 'Describe la revisión indicada; no se registran medicamentos desde este formulario.',
               border: OutlineInputBorder(),
             ),
             onChanged: (_) => setState(() => reviewed = false),

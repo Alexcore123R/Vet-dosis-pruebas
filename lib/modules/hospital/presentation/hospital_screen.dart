@@ -170,18 +170,34 @@ class _HospitalScreenState extends State<HospitalScreen> {
       MaterialPageRoute<void>(
         builder: (_) => HospitalOrderForm(
           stay: stay,
+          reviewTypes: model.snapshot.typedReviews
+              ? model.snapshot.reviewTypes
+              : null,
           save: (kind, label, instructions, times, delay, op) => model.mutate(
-            () => widget.repository.prescribe(
-              widget.member.clinicId,
-              stay.id,
-              kind,
-              label,
-              instructions,
-              times,
-              delay,
-              op,
-            ),
+            () => model.snapshot.typedReviews
+                ? (widget.repository as HospitalReviewRepository)
+                      .scheduleReview(
+                        widget.member.clinicId,
+                        stay.id,
+                        kind,
+                        label,
+                        instructions,
+                        times,
+                        delay,
+                        op,
+                      )
+                : widget.repository.prescribe(
+                    widget.member.clinicId,
+                    stay.id,
+                    kind,
+                    label,
+                    instructions,
+                    times,
+                    delay,
+                    op,
+                  ),
             physician: true,
+            permission: 'hospital.schedule',
           ),
         ),
       ),
@@ -382,7 +398,10 @@ class _HospitalScreenState extends State<HospitalScreen> {
                 spacing: 4,
                 children: [
                   TextButton(
-                    onPressed: model.busy || !actionable
+                    onPressed:
+                        model.busy ||
+                            !actionable ||
+                            !model.canTask(task, 'perform')
                         ? null
                         : () => perform(stay, task),
                     child: Text(
@@ -393,12 +412,15 @@ class _HospitalScreenState extends State<HospitalScreen> {
                   ),
                   TextButton(
                     onPressed:
-                        model.busy || !actionable || task.snoozeCount >= 3
+                        model.busy ||
+                            !actionable ||
+                            !model.canTask(task, 'snooze') ||
+                            task.snoozeCount >= 3
                         ? null
                         : () => snooze(task),
                     child: const Text('Posponer aviso'),
                   ),
-                  if (model.access.prescribe)
+                  if (model.canTask(task, 'cancel'))
                     TextButton(
                       onPressed: model.busy
                           ? null
@@ -623,31 +645,38 @@ class _HospitalScreenState extends State<HospitalScreen> {
                             ),
                           ],
                         ),
-                      if (model.access.prescribe)
+                      if (model.canSchedule || model.canDischarge)
                         Wrap(
                           spacing: 8,
                           children: [
-                            TextButton(
-                              onPressed: model.busy
-                                  ? null
-                                  : () => prescribe(stay),
-                              child: const Text(
-                                'Añadir tratamiento / revisión',
+                            if (model.canSchedule &&
+                                (!model.snapshot.typedReviews ||
+                                    widget.repository
+                                        is HospitalReviewRepository))
+                              TextButton(
+                                onPressed: model.busy
+                                    ? null
+                                    : () => prescribe(stay),
+                                child: Text(
+                                  model.snapshot.typedReviews
+                                      ? 'Programar revisión'
+                                      : 'Añadir tratamiento / revisión',
+                                ),
                               ),
-                            ),
-                            TextButton(
-                              onPressed: model.busy
-                                  ? null
-                                  : () async {
-                                      final why = await reason(
-                                        'Registrar alta y cancelar todas las tareas pendientes',
-                                      );
-                                      if (why != null && mounted) {
-                                        await model.discharge(stay, why);
-                                      }
-                                    },
-                              child: const Text('Registrar alta'),
-                            ),
+                            if (model.canDischarge)
+                              TextButton(
+                                onPressed: model.busy
+                                    ? null
+                                    : () async {
+                                        final why = await reason(
+                                          'Registrar alta y cancelar todas las tareas pendientes',
+                                        );
+                                        if (why != null && mounted) {
+                                          await model.discharge(stay, why);
+                                        }
+                                      },
+                                child: const Text('Registrar alta'),
+                              ),
                           ],
                         ),
                       if (!tasks.any((t) => t.stayId == stay.id))

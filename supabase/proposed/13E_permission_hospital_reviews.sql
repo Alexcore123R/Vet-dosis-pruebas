@@ -94,6 +94,27 @@ declare t public.hospital_tasks;s public.hospital_stays;g uuid;code text;begin
  end if;
  insert into public.audit_log(clinic_id,actor_id,action,entity_id,details) values(p_clinic_id,auth.uid(),'hospital_task_'||p_action,t.id,jsonb_build_object('procedure_type_id',t.procedure_type_id,'permission_grant_id',g,'previous_version',t.version,'version',t.version+1,'reason',p_reason));
 end$$;
+-- Snapshot contract for the matching UI. Old aggregate is private and not callable by clients.
+alter function public.hospital_snapshot(uuid) set schema private;
+alter function private.hospital_snapshot(uuid) rename to hospital_snapshot_before_reviews;
+revoke all on function private.hospital_snapshot_before_reviews(uuid) from public,anon,authenticated;
+create function public.hospital_snapshot(p_clinic_id uuid) returns jsonb language plpgsql stable security definer set search_path='' as $$
+declare b jsonb;professional boolean;schedule_allowed boolean;begin
+ b=private.hospital_snapshot_before_reviews(p_clinic_id);
+ professional=private.professional_current(p_clinic_id,auth.uid());
+ schedule_allowed=professional and private.permission_effective(p_clinic_id,auth.uid(),'hospital.schedule') is not null;
+ return b||jsonb_build_object(
+ 'capabilities',(b->'capabilities')||jsonb_build_object('typed_reviews',true),
+ 'permissions',(b->'permissions')||jsonb_build_object('hospital.schedule',schedule_allowed,'hospital.discharge',false),
+ 'review_types',(select coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name) order by name),'[]') from private.procedure_types where clinic_id=p_clinic_id and active),
+ 'tasks',(select coalesce(jsonb_agg(to_jsonb(t)||jsonb_build_object('actions',jsonb_build_object(
+ 'perform',t.kind='revision' and t.prescription_item_id is null and t.procedure_type_id is not null and t.authority_grant_id is not null and professional and private.permission_effective(p_clinic_id,auth.uid(),'procedure.perform',t.procedure_type_id) is not null,
+ 'snooze',t.kind='revision' and t.prescription_item_id is null and private.permission_effective(p_clinic_id,auth.uid(),'hospital.report') is not null,
+ 'cancel',t.kind='revision' and t.prescription_item_id is null and schedule_allowed)) order by t.due_at),'[]')
+ from public.hospital_tasks t join public.hospital_stays s on s.id=t.stay_id and s.clinic_id=t.clinic_id where t.clinic_id=p_clinic_id and s.discharged_at is null));
+end$$;
+revoke all on function public.hospital_snapshot(uuid) from public,anon;
+grant execute on function public.hospital_snapshot(uuid) to authenticated;
 revoke all on function public.hospital_review_schedule(uuid,uuid,uuid,text,text,jsonb,integer,text) from public,anon;
 grant execute on function public.hospital_review_schedule(uuid,uuid,uuid,text,text,jsonb,integer,text) to authenticated;
 notify pgrst,'reload schema';

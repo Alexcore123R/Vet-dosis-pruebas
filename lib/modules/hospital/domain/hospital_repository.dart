@@ -39,3 +39,16 @@ abstract interface class HospitalLocationRepository {
   );
   Future<List<Map<String, dynamic>>> cageHistory(String clinic, String stay);
 }
+
+abstract interface class HospitalReviewRepository {
+  Future<void> scheduleReview(
+    String clinic,
+    String stay,
+    String procedure,
+    String label,
+    String instructions,
+    List<DateTime> times,
+    int delay,
+    String operation,
+  );
+}
