@@ -27,4 +27,5 @@ do $$begin
  if exists(select 1 from public.terms_acceptances where terms_version='1') then raise exception 'draft_was_accepted';end if;
 end$$;
 SQL
+bash supabase/tests/terms_concurrency.sh "$container_name"
 echo 'Terms passed: displayed version/hash bound to immutable acceptance, own-user history, stale text rejected, consent renewal without trial renewal, expired read/export preserved and guard reinstall safe.'

@@ -63,3 +63,5 @@ Sigue pendiente la sustitución de ACL por módulo, la vinculación de procedimi
 - 259 pruebas Flutter de la suite completa, sin observaciones del analizador; 27 pruebas Python y suite PostgreSQL aislada correctas, repetidas en el flujo remoto antes de preparar.
 - APK iniciado en https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38838577172. Su resultado se registrará al terminar la verificación de firma y publicación del artefacto.
 - No se publicaron términos, no se creó una aceptación ficticia, no se verificó a ningún MVZ ni se cambiaron las fechas de una beta. Las pruebas que insertan aceptaciones usan cuentas y textos sintéticos en Docker aislado.
+
+Comprobación adicional de concurrencia local: dos sesiones PostgreSQL confirmando la misma cuenta/versión anexaron una sola aceptación y conservaron la inscripción original. Una publicación iniciada antes de la confirmación obligó a esperar y validar la versión publicada al terminar: se rechazó el texto anterior y no se creó aceptación de la versión nueva. Solo se usan cuentas/textos sintéticos en el contenedor aislado. No modifica código del APK ni datos remotos.
