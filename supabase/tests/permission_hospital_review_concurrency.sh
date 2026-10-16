@@ -41,7 +41,7 @@ select public.hospital_task_action(:'clinic','00000000-0000-0000-0000-0000000002
 SQL
 then echo 'Duplicate confirmation accepted';exit 1;fi
 wait "$first_pid" || { cat "$work_dir/first.log";exit 1; }
-rg -Fq task_already_confirmed "$work_dir/second.log" || { cat "$work_dir/second.log";exit 1; }
+grep -Fq task_already_confirmed "$work_dir/second.log" || { cat "$work_dir/second.log";exit 1; }
 # Revocation commits before the waiting operation evaluates its authority.
 docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 > "$work_dir/revoke.log" 2>&1 <<'SQL' &
 select id as grant_id from private.member_permission_grants where user_id='00000000-0000-0000-0000-000000000141' and code='procedure.perform' and procedure_id=(select id from private.procedure_types where name='Synthetic review type') \gset
@@ -63,7 +63,7 @@ select public.hospital_task_action(:'clinic','00000000-0000-0000-0000-0000000002
 SQL
 then echo 'Revoked authority confirmed review';exit 1;fi
 wait "$first_pid" || { cat "$work_dir/revoke.log";exit 1; }
-rg -Fq explicit_permission_required "$work_dir/revoked.log" || { cat "$work_dir/revoked.log";exit 1; }
+grep -Fq explicit_permission_required "$work_dir/revoked.log" || { cat "$work_dir/revoked.log";exit 1; }
 # Grant may expire during lock wait even though statement_timestamp precedes expiry.
 docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 > "$work_dir/expire.log" 2>&1 <<'SQL' &
 begin;
@@ -87,7 +87,7 @@ select public.hospital_task_action(:'clinic','00000000-0000-0000-0000-0000000002
 SQL
 then echo 'Expired authority confirmed review';exit 1;fi
 wait "$first_pid" || { cat "$work_dir/expire.log";exit 1; }
-rg -Fq explicit_permission_required "$work_dir/expired.log" || { cat "$work_dir/expired.log";exit 1; }
+grep -Fq explicit_permission_required "$work_dir/expired.log" || { cat "$work_dir/expired.log";exit 1; }
 docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 <<'SQL'
 do $$begin
  if not exists(select 1 from public.hospital_tasks where id='00000000-0000-0000-0000-000000000200' and state='done' and version=2) then raise exception 'first_confirmation_lost';end if;
