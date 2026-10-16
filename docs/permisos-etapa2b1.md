@@ -40,4 +40,6 @@ Casos específicos: admin sin concesión rechazado; rol MVZ con lectura no permi
 
 Resultado local: satisfactorio, incluidas las dos pruebas con sesiones concurrentes. No se ejecutan pruebas Flutter porque esta entrega solo cambia SQL candidato, pruebas y documentación; no modifica la aplicación.
 
+Comprobación en GitHub satisfactoria: [ejecución 38865424459](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38865424459), commit `75e627f`. La ejecución anterior detectó una dependencia del script que no estaba instalada en el runner; se sustituyó la comprobación por una equivalente disponible sin cambiar las reglas SQL. Esta ejecución utiliza PostgreSQL sintético aislado, no el proyecto Supabase remoto.
+
 La acción manual `test-permission-cutover.yml` solo ejecuta estas pruebas aisladas; no recibe secretos Supabase ni aplica migraciones.
