@@ -1,0 +1,13 @@
+name: Probar corte de permisos (sin despliegue)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  patient-registration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar alta, lectura, auditoría y concurrencia en PostgreSQL aislado
+        run: bash supabase/tests/run_permission_patient_registration.sh

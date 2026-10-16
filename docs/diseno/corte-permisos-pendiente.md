@@ -25,3 +25,7 @@
 4. HTTP real de RPC, tabla directa, Storage y Edge Functions con dos cuentas/dos clínicas, incluyendo anon, vencimiento y cambio de correo.
 5. Preparación ordinaria con datos del MVZ → PDF → emisión: comprobar que preparador y acto de autorización quedan descritos correctamente, con snapshot y hash.
 6. Solo marcar revisada la migración tras sustituir todas las rutas correspondientes. No agregar un OR con roles antiguos como compatibilidad. Mantener beta cerrada hasta completar el corte y sus pruebas.
+
+## Avance 2B-1, 16-oct-2026
+
+Se preparó y probó localmente el candidato de alta administrativa y lectura directa de pacientes/tutores: [detalle y límites](../permisos-etapa2b1.md). No está desplegado y no cubre eventos clínicos, agenda ni consultas agregadas. El corte completo de esta tabla continúa pendiente; no marcar la fila de pacientes como migrada en su totalidad.
