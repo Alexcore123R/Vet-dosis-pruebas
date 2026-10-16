@@ -46,6 +46,8 @@ Ejecutar `bash supabase/tests/run_prescription_individual.sh` (Docker, Node 22, 
 
 Resultado local: **290 pruebas Flutter satisfactorias**, análisis sin incidencias, PostgreSQL y carreras satisfactorios; el snapshot real generado por la base también produjo un PDF con la firma y atribución esperadas. No equivale a prueba HTTP/Edge ni a prueba en teléfono físico.
 
+GitHub confirmó **diez trabajos satisfactorios** sobre `d7a7837`: [run 38954473933](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38954473933). Incluye el nuevo `prescription-individual` y los nueve bloques previos; no realiza despliegue ni compila un APK. No sustituye las 290 pruebas Flutter locales por una supuesta ejecución de Flutter en ese workflow.
+
 ## Pendiente para el corte integral
 
 - Autorización permanente tipada, por alcance y destinatario, con vencimiento/revocación. **Continúa desactivada:** `rx_delegate` no crea delegaciones antiguas y la UI nueva no ofrece compartir firma/dispensación. Las delegaciones previas se muestran como histórico sin facultad nueva. Ampliar el alcance a toda la clínica no se infiere de un caso NULL.
