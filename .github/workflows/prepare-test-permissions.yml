@@ -1,0 +1,34 @@
+name: Preparar permisos explícitos sin abrir beta
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        type: choice
+        options: [inspect, apply]
+        default: inspect
+        required: true
+      confirmation:
+        description: PREPARAR_PERMISOS_SIN_ACTIVAR_BETA
+        type: string
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: supabase-test-beta-preparation
+  cancel-in-progress: false
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar operación acotada
+        run: python3 -m unittest discover -s scripts/supabase -p 'test_*.py'
+      - name: Probar modelo con cuentas sintéticas aisladas
+        run: bash supabase/tests/run_permission_foundation.sh
+      - name: Preparar únicamente modelo desactivado en proyecto de pruebas
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PERMISSION_ACTION: ${{ inputs.action }}
+          PERMISSION_CONFIRMATION: ${{ inputs.confirmation }}
+        run: python3 scripts/supabase/permission_schema.py

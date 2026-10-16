@@ -1,3 +1,4 @@
+import '../../permissions/domain/permission_repository.dart';
 import '../../core/domain/build_channel.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
@@ -12,7 +13,8 @@ class SupabaseAuthRepository
         AuthRepository,
         PersonalWorkspaceRepository,
         PasswordRecoveryRepository,
-        TeamRepository {
+        TeamRepository,
+        PermissionRepository {
   SupabaseAuthRepository(this.client, {this.existingSchema = false});
   final bool existingSchema;
   final SupabaseClient client;
@@ -195,6 +197,137 @@ class SupabaseAuthRepository
     await client.rpc(
       'revoke_clinic_invitation',
       params: {'invitation_id': invitationId},
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> permissions(String clinicId) async =>
+      Map<String, dynamic>.from(
+        await client.rpc('permission_snapshot', params: {'p_clinic': clinicId}),
+      );
+  @override
+  Future<Map<String, dynamic>> professionalEvidence(String clinicId) async =>
+      Map<String, dynamic>.from(
+        await client.rpc(
+          'permission_professional_snapshot',
+          params: {'p_clinic': clinicId},
+        ),
+      );
+  @override
+  Future<void> setJobLabel(String clinicId, String userId, String label) async {
+    await client.rpc(
+      'permission_set_job',
+      params: {'p_clinic': clinicId, 'p_user': userId, 'p_label': label},
+    );
+  }
+
+  @override
+  Future<void> setProcedure(
+    String clinicId,
+    String? id,
+    String name,
+    bool active,
+  ) async {
+    await client.rpc(
+      'permission_procedure_set',
+      params: {
+        'p_clinic': clinicId,
+        'p_id': id,
+        'p_name': name,
+        'p_active': active,
+      },
+    );
+  }
+
+  @override
+  Future<void> grantPermission(
+    String clinicId,
+    String userId,
+    String code,
+    String? procedureId,
+    DateTime until,
+    String reason,
+  ) async {
+    await client.rpc(
+      'permission_grant',
+      params: {
+        'p_clinic': clinicId,
+        'p_user': userId,
+        'p_code': code,
+        'p_procedure': procedureId,
+        'p_until': until.toUtc().toIso8601String(),
+        'p_reason': reason,
+      },
+    );
+  }
+
+  @override
+  Future<void> revokePermission(String grantId, String reason) async {
+    await client.rpc(
+      'permission_revoke',
+      params: {'p_id': grantId, 'p_reason': reason},
+    );
+  }
+
+  @override
+  Future<void> proposeResponsible(
+    String clinicId,
+    String userId,
+    DateTime until,
+  ) async {
+    await client.rpc(
+      'permission_responsible_propose',
+      params: {
+        'p_clinic': clinicId,
+        'p_user': userId,
+        'p_until': until.toUtc().toIso8601String(),
+      },
+    );
+  }
+
+  @override
+  Future<void> respondResponsible(String designationId, bool accept) async {
+    await client.rpc(
+      'permission_responsible_respond',
+      params: {'p_id': designationId, 'p_accept': accept},
+    );
+  }
+
+  @override
+  Future<void> revokeResponsible(String designationId) async {
+    await client.rpc(
+      'permission_responsible_revoke',
+      params: {'p_id': designationId},
+    );
+  }
+
+  @override
+  Future<void> reviewProfessional(
+    String clinicId,
+    String versionId,
+    DateTime reviewed,
+    String hash,
+    String reference,
+    DateTime until,
+  ) async {
+    await client.rpc(
+      'permission_professional_review',
+      params: {
+        'p_clinic': clinicId,
+        'p_version': versionId,
+        'p_reviewed': reviewed.toUtc().toIso8601String(),
+        'p_hash': hash,
+        'p_reference': reference,
+        'p_until': until.toUtc().toIso8601String(),
+      },
+    );
+  }
+
+  @override
+  Future<void> revokeProfessional(String verificationId, String reason) async {
+    await client.rpc(
+      'permission_professional_revoke',
+      params: {'p_id': verificationId, 'p_reason': reason},
     );
   }
 }

@@ -1,3 +1,5 @@
+import '../../permissions/domain/permission_repository.dart';
+import '../../permissions/presentation/permission_screen.dart';
 import '../domain/auth_repository.dart';
 import 'team_screen.dart';
 import '../../welcome/presentation/product_screen.dart';
@@ -350,6 +352,24 @@ class _ClinicAccountScreenState extends State<ClinicAccountScreen> {
                     ? const Icon(Icons.check_circle_outline)
                     : null,
                 onTap: model.busy ? null : () => model.selectClinic(member),
+              ),
+            if (!model.offline &&
+                model.active != null &&
+                model.repository is PermissionRepository)
+              OutlinedButton.icon(
+                onPressed: model.busy
+                    ? null
+                    : () => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => PermissionScreen(
+                            model: model,
+                            clinic: model.active!,
+                          ),
+                        ),
+                      ),
+                icon: const Icon(Icons.verified_user_outlined),
+                label: const Text('Permisos y habilitación'),
               ),
             if (!model.offline &&
                 model.active?.role == ClinicRole.admin &&
