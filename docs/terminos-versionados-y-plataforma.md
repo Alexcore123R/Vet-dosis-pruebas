@@ -69,3 +69,11 @@ Comprobación adicional de concurrencia local: dos sesiones PostgreSQL confirman
 La prueba adicional de concurrencia pasó también en Actions: https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38839432317. La acción remota fue `inspect`: confirmó ambas API instaladas y beta cerrada, sin aplicar SQL ni reimportar el borrador. No se prueban sesiones Auth reales mediante las fixtures PostgreSQL.
 
 APK finalizado correctamente en el flujo 38838577172: identidad, versión y firma de ambos APK verificadas, artefacto `vetdosis-pruebas-apks` publicado y registro de publicación correcto. Instalar como actualización del APK beta existente. La cuenta de plataforma con 2FA dispone de «Habilitaciones profesionales globales». La pantalla de aceptación muestra solo textos publicados; los borradores de Drive todavía no aparecen como condiciones vigentes.
+# Revisión editorial de los documentos — 16 de octubre de 2026
+
+Se editaron en sus Google Docs originales los términos y el aviso de privacidad, conservando los datos de contacto aportados por la responsable. Las copias `docs/legal/*-v1-drive.json` contienen el texto leído después de editar, con revisión de origen. `source_modified_at` queda nulo porque la lectura de Docs no proporciona esa fecha; `source_read_at` identifica la comprobación, no la modificación.
+
+Se eliminó el borrado automático a los 30 días, se precisaron los plazos de beta y build y la aceptación sin renovación, y se ajustaron los datos y funciones descritos al instalador actual. Ambos siguen siendo borradores de versión 1. Esta revisión no publica textos, no modifica aceptaciones y no abre la beta. El borrador del servidor debe sincronizarse antes de cualquier publicación; el aviso de privacidad todavía no está integrado como pantalla de aceptación.
+
+Validación: lectura posterior de ambos Docs, coincidencia de todas las sustituciones, ausencia de campos entre corchetes y 27 pruebas Python del operador satisfactorias. Los mensajes de estado de esas pruebas son simulaciones, no inspecciones del servidor.
+
