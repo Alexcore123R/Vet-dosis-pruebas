@@ -25,7 +25,11 @@ create table private.clinical_scope_revocations (
 -- Historical case authorizations remain readable history, not new-model authority.
 alter table public.person_procedure_authorizations
  add column authority_grant_id uuid references private.member_permission_grants(id),
- add column scope_binding_id uuid references private.clinical_scope_bindings(id);
+ add column scope_binding_id uuid references private.clinical_scope_bindings(id),
+ add column member_since timestamptz,
+ add constraint clinical_authority_metadata check(
+  (authority_grant_id is null and scope_binding_id is null and member_since is null) or
+  (authority_grant_id is not null and scope_binding_id is not null and member_since is not null));
 do $$declare t text;begin
  foreach t in array array['clinical_scope_bindings','clinical_scope_revocations'] loop
  execute format('alter table private.%I enable row level security',t);
@@ -76,7 +80,7 @@ declare b private.clinical_scope_bindings;g uuid;begin
  if g is null or not exists(select 1 from private.member_permission_grants where member_permission_grants.id=g and granted_at<=p_observed and valid_until>clock_timestamp() and valid_until>p_observed)
  or b.created_at>p_observed then raise exception 'explicit_procedure_permission_required';end if;
  if b.professional_required and not (private.clinical_professional_at(c.clinic_id,p_person,clock_timestamp()) and private.clinical_professional_at(c.clinic_id,p_person,p_observed)) then raise exception 'verified_professional_required';end if;
- if not exists(select 1 from public.person_procedure_authorizations a where a.case_id=c.id and a.clinic_id=c.clinic_id and a.person_id=p_person and a.scope=p_scope and a.scope_binding_id=b.id and a.authority_grant_id is not null
+ if not exists(select 1 from public.person_procedure_authorizations a where a.case_id=c.id and a.clinic_id=c.clinic_id and a.person_id=p_person and a.scope=p_scope and a.scope_binding_id=b.id and a.authority_grant_id is not null and exists(select 1 from public.clinic_members m where m.clinic_id=c.clinic_id and m.user_id=a.person_id and m.created_at=a.member_since)
  and a.created_at<=p_observed and a.valid_until>p_observed and a.valid_until>clock_timestamp()
  and not exists(select 1 from public.person_procedure_revocations r where r.authorization_id=a.id)) then raise exception 'case_authorization_required';end if;
  return jsonb_build_object('binding_id',b.id,'procedure_id',b.procedure_id,'permission_grant_id',g);
@@ -88,7 +92,7 @@ declare b private.clinical_scope_bindings;begin
  and private.permission_effective(c.clinic_id,person,'procedure.perform',b.procedure_id) is not null
  and (not b.professional_required or (private.clinical_professional_at(c.clinic_id,person,clock_timestamp()) and private.clinical_professional_at(c.clinic_id,person,at_time)))
  and exists(select 1 from private.member_permission_grants g where g.id=private.permission_effective(c.clinic_id,person,'procedure.perform',b.procedure_id) and g.granted_at<=at_time and g.valid_until>clock_timestamp() and g.valid_until>at_time)
- and exists(select 1 from public.person_procedure_authorizations a where a.case_id=c.id and a.person_id=person and a.scope=$3 and a.scope_binding_id=b.id and a.authority_grant_id is not null and a.created_at<=at_time and a.valid_until>at_time and a.valid_until>statement_timestamp() and not exists(select 1 from public.person_procedure_revocations r where r.authorization_id=a.id));
+ and exists(select 1 from public.person_procedure_authorizations a where a.case_id=c.id and a.person_id=person and a.scope=$3 and a.scope_binding_id=b.id and a.authority_grant_id is not null and exists(select 1 from public.clinic_members m where m.clinic_id=c.clinic_id and m.user_id=a.person_id and m.created_at=a.member_since) and a.created_at<=at_time and a.valid_until>at_time and a.valid_until>statement_timestamp() and not exists(select 1 from public.person_procedure_revocations r where r.authorization_id=a.id));
 end$$;
 create or replace function private.clinical_write_check(c public.clinical_cases,scope text,performer uuid,observed timestamptz) returns void language plpgsql security definer set search_path='' as $$begin
  if performer is distinct from auth.uid() then raise exception 'own_act_only';end if;
@@ -187,10 +191,12 @@ begin
  if c.responsible_id is distinct from auth.uid() or not private.clinical_professional_at(c.clinic_id,auth.uid(),clock_timestamp()) then raise exception 'responsible_mvz_required';end if;
  binding=private.clinical_binding(c.id,p_scope);
  if not private.clinical_readable(c) or binding.id is null then raise exception 'clinical_scope_mapping_required';end if;
+ perform 1 from public.clinic_members m where m.clinic_id=c.clinic_id and m.user_id=p_person for share;
+ if not found then raise exception 'invalid_authorization';end if;
  until_at=private.clinical_time(p_until);
  if until_at<=clock_timestamp() or not exists(select 1 from public.clinic_members where clinic_id=c.clinic_id and user_id=p_person) then raise exception 'invalid_authorization';end if;
  fp=jsonb_build_object('kind','clinical_grant','case',p_case,'person',p_person,'scope',p_scope,'until',p_until);id=private.vet_receipt(c.clinic_id,p_operation,fp);if id is not null then return id;end if;
- insert into public.person_procedure_authorizations(clinic_id,case_id,person_id,scope,valid_until,granted_by,authority_grant_id,scope_binding_id) values(c.clinic_id,c.id,p_person,p_scope,until_at,auth.uid(),authority_id,binding.id) returning person_procedure_authorizations.id into id;
+ insert into public.person_procedure_authorizations(clinic_id,case_id,person_id,scope,valid_until,granted_by,authority_grant_id,scope_binding_id,member_since) values(c.clinic_id,c.id,p_person,p_scope,until_at,auth.uid(),authority_id,binding.id,(select m.created_at from public.clinic_members m where m.clinic_id=c.clinic_id and m.user_id=p_person)) returning person_procedure_authorizations.id into id;
  insert into private.vet_operation_receipts values(auth.uid(),c.clinic_id,p_operation,fp,id);
  insert into public.audit_log(clinic_id,actor_id,action,entity_id) values(c.clinic_id,auth.uid(),'clinical_procedure_authorized',id);return id;
 end $$;

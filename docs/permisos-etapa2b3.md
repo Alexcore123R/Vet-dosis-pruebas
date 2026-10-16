@@ -10,7 +10,7 @@ Estado: candidato SQL local, no desplegado. Amplía el esquema aprobado: requier
 | Código `clinical.authorize` | Autorizar configuración y concesiones del caso; exige evidencia profesional vigente y ser responsable de ese caso, además de la concesión explícita |
 | `private.clinical_scope_bindings` | Relacionar caso y alcance técnico existente con un tipo de procedimiento de esa clínica, condición profesional, referencia de política, autor y hora |
 | `private.clinical_scope_revocations` | Sustituir la relación mediante registros anexados; no borrar ni sobrescribir decisiones anteriores |
-| Dos columnas en `person_procedure_authorizations` | Conservar qué concesión autorizó al responsable y con qué relación de alcance se concedió la autorización del caso |
+| Tres columnas en `person_procedure_authorizations` | Conservar qué concesión autorizó al responsable y con qué relación de alcance y membresía se concedió la autorización del caso |
 | Bloqueo de identidad profesional | Serializar actuaciones con nuevas revisiones, revocaciones e identidad capturada, sin privilegios nuevos para el cliente |
 
 Las autorizaciones históricas conservan sus campos nuevos en NULL y no habilitan actos en el nuevo modelo. No se convierten roles, asignaciones, puestos ni cédulas capturadas en evidencia verificada. No se crean tipos, relaciones, concesiones o verificaciones reales de ejemplo.
@@ -29,7 +29,7 @@ Esta es una restricción de acceso propuesta para el piloto, no una declaración
 - La auditoría identifica concesión, relación y procedimiento utilizados. El autor y las horas de servidor originales se conservan. Se comprueba autoridad antes de devolver recibos de reintento.
 - Una corrección de medición exige responsable habilitado con permiso de autorización, motivo y permiso de actuación. Se anexa, manteniendo el valor y autor del original. El timeline mantiene el filtro previo para valores sustituidos.
 - Configurar el alcance exige responsable del caso, lectura y `clinical.authorize`. Repetir exactamente la misma configuración devuelve su ID sin invalidar autorizaciones. Cambiarla anexa la sustitución y requiere autorizar de nuevo el caso bajo la relación nueva.
-- Las autorizaciones por caso se crean/revocan sin atajos de rol, bajo el permiso profesional correspondiente.
+- Las autorizaciones por caso se crean/revocan sin atajos de rol, bajo el permiso profesional correspondiente. Quedan ligadas a la fecha de membresía: salir y reingresar no reactiva la autorización del caso.
 - La ruta libre `add_vet_patient_event` queda cerrada en el candidato: no posee un tipo de procedimiento estructurado y no se le atribuye uno automáticamente. SOAP, alergias, preventivos y consentimientos de esa ruta requieren un flujo adaptado antes de desplegar. Sus registros históricos no se alteran.
 
 Los alcances técnicos provienen del esquema existente. No se copian dosis, normas, retiros ni referencias clínicas del prototipo.

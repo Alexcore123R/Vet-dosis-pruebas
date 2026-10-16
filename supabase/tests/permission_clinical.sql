@@ -69,6 +69,16 @@ select pg_temp.assert_true(:'observation'=:'retry','retry duplicated observation
 select pg_temp.expect_error($q$select public.clinical_observation_add(current_setting('test.case')::uuid,current_setting('test.data')::jsonb||jsonb_build_object('performed_by','00000000-0000-0000-0000-000000000111'),repeat('d',48))$q$,'own_act_only');
 select pg_temp.expect_error($q$select public.add_vet_patient_event(current_setting('test.clinic')::uuid,null,'weight','{}',repeat('e',48))$q$,'structured_clinical_record_required');
 reset role;
+-- Fresh operational grants after leaving/rejoining cannot revive the old case decision.
+select pg_temp.assert_true(private.clinical_eligible((select c from public.clinical_cases c where c.id=:'case_id'),auth.uid(),'observaciones',clock_timestamp()),'synthetic authorization was not active');
+delete from public.clinic_members where clinic_id=:'clinic' and user_id='00000000-0000-0000-0000-000000000112';
+insert into public.clinic_members(clinic_id,user_id,role,created_at) values(:'clinic','00000000-0000-0000-0000-000000000112','auxiliar',clock_timestamp());
+insert into private.member_permission_grants(clinic_id,user_id,member_since,code,procedure_id,granted_by,valid_until,reason)
+select m.clinic_id,m.user_id,m.created_at,g.code,g.procedure_id,'00000000-0000-0000-0000-000000000110',clock_timestamp()+interval '1 day','Synthetic explicit regrant after rejoin'
+from public.clinic_members m join private.member_permission_grants g on g.clinic_id=m.clinic_id and g.user_id=m.user_id
+where m.clinic_id=:'clinic' and m.user_id='00000000-0000-0000-0000-000000000112' and g.member_since<>m.created_at;
+select pg_temp.assert_true(private.permission_effective(:'clinic',auth.uid(),'procedure.perform',:'procedure') is not null,'synthetic new operational grant missing');
+select pg_temp.assert_true(not private.clinical_eligible((select c from public.clinical_cases c where c.id=:'case_id'),auth.uid(),'observaciones',clock_timestamp()),'old case decision revived after rejoin');
 -- A legacy case authorization is retained but cannot replace reviewed metadata.
 insert into public.person_procedure_authorizations(clinic_id,case_id,person_id,scope,valid_until,granted_by)
 values(:'clinic',:'case_id','00000000-0000-0000-0000-000000000112','observaciones',clock_timestamp()+interval '1 day','00000000-0000-0000-0000-000000000110');
