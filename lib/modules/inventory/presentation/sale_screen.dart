@@ -12,6 +12,16 @@ String inventoryError(Object error) {
   if (planMessage != null) return planMessage;
   final text = error.toString();
   const messages = {
+    'verified_dispensing_permission_required':
+        'Dispensar requiere MVZ habilitado y permiso vigente; cobrar una entrega ya registrada es un acto separado.',
+    'dispensing_limit_reauthorization_required':
+        'El MVZ responsable debe revisar y autorizar nuevamente la cantidad; el límite histórico no concede autoridad.',
+    'dispensing_limit_authority_changed':
+        'La autorización de cantidad perdió vigencia. Actualiza y solicita revisión del MVZ responsable.',
+    'legacy_delivery_delegation_disabled':
+        'Las delegaciones antiguas no habilitan dispensación. Se requiere habilitación profesional y permiso por persona.',
+    'controlled_or_unverified_stock_adjustment_denied':
+        'Este producto controlado o sin clasificación verificada no admite ajustes libres.',
     'dispensing_quantity_authorization_required':
         'El MVZ responsable debe autorizar la cantidad total de stock a dispensar para esta receta.',
     'dispensing_authorized_quantity_exceeded':

@@ -4,7 +4,8 @@ import '../../patients/presentation/patient_view_model.dart'
     show newOperationId;
 import '../domain/inventory_repository.dart';
 
-class SupabaseInventoryRepository implements InventoryRepository {
+class SupabaseInventoryRepository
+    implements InventoryRepository, DispensingPermissionRepository {
   SupabaseInventoryRepository(this.client);
   final SupabaseClient client;
   static const reads = {
@@ -39,6 +40,22 @@ class SupabaseInventoryRepository implements InventoryRepository {
     'inv_order_approve',
     'inv_vial_link',
   };
+  @override
+  Future<Map<String, dynamic>?> dispensingPermissions(String clinic) async {
+    try {
+      return Map<String, dynamic>.from(
+        await client.rpc(
+              'inv_dispensing_permissions',
+              params: {'p_clinic': clinic},
+            )
+            as Map,
+      );
+    } on PostgrestException catch (e) {
+      if (e.code == 'PGRST202' || e.code == '42883') return null;
+      rethrow;
+    }
+  }
+
   @override
   Future<dynamic> read(String command, Map<String, dynamic> args) {
     if (!reads.contains(command)) throw ArgumentError('Consulta no disponible');

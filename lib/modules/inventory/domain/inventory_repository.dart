@@ -12,3 +12,7 @@ abstract interface class InventoryRepository {
   );
   Future<String> photoUrl(String path);
 }
+
+abstract interface class DispensingPermissionRepository {
+  Future<Map<String, dynamic>?> dispensingPermissions(String clinic);
+}

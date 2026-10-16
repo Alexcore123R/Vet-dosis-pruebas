@@ -102,3 +102,10 @@ jobs:
         run: npm ci --prefix supabase
       - name: Probar autorización temporal, aceptación, revisión posterior y concurrencia
         run: bash supabase/tests/run_prescription_standing.sh
+  dispensing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar dispensación por permiso, cobro separado y concurrencia
+        run: bash supabase/tests/run_permission_dispensing.sh

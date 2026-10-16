@@ -61,3 +61,7 @@ Se revisó preparación → PDF → emisión y delegaciones: [hallazgos, esquema
 ## Avance 2B-9, 16-oct-2026
 
 El [candidato 13H2](../permisos-etapa2b9-recetas.md) conecta firma de consulta con preparación, autorización **individual**, PDF y emisión; incluye Flutter, corrección previa a emisión y guardas de artefactos. Sustituye la limitación de conexión descrita en 2B-8. No desplegado. Autorización permanente, dispensación, reportes, formatos y demás filas siguen pendientes: no declarar completo el corte de recetas ni abrir beta.
+
+## Avance 2B-10 y 2B-11, 16-oct-2026
+
+[13H3](../permisos-etapa2b10-a-cargo.md) añade autorización temporal de recetas ordinarias para casos seleccionados, aceptación y revisión posterior, sin compartir firma ni autorizar controlados. [13I1](../permisos-etapa2b11-dispensacion.md) sustituye la autoridad de dispensación física y cantidades; conserva cobro separado. Ambos son candidatos locales. Las referencias antiguas a autorización temporal pendiente describen el cierre previo a H3. La gestión completa de inventario/caja y lecturas aún requiere 13I2; no marcar terminada esa fila ni abrir beta.

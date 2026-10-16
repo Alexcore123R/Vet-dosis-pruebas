@@ -23,6 +23,17 @@ class InventoryWorkflowScreen extends StatefulWidget {
 class _InventoryWorkflowScreenState extends State<InventoryWorkflowScreen> {
   Map<String, dynamic>? data;
   String? error;
+  int _generation = 0;
+  bool loading = false;
+  bool dispensingKnown = false;
+  Map<String, dynamic>? dispensing;
+  bool get canDispense =>
+      !loading &&
+      error == null &&
+      (dispensingKnown
+          ? (dispensing?['can_dispense'] == true)
+          : widget.dashboard['professional'] == true);
+
   List<Map<String, dynamic>> rows(String key) => (data?[key] as List? ?? [])
       .map((x) => Map<String, dynamic>.from(x))
       .toList();
@@ -32,20 +43,60 @@ class _InventoryWorkflowScreenState extends State<InventoryWorkflowScreen> {
     load();
   }
 
+  @override
+  void didUpdateWidget(covariant InventoryWorkflowScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.member.userId != widget.member.userId ||
+        oldWidget.member.clinicId != widget.member.clinicId ||
+        oldWidget.repository != widget.repository) {
+      data = null;
+      dispensing = null;
+      dispensingKnown = false;
+      load();
+    }
+  }
+
+  @override
+  void dispose() {
+    _generation++;
+    super.dispose();
+  }
+
   Future<void> load() async {
+    final generation = ++_generation;
+    setState(() => loading = true);
     try {
+      final repo = widget.repository;
+      final permissions = repo is DispensingPermissionRepository
+          ? await (repo as DispensingPermissionRepository)
+                .dispensingPermissions(widget.member.clinicId)
+          : null;
+      if (!mounted || generation != _generation) return;
+      if (permissions != null) {
+        dispensingKnown = true;
+        if (permissions['schema_version'] != 1 ||
+            permissions['mode'] != 'verified_dispensing') {
+          throw StateError('unknown_dispensing_contract');
+        }
+      } else if (dispensingKnown) {
+        throw StateError('dispensing_contract_lost');
+      }
       final d = await widget.repository.read('inv_workflow_dashboard', {
         'p_clinic': widget.member.clinicId,
       });
-      if (mounted) {
+      if (mounted && generation == _generation) {
         setState(() {
+          loading = false;
+          dispensing = permissions;
           data = Map<String, dynamic>.from(d);
           error = null;
         });
       }
     } catch (_) {
-      if (mounted) {
+      if (mounted && generation == _generation) {
         setState(() {
+          loading = false;
+          dispensing = null;
           data = null;
           error = 'No se pudo cargar el flujo de entregas y aplicaciones.';
         });
@@ -159,12 +210,16 @@ class _InventoryWorkflowScreenState extends State<InventoryWorkflowScreen> {
     (d, op) => {'p_id': g['id'], 'p_reason': d['reason'], 'p_operation': op},
   );
   Future<void> deliver() async {
+    if (!canDispense) {
+      throw StateError('verified_dispensing_permission_required');
+    }
     final items = await widget.repository.read('inv_delivery_items', {
       'p_clinic': widget.member.clinicId,
     });
     if (!mounted) return;
     final prescriptions = <Map>[
-      ...(widget.dashboard['prescription_items'] as List? ?? []).cast<Map>(),
+      if (!dispensingKnown)
+        ...(widget.dashboard['prescription_items'] as List? ?? []).cast<Map>(),
       ...(items as List).cast<Map>(),
     ];
     final unique = {
@@ -222,6 +277,10 @@ class _InventoryWorkflowScreenState extends State<InventoryWorkflowScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (dispensingKnown)
+            const Text(
+              'La entrega de medicamentos sujetos a receta requiere MVZ habilitado y permiso vigente. Las delegaciones antiguas no conceden ese permiso.',
+            ),
           const Text(
             'Una receta puede tener varias aplicaciones. Cada administración se registra en el expediente, descuenta su volumen del frasco y genera su propio cargo. Cobrar no equivale a prescribir, administrar ni dispensar.',
           ),
@@ -232,21 +291,22 @@ class _InventoryWorkflowScreenState extends State<InventoryWorkflowScreen> {
               onPressed: tariff,
               child: const Text('Configurar precio por aplicación'),
             ),
-          if (widget.dashboard['professional'] == true)
+          if (!dispensingKnown && widget.dashboard['professional'] == true)
             TextButton(
               onPressed: grant,
               child: const Text('Delegar entrega ordinaria'),
             ),
-          TextButton(
-            onPressed: () async {
-              try {
-                await deliver();
-              } catch (e) {
-                if (mounted) setState(() => error = inventoryError(e));
-              }
-            },
-            child: const Text('Registrar entrega física'),
-          ),
+          if (canDispense)
+            TextButton(
+              onPressed: () async {
+                try {
+                  await deliver();
+                } catch (e) {
+                  if (mounted) setState(() => error = inventoryError(e));
+                }
+              },
+              child: const Text('Registrar entrega física'),
+            ),
           for (final g in rows('grants'))
             ListTile(
               title: Text('Entrega ordinaria · ${g['recipient_id']}'),

@@ -37,7 +37,7 @@ class InventoryScreen extends StatefulWidget {
 }
 
 class _InventoryScreenState extends State<InventoryScreen> {
-  late final InventoryViewModel model;
+  late InventoryViewModel model;
   final searchController = TextEditingController();
   String section = 'stock', filter = 'todos', search = '';
   @override
@@ -48,6 +48,22 @@ class _InventoryScreenState extends State<InventoryScreen> {
     searchController.text = search;
     model = InventoryViewModel(widget.repository, widget.member);
     model.load();
+  }
+
+  @override
+  void didUpdateWidget(covariant InventoryScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.member.userId != widget.member.userId ||
+        oldWidget.member.clinicId != widget.member.clinicId ||
+        oldWidget.repository != widget.repository) {
+      model.dispose();
+      model = InventoryViewModel(widget.repository, widget.member);
+      section = widget.initialSection;
+      search = widget.initialSearch;
+      filter = 'todos';
+      searchController.text = search;
+      model.load();
+    }
   }
 
   @override
@@ -387,7 +403,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
           builder: (_) => SaleScreen(
             repository: widget.repository,
             shift: model.ownShift!['id'],
-            products: model.products,
+            products: model.dispensingKnown && !model.canDispense
+                ? model.products
+                      .where((p) => p['m8_kind'] != 'farmaco')
+                      .toList()
+                : model.products,
             prescriptions: model.rows('prescription_items'),
             staff: model.rows('staff'),
             charges: (workflow['charges'] as List? ?? [])
@@ -615,6 +635,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
       const RxField('reason', 'Motivo y revisión de unidades', required: true),
     ],
     (d, op) async {
+      if (!model.canAuthorizeDispensing) {
+        throw StateError('verified_dispensing_permission_required');
+      }
       await widget.repository.write('inv_dispensing_authorize', {
         'p_item': d['item'],
         'p_rx': d['rx'],
@@ -849,7 +872,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       onPressed: linkVial,
                       child: const Text('Vincular frasco abierto'),
                     ),
-                  if (model.dashboard?['professional'] == true)
+                  if (model.canAuthorizeDispensing)
                     TextButton(
                       onPressed: authorizeDispensing,
                       child: const Text('Autorizar cantidad de receta'),
