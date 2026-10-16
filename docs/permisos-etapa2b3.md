@@ -1,6 +1,6 @@
 # Propuesta 2B-3: expediente y actuaciones clínicas
 
-Estado: candidato SQL local, no desplegado. Amplía el esquema aprobado: requiere revisar los puntos siguientes antes de su incorporación al corte remoto coordinado. No publica un APK ni abre beta. No acredita el fin de la migración clínica.
+Estado: candidato SQL probado, aprobado por la propietaria para incorporarlo al corte coordinado; no desplegado. La aprobación se recibió en esta conversación después de presentar la propuesta 13C y su restricción conservadora de actos. No autoriza desplegar este archivo aisladamente, publicar un APK ni abrir beta. No acredita el fin de la migración clínica.
 
 ## Esquema para revisión
 
@@ -54,4 +54,4 @@ Casos: admin sin lectura denegado; MVZ sin evidencia no obtiene autoridad; profe
 
 Resultado SQL local satisfactorio, incluida revocación profesional concurrente y no reactivación de la autorización del caso tras reingresar con permisos operativos nuevos. GitHub: [ejecución 38869137594](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38869137594), commit `b1e745e`, satisfactoria en los tres trabajos de pacientes, agenda y expediente. Solo PostgreSQL aislado, sin secretos ni conexión al Supabase remoto.
 
-No hay cambios Flutter en este bloque: las 264 pruebas previas no se presentan como validación de una UI clínica nueva. La ampliación de esquema y la restricción conservadora de actos requieren revisión de la propietaria antes de incorporarlas a un despliegue coordinado.
+No hay cambios Flutter en este bloque: las 264 pruebas previas no se presentan como validación de una UI clínica nueva. La ampliación de esquema y la restricción conservadora de actos quedaron aprobadas para el corte coordinado. Continúan pendientes la integración de UI, captura estructurada, módulos dependientes y pruebas Auth reales antes de preparar ese despliegue.
