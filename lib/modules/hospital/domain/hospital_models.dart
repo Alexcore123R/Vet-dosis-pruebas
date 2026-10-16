@@ -20,6 +20,7 @@ class HospitalStay {
     required this.version,
   });
   final String id, clinicId, patientId, patientName, species, cage;
+  String get cageLabel => cage.trim().isEmpty ? 'Sin asignar' : cage;
   final DateTime admittedAt;
   final int version;
   factory HospitalStay.read(Map<String, dynamic> m) {
@@ -30,7 +31,7 @@ class HospitalStay {
       patientId: m['patient_id'] as String,
       patientName: patient['name'] as String,
       species: patient['species'] as String,
-      cage: m['cage'] as String,
+      cage: m['cage'] as String? ?? '',
       admittedAt: DateTime.parse(m['admitted_at'] as String),
       version: m['version'] as int,
     );
@@ -102,7 +103,15 @@ class HospitalTask {
 }
 
 class HospitalSnapshot {
-  const HospitalSnapshot(this.stays, this.tasks);
+  const HospitalSnapshot(
+    this.stays,
+    this.tasks, {
+    this.optionalCage = false,
+    this.cageChanges = false,
+    this.permissions,
+  });
+  final bool optionalCage, cageChanges;
+  final Map<String, dynamic>? permissions;
   final List<HospitalStay> stays;
   final List<HospitalTask> tasks;
 }
@@ -124,9 +133,9 @@ List<DateTime> validateSchedule(List<DateTime> times, {required DateTime now}) {
   return List.unmodifiable(sorted);
 }
 
-String hospitalText(String value, {int max = 300}) {
+String hospitalText(String value, {int max = 300, bool allowEmpty = false}) {
   final t = value.trim();
-  if (t.isEmpty || t.length > max) {
+  if ((!allowEmpty && t.isEmpty) || t.length > max) {
     throw const FormatException(
       'Completa los campos y respeta su longitud máxima.',
     );

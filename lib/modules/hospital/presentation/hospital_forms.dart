@@ -10,7 +10,9 @@ class HospitalAdmitForm extends StatefulWidget {
     super.key,
     required this.patients,
     required this.save,
+    this.optionalCage = false,
   });
+  final bool optionalCage;
   final List<VetPatient> patients;
   final Future<bool> Function(String, String, String) save;
   @override
@@ -46,7 +48,11 @@ class _HospitalAdmitFormState extends State<HospitalAdmitForm> {
       if (patientId == null) {
         throw const FormatException('Selecciona el paciente.');
       }
-      final label = hospitalText(cage.text, max: 80);
+      final label = hospitalText(
+        cage.text,
+        max: 80,
+        allowEmpty: widget.optionalCage,
+      );
       final fp = jsonEncode([patientId, label]);
       if (attempted != null && attempted != fp) operationId = newOperationId();
       attempted = fp;
@@ -95,8 +101,13 @@ class _HospitalAdmitFormState extends State<HospitalAdmitForm> {
           TextField(
             controller: cage,
             enabled: !busy,
-            decoration: const InputDecoration(
-              labelText: 'Jaula / box',
+            decoration: InputDecoration(
+              labelText: widget.optionalCage
+                  ? 'Jaula / box (opcional)'
+                  : 'Jaula / box',
+              helperText: widget.optionalCage
+                  ? 'Puedes asignarla o cambiarla después.'
+                  : null,
               border: OutlineInputBorder(),
             ),
           ),
@@ -352,6 +363,95 @@ class _HospitalOrderFormState extends State<HospitalOrderForm> {
           FilledButton(
             onPressed: busy ? null : save,
             child: const Text('Guardar indicación'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class HospitalCageForm extends StatefulWidget {
+  const HospitalCageForm({super.key, required this.stay, required this.save});
+  final HospitalStay stay;
+  final Future<bool> Function(String, String, String) save;
+  @override
+  State<HospitalCageForm> createState() => _HospitalCageFormState();
+}
+
+class _HospitalCageFormState extends State<HospitalCageForm> {
+  final exit = FormExitController();
+  late final cage = TextEditingController(text: widget.stay.cage);
+  final reason = TextEditingController();
+  bool busy = false;
+  String? error, attempted;
+  String operation = newOperationId();
+  @override
+  void dispose() {
+    exit.dispose();
+    cage.dispose();
+    reason.dispose();
+    super.dispose();
+  }
+
+  Future<void> save() async {
+    if (busy) return;
+    setState(() => busy = true);
+    try {
+      final label = hospitalText(cage.text, max: 80, allowEmpty: true);
+      final note = hospitalText(reason.text, max: 1000, allowEmpty: true);
+      final fingerprint = jsonEncode([label, note]);
+      if (attempted != null && attempted != fingerprint) {
+        operation = newOperationId();
+      }
+      attempted = fingerprint;
+      final ok = await widget.save(label, note, operation);
+      if (!mounted) return;
+      if (ok) {
+        exit.close(context);
+        return;
+      }
+      setState(
+        () => error =
+            'No se pudo cambiar la jaula. Actualiza y revisa si está ocupada o cambió la estancia.',
+      );
+    } on FormatException catch (e) {
+      if (mounted) setState(() => error = e.message.toString());
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => UnsavedFormScope(
+    controller: exit,
+    dirty: cage.text != widget.stay.cage || reason.text.isNotEmpty,
+    busy: busy,
+    child: Scaffold(
+      appBar: AppBar(title: const Text('Cambiar jaula')),
+      body: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          Text(widget.stay.patientName),
+          Text('Ubicación actual: ${widget.stay.cageLabel}'),
+          TextField(
+            controller: cage,
+            enabled: !busy,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              labelText: 'Nueva jaula / box (opcional)',
+              helperText: 'Vacío deja la estancia sin jaula asignada.',
+            ),
+          ),
+          TextField(
+            controller: reason,
+            enabled: !busy,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(labelText: 'Motivo (opcional)'),
+          ),
+          if (error != null) Text(error!),
+          FilledButton(
+            onPressed: busy ? null : save,
+            child: const Text('Guardar ubicación'),
           ),
         ],
       ),

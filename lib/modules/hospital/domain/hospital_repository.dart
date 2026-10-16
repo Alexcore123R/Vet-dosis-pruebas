@@ -28,3 +28,14 @@ abstract interface class HospitalRepository {
   Future<void> cancel(String clinicId, HospitalTask task, String reason);
   Future<void> discharge(String clinicId, HospitalStay stay, String reason);
 }
+
+abstract interface class HospitalLocationRepository {
+  Future<void> moveCage(
+    String clinic,
+    HospitalStay stay,
+    String cage,
+    String reason,
+    String operation,
+  );
+  Future<List<Map<String, dynamic>>> cageHistory(String clinic, String stay);
+}

@@ -2,7 +2,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../domain/hospital_models.dart';
 import '../domain/hospital_repository.dart';
 
-class SupabaseHospitalRepository implements HospitalRepository {
+class SupabaseHospitalRepository
+    implements HospitalRepository, HospitalLocationRepository {
   SupabaseHospitalRepository(this.client);
   final SupabaseClient client;
   @override
@@ -17,6 +18,11 @@ class SupabaseHospitalRepository implements HospitalRepository {
       (raw['tasks'] as List)
           .map((r) => HospitalTask.read(Map<String, dynamic>.from(r as Map)))
           .toList(),
+      optionalCage: (raw['capabilities'] as Map?)?['optional_cage'] == true,
+      cageChanges: (raw['capabilities'] as Map?)?['cage_changes'] == true,
+      permissions: raw['permissions'] is Map
+          ? Map<String, dynamic>.from(raw['permissions'] as Map)
+          : null,
     );
   }
 
@@ -113,4 +119,38 @@ class SupabaseHospitalRepository implements HospitalRepository {
       },
     );
   }
+
+  @override
+  Future<void> moveCage(
+    String clinic,
+    HospitalStay stay,
+    String cage,
+    String reason,
+    String operation,
+  ) async {
+    await client.rpc(
+      'hospital_cage_set',
+      params: {
+        'p_clinic_id': clinic,
+        'p_stay_id': stay.id,
+        'p_version': stay.version,
+        'p_cage': cage,
+        'p_reason': reason,
+        'p_operation': operation,
+      },
+    );
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> cageHistory(
+    String clinic,
+    String stay,
+  ) async =>
+      (await client.rpc(
+                'hospital_cage_history',
+                params: {'p_clinic_id': clinic, 'p_stay_id': stay},
+              )
+              as List)
+          .map((row) => Map<String, dynamic>.from(row as Map))
+          .toList();
 }

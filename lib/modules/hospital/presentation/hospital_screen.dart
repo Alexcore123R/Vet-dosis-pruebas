@@ -42,6 +42,94 @@ class _HospitalScreenState extends State<HospitalScreen> {
     super.dispose();
   }
 
+  Future<void> moveCage(HospitalStay stay) async {
+    final repository = widget.repository as HospitalLocationRepository;
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => HospitalCageForm(
+          stay: stay,
+          save: (cage, reason, operation) => model.mutate(
+            () => repository.moveCage(
+              widget.member.clinicId,
+              stay,
+              cage,
+              reason,
+              operation,
+            ),
+            permission: 'hospital.manage',
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget cageHistoryTile(Map<String, dynamic> row) {
+    final details = row['details'] is Map ? row['details'] as Map : const {};
+    String label(Object? value) =>
+        value == null || value.toString().trim().isEmpty
+        ? 'Sin asignar'
+        : value.toString();
+    final changed = row['action'] == 'hospital_cage_changed';
+    final actor = row['actor_id']?.toString() ?? '';
+    final author = actor == widget.member.userId
+        ? 'Tú'
+        : actor.isEmpty
+        ? 'Autor no disponible'
+        : 'Integrante · ${actor.substring(0, actor.length < 8 ? actor.length : 8)}';
+    final instant = DateTime.tryParse(row['at']?.toString() ?? '')?.toLocal();
+    return ListTile(
+      title: Text(changed ? 'Cambio de jaula' : 'Ingreso'),
+      subtitle: Text(
+        '${instant ?? ''} · $author\n${changed
+            ? '${label(details['from'])} → ${label(details['to'])}'
+            : details.containsKey('cage')
+            ? label(details['cage'])
+            : 'Ubicación no registrada en este evento'}${details['reason'] == null ? '' : '\n${details['reason']}'}',
+      ),
+    );
+  }
+
+  Future<void> cageHistory(HospitalStay stay) async {
+    try {
+      final rows = await (widget.repository as HospitalLocationRepository)
+          .cageHistory(widget.member.clinicId, stay.id);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text('Ubicación · ${stay.patientName}'),
+          content: SizedBox(
+            width: 480,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (rows.isEmpty) const Text('Sin cambios registrados.'),
+                  for (final row in rows) cageHistoryTile(row),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo consultar el historial de ubicación.'),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> admit() async {
     try {
       final patients = await widget.patients.patients(widget.member.clinicId);
@@ -51,6 +139,7 @@ class _HospitalScreenState extends State<HospitalScreen> {
         MaterialPageRoute<void>(
           builder: (_) => HospitalAdmitForm(
             patients: patients,
+            optionalCage: model.snapshot.optionalCage,
             save: (patient, cage, op) => model.mutate(
               () => widget.repository.admit(
                 widget.member.clinicId,
@@ -59,6 +148,7 @@ class _HospitalScreenState extends State<HospitalScreen> {
                 op,
               ),
               physician: true,
+              permission: 'hospital.manage',
             ),
           ),
         ),
@@ -177,7 +267,7 @@ class _HospitalScreenState extends State<HospitalScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${stay.patientName} · Jaula ${stay.cage}\n${task.label}\n${task.instructions}\nHorario original: ${task.dueAt.toLocal()}',
+                '${stay.patientName} · Jaula ${stay.cageLabel}\n${task.label}\n${task.instructions}\nHorario original: ${task.dueAt.toLocal()}',
               ),
               CheckboxListTile(
                 title: const Text(
@@ -395,7 +485,7 @@ class _HospitalScreenState extends State<HospitalScreen> {
                   onPressed: widget.alerts.disable,
                   child: const Text('Desactivar avisos'),
                 ),
-              if (model.access.prescribe)
+              if (model.canManageAdmission)
                 FilledButton.icon(
                   onPressed: model.busy ? null : admit,
                   icon: const Icon(Icons.add),
@@ -482,7 +572,7 @@ class _HospitalScreenState extends State<HospitalScreen> {
                         Padding(
                           padding: const EdgeInsets.all(12),
                           child: Text(
-                            '${stay.patientName}\nJaula ${stay.cage}',
+                            '${stay.patientName}\nJaula ${stay.cageLabel}',
                           ),
                         ),
                         for (final h in hours)
@@ -510,10 +600,29 @@ class _HospitalScreenState extends State<HospitalScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'Jaula ${stay.cage} · ${stay.patientName}',
+                        'Jaula ${stay.cageLabel} · ${stay.patientName}',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       Text(stay.species),
+                      if (model.snapshot.cageChanges &&
+                          widget.repository is HospitalLocationRepository)
+                        Wrap(
+                          children: [
+                            if (model.canMoveCage)
+                              TextButton(
+                                onPressed: model.busy
+                                    ? null
+                                    : () => moveCage(stay),
+                                child: const Text('Cambiar jaula'),
+                              ),
+                            TextButton(
+                              onPressed: model.busy
+                                  ? null
+                                  : () => cageHistory(stay),
+                              child: const Text('Historial de ubicación'),
+                            ),
+                          ],
+                        ),
                       if (model.access.prescribe)
                         Wrap(
                           spacing: 8,

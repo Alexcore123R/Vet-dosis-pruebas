@@ -22,7 +22,13 @@ class HospitalViewModel extends ChangeNotifier {
   final DateTime Function() now;
   String get scope => '${member.userId}:${member.clinicId}:${member.role.name}';
   HospitalSnapshot snapshot = const HospitalSnapshot([], []);
-  bool busy = false, disposed = false;
+  bool busy = false, disposed = false, explicitPermissions = false;
+  bool get canManageAdmission => explicitPermissions
+      ? (snapshot.permissions?['hospital.manage'] == true &&
+            snapshot.permissions?['patient.read'] == true)
+      : access.prescribe;
+  bool get canMoveCage =>
+      explicitPermissions && snapshot.permissions?['hospital.manage'] == true;
   String? error, alarmError;
   Timer? _timer;
   void changed() {
@@ -44,13 +50,17 @@ class HospitalViewModel extends ChangeNotifier {
   }
 
   Future<void> refresh({bool retainError = false}) async {
-    if (disposed || busy || !access.clinical) return;
+    if (disposed || busy || (!explicitPermissions && !access.clinical)) return;
     busy = true;
     if (!retainError) error = null;
     changed();
     try {
       final result = await repository.load(member.clinicId);
       if (disposed) return;
+      if (explicitPermissions && result.permissions == null) {
+        throw StateError('permission_snapshot_missing');
+      }
+      if (result.permissions != null) explicitPermissions = true;
       snapshot = result;
       try {
         await alerts.reconcile(scope, result.tasks);
@@ -78,11 +88,12 @@ class HospitalViewModel extends ChangeNotifier {
   Future<bool> mutate(
     Future<void> Function() action, {
     bool physician = false,
+    String? permission,
   }) async {
-    if (disposed ||
-        busy ||
-        !access.clinical ||
-        (physician && !access.prescribe)) {
+    final permitted = explicitPermissions && permission != null
+        ? (snapshot.permissions?[permission] == true)
+        : access.clinical && (!physician || access.prescribe);
+    if (disposed || busy || !permitted) {
       return false;
     }
     busy = true;
