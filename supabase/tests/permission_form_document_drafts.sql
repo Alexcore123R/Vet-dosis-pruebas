@@ -79,13 +79,14 @@ rollback;
 -- authority; it is not reissued, rewritten or turned into a new attestation.
 reset role;
 insert into public.form_documents(clinic_id,patient_id,version_id,responsible_id,state,revision,values,branding,snapshot,content_hash,pdf_hash,accepted_at,created_by)
- select clinic_id,patient_id,version_id,responsible_id,'signed',1,values,branding,snapshot-'document_flow_version'-'draft_authority',repeat('a',64),encode(sha256(convert_to('%PDF-SYNTHETIC-ARCHIVE','UTF8')),'hex'),clock_timestamp(),created_by from public.form_documents where id=:'draft' returning id as archive,pdf_hash as archive_hash \gset
+ select clinic_id,patient_id,version_id,responsible_id,'signed',1,values,branding,(snapshot-'document_flow_version'-'draft_authority')||jsonb_build_object('mvz_signature','[[0.1,0.2],[0.3,0.5],[0.7,0.6],null]'::jsonb,'tutor_signature','[[0.1,0.2],[0.3,0.5],[0.7,0.6],null]'::jsonb),repeat('a',64),encode(sha256(convert_to('%PDF-SYNTHETIC-ARCHIVE','UTF8')),'hex'),clock_timestamp(),created_by from public.form_documents where id=:'draft' returning id as archive,pdf_hash as archive_hash \gset
 select set_config('test.archive',:'archive',false);
 insert into private.form_artifacts(document_id,revision,content_hash,pdf,pdf_hash,renderer_version)
  values(:'archive',1,repeat('a',64),convert_to('%PDF-SYNTHETIC-ARCHIVE','UTF8'),:'archive_hash','SYNTHETIC BOUNDARY FIXTURE ONLY');
 select pg_temp.expect_error($q$update public.form_documents set revision=2 where id=current_setting('test.archive')::uuid$q$,'signed_document_is_immutable');
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000170',false);set role authenticated;
 select pg_temp.assert_true(public.form_read_pdf(:'archive')->>'hash'=:'archive_hash','historical artifact lost');
+select pg_temp.assert_true(not(public.form_document_snapshot(:'archive')->'snapshot' ? 'mvz_signature') and not(public.form_document_snapshot(:'archive')->'snapshot' ? 'tutor_signature'),'signed scope lookup exposed raw signature vectors');
 select pg_temp.assert_true(not exists(select 1 from jsonb_array_elements(public.form_documents_list(:'clinic')) x where x->'snapshot' ? 'mvz_signature' or x->'snapshot' ? 'tutor_signature' or x->'snapshot' ? 'draft_authority'),'document list exposed signature/context');
 reset role;
 -- The focused clinical draft can be saved without SOAP/vitals or a published act.

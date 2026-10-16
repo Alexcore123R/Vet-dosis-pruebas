@@ -41,6 +41,8 @@ Las mutaciones antiguas de creación sin responsable explícito, preparación/fi
 
 Lectura de documentos exige lectura clínica/paciente y relación explícita como autor con preparación, responsable habilitado con autorización, o acceso clínico al caso publicado del documento firmado. No hay acceso automático de administrador. Listas omiten puntos de firma y contexto privado; tablas de documento solo permiten `id/clinic_id` para resolución de ámbito de Edge, y firmas no se leen directamente.
 
+La consulta de ámbito/snapshot de un histórico firmado devuelve datos seguros sin vectores de firma; Edge recupera el PDF existente y no lo vuelve a renderizar.
+
 Un documento histórico **ya firmado** conserva su artefacto original/hash y puede consultarse con autoridad actual de lectura. No se vuelve a emitir, no se cambia su firma y no se transforma en una atestación nueva. Los borradores antiguos necesitan el flujo nuevo; no se promueven por conversión automática.
 
 ## Decisiones y siguiente fase

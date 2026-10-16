@@ -161,7 +161,9 @@ create or replace function public.form_document_snapshot(p_id uuid) returns json
 declare d public.form_documents;begin
  select * into d from public.form_documents where id=p_id;
  if not found or not private.form_readable(d) or d.state<>'signed' then raise exception 'signed_document_access_required';end if;
- return to_jsonb(d);
+ -- Signed artifacts are read as their original PDF, never rerendered from
+ -- client-visible raw signature vectors. Edge can resolve state/scope safely.
+ return private.form_document_safe(d);
 end$$;
 create or replace function public.form_read_pdf(p_id uuid) returns jsonb language plpgsql stable security definer set search_path='' as $$
 declare d public.form_documents;a private.form_artifacts;begin
