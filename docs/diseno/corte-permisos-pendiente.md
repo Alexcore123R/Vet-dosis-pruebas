@@ -85,3 +85,7 @@ El [candidato 13H2](../permisos-etapa2b9-recetas.md) conecta firma de consulta c
 ## Avance 2B-16, 16-oct-2026
 
 [13J4](../permisos-etapa2b16-autorizacion-formatos.md) conecta atención/explicación firmada desde su propia cuenta, revisión individual del MVZ, tutor presencial, PDF exacto y permiso explícito de emisión. Sustituye las limitaciones de autorización/PDF de 13J3 en el contrato nuevo; no atribuye automáticamente procedimientos ni publica casos/observaciones desde formatos. Las pantallas clínicas antiguas y dependencias transversales aún requieren adaptación. Candidato local, sin despliegue ni apertura de beta.
+
+## Avance 2B-17, 16-oct-2026
+
+[13K](../permisos-etapa2b17-pantallas-clinicas.md) adapta las pantallas de casos existentes al contrato de acciones del servidor y a documentos firmados vinculados, sin depender del puesto ni publicar consultas/observaciones al emitir formatos. Incluye configuración explícita de ámbitos con los permisos existentes. No resuelve aún la creación de casos nuevos independientes del PDF ni constatación de muerte y rutas transversales pendientes. Sin despliegue ni apertura de beta.

@@ -15,6 +15,12 @@ class FormViewModel extends ChangeNotifier {
       (documentWorkspace?['responsibles'] as List? ?? [])
           .map((r) => Map<String, dynamic>.from(r))
           .toList();
+  bool get canOpenClinical {
+    if (busy || error != null) return false;
+    if (documentsKnown) return documentWorkspace?['can_read'] == true;
+    return access.clinical;
+  }
+
   bool canCreateDraft(FormTemplateVersion v) =>
       !busy &&
       error == null &&

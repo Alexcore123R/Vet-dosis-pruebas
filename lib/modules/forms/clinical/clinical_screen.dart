@@ -5,6 +5,7 @@ import '../../auth/domain/clinic_membership.dart';
 import '../../patients/presentation/patient_view_model.dart'
     show newOperationId;
 import '../domain/form_repository.dart';
+import '../../prescribing/presentation/rx_entry_screen.dart';
 import '../presentation/form_pdf_screen.dart';
 import 'clinical_models.dart';
 import 'clinical_repository.dart';
@@ -52,16 +53,20 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
     }
   }
 
-  Future<void> original(ClinicalCase c) async {
+  Future<void> original(
+    ClinicalCase c, {
+    String? documentId,
+    String? title,
+  }) async {
     try {
-      final pdf = await widget.forms.pdf(c.documentId);
+      final pdf = await widget.forms.pdf(documentId ?? c.documentId);
       if (!mounted) return;
       await Navigator.push(
         context,
         MaterialPageRoute<void>(
           builder: (_) => FormPdfScreen(
             pdf: pdf,
-            title: 'Documento clínico original',
+            title: title ?? 'Documento clínico original',
             signed: true,
           ),
         ),
@@ -73,6 +78,10 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
 
   Future<void> append(String mode, {Map<String, dynamic>? correction}) async {
     final c = model.selected!.caseData;
+    if (model.permissionsKnown) {
+      await appendPermitted(mode, correction: correction);
+      return;
+    }
     try {
       final staff = await widget.forms.staff(widget.member.clinicId);
       if (!mounted) return;
@@ -92,6 +101,200 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
       if (mounted) await model.load(caseId: c.id);
     } catch (_) {
       message('No se pudo abrir la captura.');
+    }
+  }
+
+  Future<void> appendPermitted(
+    String mode, {
+    Map<String, dynamic>? correction,
+  }) async {
+    final c = model.selected!.caseData;
+    await model.load(caseId: c.id);
+    if (!mounted) {
+      return;
+    }
+    final capability = mode == 'observation'
+        ? (correction == null ? 'observe' : 'correct')
+        : mode == 'grant'
+        ? 'authorize'
+        : mode == 'bind'
+        ? 'bind'
+        : 'act';
+    if (!model.can(capability)) {
+      message('La autorización cambió. Actualiza antes de continuar.');
+      return;
+    }
+    final observation = mode == 'observation',
+        grant = mode == 'grant',
+        binding = mode == 'bind';
+    final members = {
+      for (final r in model.rows('members'))
+        r['id'] as String: r['label'] as String,
+    };
+    final mapped = {
+      for (final r in model.rows('bindings'))
+        r['scope'] as String: clinicalScopes[r['scope']]!,
+    };
+    final fields = <RxField>[
+      if (observation && correction == null)
+        RxField(
+          'kind',
+          'Medición que realizaste',
+          type: 'select',
+          options: {
+            for (final e in observationNames.entries)
+              e.key: '${e.value} (${observationUnits[e.key]})',
+          },
+          required: true,
+        ),
+      if (observation)
+        RxField(
+          'value',
+          correction == null
+              ? 'Valor (unidad indicada por la medición)'
+              : 'Nuevo valor (${correction['unit']})',
+          required: true,
+        ),
+      if (!observation)
+        RxField(
+          'scope',
+          'Procedimiento',
+          type: 'select',
+          options: binding
+              ? clinicalScopes
+              : grant
+              ? mapped
+              : {
+                  for (final scope in model.actScopes)
+                    scope: clinicalScopes[scope]!,
+                },
+          required: true,
+        ),
+      if (grant)
+        RxField(
+          'person',
+          'Persona autorizada para este caso',
+          type: 'select',
+          options: members,
+          required: true,
+        ),
+      if (binding) ...[
+        RxField(
+          'procedure',
+          'Tipo de procedimiento configurado',
+          type: 'select',
+          options: {
+            for (final r in model.rows('procedures'))
+              r['id'] as String: r['name'] as String,
+          },
+          required: true,
+        ),
+        const RxField(
+          'professional',
+          'Habilitación profesional requerida',
+          type: 'select',
+          options: {'true': 'Sí', 'false': 'No (solo mediciones)'},
+          required: true,
+        ),
+        const RxField(
+          'source',
+          'Fuente de esta política de la clínica',
+          required: true,
+        ),
+        const RxField(
+          'reason',
+          'Motivo de la configuración o cambio',
+          required: true,
+        ),
+      ] else ...[
+        RxField(
+          'at',
+          grant
+              ? 'Vigente hasta'
+              : 'Fecha y hora reales de tu medición o actuación',
+          type: 'local_instant',
+          required: true,
+        ),
+        if (!grant)
+          RxField(
+            'notes',
+            observation
+                ? 'Observaciones (opcional)'
+                : 'Actuación que realizaste y hallazgos',
+            required: !observation,
+          ),
+      ],
+      if (correction != null)
+        const RxField('reason', 'Motivo de la corrección', required: true),
+    ];
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => RxEntryScreen(
+          title: binding
+              ? 'Configurar procedimiento'
+              : grant
+              ? 'Autorizar en este caso'
+              : observation
+              ? 'Anexar mi medición'
+              : 'Anexar mi actuación',
+          fields: fields,
+          reviewText: binding
+              ? 'Esta configuración no habilita personas ni concede permisos operativos. Cirugía, anestesia y evaluación conservan la política profesional vigente.'
+              : grant
+              ? 'Esta autorización se limita al caso y no concede habilitación profesional, permisos operativos, recetas ni controlados.'
+              : 'Se registra tu cuenta como quien realizó la entrada. Los campos no capturados permanecen vacíos; no se interpretan como normales.',
+          submit: (data, operation) async {
+            if (binding) {
+              await (widget.repository as ClinicalPermissionRepository)
+                  .bindScope(
+                    c.id,
+                    data['scope'],
+                    data['procedure'],
+                    data['professional'] == 'true',
+                    data['source'],
+                    data['reason'],
+                  );
+            } else if (grant) {
+              await widget.repository.authorize(
+                c.id,
+                data['person'],
+                data['scope'],
+                data['at'],
+                operation,
+              );
+            } else if (observation) {
+              final kind = correction?['kind'] ?? data['kind'];
+              await widget.repository.observation(
+                c.id,
+                validateObservation({
+                  'kind': kind,
+                  'value': data['value'],
+                  'unit': observationUnits[kind],
+                  'observed_at': data['at'],
+                  'performed_by': widget.member.userId,
+                  'notes': data['notes'] ?? '',
+                  if (correction != null) 'replaces_id': correction['id'],
+                  if (correction != null) 'correction_reason': data['reason'],
+                }),
+                operation,
+              );
+            } else {
+              await widget.repository.act(
+                c.id,
+                data['scope'],
+                data['notes'],
+                widget.member.userId,
+                data['at'],
+                operation,
+              );
+            }
+          },
+        ),
+      ),
+    );
+    if (mounted) {
+      await model.load(caseId: c.id);
     }
   }
 
@@ -139,7 +342,7 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
           padding: const EdgeInsets.all(20),
           children: [
             const Text(
-              'El PDF original conserva la versión revisada por el MVZ. Mediciones y actuaciones posteriores se anexan; no modifican ese archivo. ASA y EKG son capturas profesionales, sin interpretación automática.',
+              'Los documentos firmados conservan su versión original. Mediciones y actuaciones se registran por separado y se anexan al caso. ASA y EKG son capturas profesionales, sin interpretación automática.',
             ),
             OutlinedButton.icon(
               onPressed: model.busy
@@ -151,8 +354,10 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
             if (model.busy) const LinearProgressIndicator(),
             if (model.error != null) Text(model.error!),
             if (model.cases.isEmpty && !model.busy)
-              const Text(
-                'Sin casos disponibles. Crea y confirma un formato clínico en Formatos.',
+              Text(
+                model.permissionsKnown
+                    ? 'Sin casos disponibles para este acceso. Los formatos no crean consultas automáticamente.'
+                    : 'Sin casos disponibles. Crea y confirma un formato clínico en Formatos.',
               ),
             for (final c in model.cases)
               ListTile(
@@ -174,24 +379,46 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
                 Text('ASA: ${b.caseData.data['asa']}'),
               if (b.caseData.data['ekg'] != null)
                 Text('EKG: ${b.caseData.data['ekg']}'),
-              TextButton(
-                onPressed: model.busy ? null : () => original(b.caseData),
-                child: const Text('Ver PDF original firmado'),
-              ),
-              if (widget.member.role != ClinicRole.admin)
+              if (model.permissionsKnown)
+                ...model
+                    .rows('documents')
+                    .map(
+                      (d) => TextButton(
+                        onPressed: model.busy
+                            ? null
+                            : () => original(
+                                b.caseData,
+                                documentId: d['id'],
+                                title: d['title'],
+                              ),
+                        child: Text(
+                          '${d['is_original'] == true ? 'Original firmado' : 'Documento firmado'} · ${d['title']}',
+                        ),
+                      ),
+                    )
+              else
+                TextButton(
+                  onPressed: model.busy ? null : () => original(b.caseData),
+                  child: const Text('Ver PDF original firmado'),
+                ),
+              if (model.permissionsKnown
+                  ? model.can('observe') || model.can('act')
+                  : widget.member.role != ClinicRole.admin)
                 Wrap(
                   spacing: 8,
                   children: [
-                    OutlinedButton(
-                      onPressed: model.busy
-                          ? null
-                          : () => append('observation'),
-                      child: const Text('Anexar medición'),
-                    ),
-                    OutlinedButton(
-                      onPressed: model.busy ? null : () => append('act'),
-                      child: const Text('Anexar actuación'),
-                    ),
+                    if (!model.permissionsKnown || model.can('observe'))
+                      OutlinedButton(
+                        onPressed: model.busy
+                            ? null
+                            : () => append('observation'),
+                        child: const Text('Anexar medición'),
+                      ),
+                    if (!model.permissionsKnown || model.can('act'))
+                      OutlinedButton(
+                        onPressed: model.busy ? null : () => append('act'),
+                        child: const Text('Anexar actuación'),
+                      ),
                   ],
                 ),
               if (widget.prescribing != null)
@@ -240,8 +467,10 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
                     '${o['observed_at']}\nRealizó: ${o['performed_by']} · Registró: ${o['recorded_by']}\nServidor: ${o['created_at']}\n${o['notes']}\n${o['replaces_id'] == null ? '' : 'Corrección de: ${o['replaces_id']} · ${o['correction_reason']}'}${b.observations.any((x) => x['replaces_id'] == o['id']) ? ' · Sustituida por corrección' : ''}',
                   ),
                 ),
-              if (widget.member.role == ClinicRole.mvz &&
-                  b.caseData.responsibleId == widget.member.userId)
+              if (model.permissionsKnown
+                  ? model.can('correct')
+                  : widget.member.role == ClinicRole.mvz &&
+                        b.caseData.responsibleId == widget.member.userId)
                 for (final o in b.observations.where(
                   (o) =>
                       !b.observations.any((x) => x['replaces_id'] == o['id']),
@@ -272,8 +501,17 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
               const Text(
                 'Estos permisos no conceden emisión de recetas ni validación de fármacos controlados.',
               ),
-              if (widget.member.role == ClinicRole.mvz &&
-                  b.caseData.responsibleId == widget.member.userId)
+              if (model.permissionsKnown && model.can('bind'))
+                TextButton(
+                  onPressed: () => append('bind'),
+                  child: const Text(
+                    'Configurar tipo de procedimiento del caso',
+                  ),
+                ),
+              if (model.permissionsKnown
+                  ? model.can('authorize')
+                  : widget.member.role == ClinicRole.mvz &&
+                        b.caseData.responsibleId == widget.member.userId)
                 TextButton(
                   onPressed: model.busy ? null : () => append('grant'),
                   child: const Text('Autorizar persona y procedimiento'),
@@ -288,8 +526,11 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
                   ),
                   trailing:
                       a['revoked'] == null &&
-                          widget.member.role == ClinicRole.mvz &&
-                          b.caseData.responsibleId == widget.member.userId
+                          (model.permissionsKnown
+                              ? model.can('revoke')
+                              : widget.member.role == ClinicRole.mvz &&
+                                    b.caseData.responsibleId ==
+                                        widget.member.userId)
                       ? IconButton(
                           onPressed: model.busy ? null : () => revoke(a),
                           icon: const Icon(Icons.block),

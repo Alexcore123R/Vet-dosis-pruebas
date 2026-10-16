@@ -37,9 +37,62 @@ abstract interface class ClinicalRepository {
   );
 }
 
-class SupabaseClinicalRepository implements ClinicalRepository {
+abstract interface class ClinicalPermissionRepository {
+  Future<Map<String, dynamic>?> workspace(String clinicId, String? caseId);
+  Future<void> bindScope(
+    String caseId,
+    String scope,
+    String procedure,
+    bool professional,
+    String source,
+    String reason,
+  );
+}
+
+class SupabaseClinicalRepository
+    implements ClinicalRepository, ClinicalPermissionRepository {
   SupabaseClinicalRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<Map<String, dynamic>?> workspace(
+    String clinicId,
+    String? caseId,
+  ) async {
+    try {
+      return Map<String, dynamic>.from(
+        await rpc('clinical_workspace', {
+              'p_clinic': clinicId,
+              'p_case': caseId,
+            })
+            as Map,
+      );
+    } on PostgrestException catch (e) {
+      if (e.code == 'PGRST202' || e.code == '42883') {
+        return null;
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> bindScope(
+    String caseId,
+    String scope,
+    String procedure,
+    bool professional,
+    String source,
+    String reason,
+  ) async {
+    await rpc('clinical_scope_bind', {
+      'p_case': caseId,
+      'p_scope': scope,
+      'p_procedure': procedure,
+      'p_professional': professional,
+      'p_source': source,
+      'p_reason': reason,
+    });
+  }
+
   Future<dynamic> rpc(String name, Map<String, dynamic> args) =>
       client.rpc(name, params: args);
   @override

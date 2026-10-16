@@ -281,7 +281,7 @@ class _FormsScreenState extends State<FormsScreen> {
           ),
         if (model.busy) const LinearProgressIndicator(),
         if (model.error != null) Text(model.error!),
-        if (widget.clinical != null && model.access.clinical)
+        if (widget.clinical != null && model.canOpenClinical)
           OutlinedButton(
             onPressed: model.busy
                 ? null

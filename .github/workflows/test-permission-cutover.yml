@@ -158,3 +158,10 @@ jobs:
         run: npm ci --prefix supabase
       - name: Probar firmas separadas, autorización, tutor, PDF y correcciones
         run: bash supabase/tests/run_form_individual_workflow.sh
+  clinical-screen-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar acciones clínicas por permiso y documentos vinculados
+        run: bash supabase/tests/run_clinical_screen_contract.sh
