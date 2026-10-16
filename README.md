@@ -117,3 +117,9 @@ Página de producto/herramientas y precios, guía reabrible, historial de pagos 
 ## Revisión de plataforma e IA inicial
 
 [Informe, correcciones y prioridades](docs/revision-plataforma-2026-10-08.md). Mejoras de inicio/escáner, menús por rol, ajustes, legibilidad y reintentos. Ayuda incluida con Gemini por defecto y GLM alternativo, solo temas públicos sin datos clínicos ni texto libre; clave y cupos controlados en servidor, sin fallback de pago. [Configuración y fuentes oficiales](docs/ia-incluida.md). Adaptación adicional `existing_starter_ai_review.sql` y función `starter-ai`, todavía sin instalación remota ni claves reales.
+
+## Beta y permisos: actualización 16-oct-2026
+
+Administración de plataforma con cuenta separada y 2FA comprobada por la propietaria. Base de permisos explícitos y evidencia profesional aplicada **desactivada** al proyecto de pruebas, sin promoción de roles ni datos clínicos de ejemplo. Pantalla de gestión en «Mi cuenta y clínicas → Permisos y habilitación». [Alcance, evidencia y lo pendiente](docs/permisos-etapa2a.md).
+
+Las ACL heredadas aún requieren sustitución por módulo; esta base no acredita la migración completa ni autoriza abrir la beta. El primer MVZ necesita revisión externa con evidencia real. Las admisiones y el candado global permanecen desactivados; no hay borrado automático por vencimiento.

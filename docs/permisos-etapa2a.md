@@ -59,3 +59,5 @@ Las transferencias, restauración y catálogo global de controlados continúan f
 - HTTP real sin sesión contra `permission_snapshot`, `permission_professional_snapshot` y `permission_grant`: las tres devolvieron 401 / SQLSTATE 42501. No se usan credenciales Auth de usuarios para estas pruebas.
 - APK iniciado en https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38833593757. Registrar resultado verificado al terminar; iniciar la compilación no acredita un APK listo.
 - La propietaria ya confirmó el acceso real a administración de plataforma con 2FA. Esa comprobación no acredita evidencia profesional ni pruebas clínicas de extremo a extremo.
+
+La prueba adicional de presentación en pantalla de 360 × 740 también pasó, sin desbordamientos. No modifica el código del APK en compilación. En el corte posterior deben probarse de forma específica la serialización de revocación frente a emisión/aplicación y las rutas de plataforma bajo el hook REST activo: los RPC `permission_*` no tienen por sí mismos una exención de acceso beta para cuentas de plataforma. No habilitar el candado global sin resolver y probar esas rutas.

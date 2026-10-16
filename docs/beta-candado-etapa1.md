@@ -72,3 +72,7 @@ La propietaria confirmó expresamente eliminar únicamente su clínica vacía y 
 Resultado remoto verificado: https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38812732110. Las cinco comprobaciones fueron verdaderas: clínica eliminada, cuenta confirmada conservada, plataforma habilitada, ausencia de membresías y protección de membresías activa. Quince pruebas Python y prueba PostgreSQL aislada correctas, incluida detención ante datos, reversión, preservación de otra clínica y reintento idempotente. El primer flujo se detuvo antes de la operación remota por falta de `rg` en el runner; se corrigió usando una herramienta disponible.
 
 Pendiente: la propietaria debe completar 2FA dentro de la app. Habilitar la cuenta no abre admisiones ni activa el candado global; los permisos profesionales y la revisión de términos siguen pendientes.
+
+### Confirmación de MFA y siguiente etapa, 16-oct-2026
+
+La propietaria confirmó que pudo verificar el autenticador y entrar al panel de administración de plataforma. Se conserva esa cuenta separada y la beta sigue cerrada. La base de permisos y habilitación de la etapa 2A ya está aplicada desactivada; consultar [alcance y evidencia](permisos-etapa2a.md). Las referencias previas a MFA pendiente son históricas y quedan resueltas por esta comprobación de la propietaria.
