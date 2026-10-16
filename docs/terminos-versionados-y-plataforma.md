@@ -55,3 +55,11 @@ Sigue pendiente la sustitución de ACL por módulo, la vinculación de procedimi
 - Flutter: número visible igual al enviado, renovación de consentimiento, cambio de versión aun con hash igual, recuperación tras cambio del texto, consulta/exportación, conservación del borrador y consola móvil de plataforma.
 - Operador: inspección sin cambios, confirmación, beta cerrada, esquema parcial y protección contra reemplazar una versión publicada con un borrador.
 - Pendiente real: publicación del texto final aprobado y prueba del consentimiento desde cuentas reales. No se acepta ningún texto en nombre de usuarios.
+
+## Evidencia remota, 16-oct-2026
+
+- Preparación correcta: https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38838576839. Aplicadas 12A/12B en una transacción; origen versión 1 importado como borrador. Postflight verdadero: beta cerrada, contenido/hash exactos y sin publicar, API de aceptación y revocación de plataforma disponibles.
+- Pruebas reales HTTP sin sesión: `beta_accept_terms`, `platform_beta_professional_list` y `platform_beta_professional_revoke` devolvieron 401 / SQLSTATE 42501. No se usaron sesiones ni contraseñas de usuarios para esas comprobaciones.
+- 259 pruebas Flutter de la suite completa, sin observaciones del analizador; 27 pruebas Python y suite PostgreSQL aislada correctas, repetidas en el flujo remoto antes de preparar.
+- APK iniciado en https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38838577172. Su resultado se registrará al terminar la verificación de firma y publicación del artefacto.
+- No se publicaron términos, no se creó una aceptación ficticia, no se verificó a ningún MVZ ni se cambiaron las fechas de una beta. Las pruebas que insertan aceptaciones usan cuentas y textos sintéticos en Docker aislado.
