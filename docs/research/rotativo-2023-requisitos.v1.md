@@ -58,3 +58,8 @@ Se recaban respuestas voluntarias sin expedientes, identificaciones ni capturas 
 ## Relación con el trabajo autorizado
 
 Este registro orienta el bloque pendiente de hospitalización/aplicaciones/frascos. No sustituye las aprobaciones de permisos 2A, 13A, 13B y 13C ni autoriza abrir beta, desplegar funciones, enviar mensajes a terceros o implementar las quince propuestas a la vez. El siguiente trabajo técnico sigue siendo separar `hospital.schedule`, `drug.administer`, `vial.draw`, `medication.report` y `medication.validate`, conservando al ejecutante y la validación profesional como actos distintos.
+
+
+## Revisión posterior del original
+
+Después de esta primera síntesis se recibió el PDF original de 103 páginas. La revisión directa, extracción de referencias y propuestas están en [propuestas.v1.md](rotativo-2023/propuestas.v1.md). Esta nota inicial conserva su fuente histórica (texto de Claude); no sustituye los hallazgos de la revisión directa. Las comisiones básicas sí existen en M9; distinguir cobro al cliente de liquidación al personal.

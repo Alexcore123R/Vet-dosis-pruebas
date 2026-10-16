@@ -1,0 +1,5 @@
+parametro,especie,pagina_40_literal,pagina_60_literal,estado,resolucion
+temperatura_corporal,felina,37.5 - 39 °C,"38-39,2 °C",sin_verificar,pendiente; no corregir ni combinar automáticamente
+frecuencia_cardiaca,felina,60 - 120 lpm,140-220 lat/min,sin_verificar,pendiente; no corregir ni combinar automáticamente
+frecuencia_respiratoria,felina,10 - 30 rpm,20-42 resp/min,sin_verificar,pendiente; no corregir ni combinar automáticamente
+tiempo_relleno_capilar,felina,>3 seg.,< 2 s,sin_verificar,pendiente; no corregir ni combinar automáticamente

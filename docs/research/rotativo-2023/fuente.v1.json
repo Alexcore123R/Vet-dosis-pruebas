@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "titulo": "Portafolio de rotativo en clínicas médicas",
+  "sha256": "1e6ff1734b111506288c9f39897f03d4a949c92ca15139cdfb552433ce01a0e5",
+  "paginas": 103,
+  "fecha_revision": "2026-10-16",
+  "alcance": "Revisión de estructura y secciones seleccionadas; no validación clínica ni normativa integral.",
+  "metodo": "Texto extraído y cotejo visual de páginas 40 y 60.",
+  "referencia_bibliografica_candidata": {
+    "pagina": 90,
+    "descripcion": "Ateuves (2014), Parámetros fisiológicos en la especie canina y felina; listado con formato bibliográfico mezclado con otra entrada.",
+    "url_transcrita_normalizada": "https://ateuves.es/wp-content/uploads/2014/10/P00240_Med-urgencias_T1_291-292.pdf",
+    "relacion_con_cuadro_12": "por confirmar; no cita explícita junto al cuadro",
+    "consulta_externa_realizada": false
+  },
+  "datos_derivados": {
+    "constantes": 16,
+    "discrepancias": 4,
+    "estado": "sin_verificar",
+    "cargados_en_app": false
+  },
+  "privacidad": "No se incluye el PDF original ni su texto completo, nombres, contactos, firmas o imágenes de pacientes/personas en el repositorio."
+}
