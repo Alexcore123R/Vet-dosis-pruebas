@@ -96,6 +96,17 @@ void main() {
     expect(find.text('Proponer responsable'), findsNothing);
     expect(find.text('Revisar evidencia'), findsNothing);
   });
+  testWidgets('management fits a narrow phone without overflow', (
+    tester,
+  ) async {
+    await mount(tester, PermissionFake());
+    tester.view.physicalSize = const Size(360, 740);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.scrollUntilVisible(find.text('Habilitación profesional'), 250);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('ordinary member cannot grant or edit jobs', (tester) async {
     await mount(tester, PermissionFake()..manager = false);
     expect(find.text('Conceder permiso'), findsNothing);
