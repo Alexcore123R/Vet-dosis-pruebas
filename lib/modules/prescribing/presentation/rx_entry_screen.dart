@@ -104,6 +104,16 @@ class _RxEntryScreenState extends State<RxEntryScreen> {
         if (f.required && f.type == 'checkbox' && v != true) {
           throw FormatException('Confirma ${f.label}.');
         }
+        if (f.type == 'local_date' && v != null && v != '') {
+          final text = '$v', parsed = DateTime.tryParse('$v');
+          if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(text) ||
+              parsed == null ||
+              parsed.toIso8601String().substring(0, 10) != text) {
+            throw FormatException(
+              'Selecciona una fecha válida para ${f.label}.',
+            );
+          }
+        }
         if (f.type == 'quantity' && v != null && v != '') {
           data[f.key] = exactMedicationQuantity(v);
         }
@@ -169,6 +179,34 @@ class _RxEntryScreenState extends State<RxEntryScreen> {
           ],
           onChanged: busy ? null : (v) => setState(() => data[f.key] = v),
         ),
+      );
+    }
+    if (f.type == 'local_date') {
+      final selected = DateTime.tryParse('${data[f.key] ?? ''}');
+      return ListTile(
+        title: Text('${f.label}${f.required ? ' *' : ''}'),
+        subtitle: Text(
+          selected == null
+              ? 'Selecciona fecha'
+              : '${selected.day.toString().padLeft(2, '0')}/${selected.month.toString().padLeft(2, '0')}/${selected.year}',
+        ),
+        trailing: const Icon(Icons.calendar_month),
+        onTap: busy
+            ? null
+            : () async {
+                final date = await showDatePicker(
+                  context: context,
+                  initialDate: selected ?? DateTime.now(),
+                  firstDate: DateTime(1970),
+                  lastDate: DateTime(DateTime.now().year + 10, 12, 31),
+                );
+                if (date != null && mounted) {
+                  setState(
+                    () => data[f.key] =
+                        '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
+                  );
+                }
+              },
       );
     }
     if (f.type == 'local_instant') {
@@ -289,6 +327,16 @@ class _RxEntryScreenState extends State<RxEntryScreen> {
                           }),
                   ),
                   for (final e in {
+                    'invalid_clinical_date':
+                        'Selecciona una fecha clínica válida que no sea futura.',
+                    'explicit_clinical_date_required':
+                        'Selecciona explícitamente la fecha clínica.',
+                    'explicit_verified_case_responsible_required':
+                        'Selecciona un MVZ habilitado con permiso vigente para este espacio.',
+                    'invalid_case_context':
+                        'Revisa el contexto, el motivo (hasta 300 caracteres) y las notas (hasta 4000).',
+                    'case_context_fields_only':
+                        'El caso inicial solo guarda contexto. Registra mediciones y actuaciones en sus apartados.',
                     'quantity':
                         'Cantidad por administración (${rows[i]['unit'] ?? 'unidad pendiente'})',
                     'route': 'Vía',

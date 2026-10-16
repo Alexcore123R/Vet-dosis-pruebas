@@ -89,3 +89,7 @@ El [candidato 13H2](../permisos-etapa2b9-recetas.md) conecta firma de consulta c
 ## Avance 2B-17, 16-oct-2026
 
 [13K](../permisos-etapa2b17-pantallas-clinicas.md) adapta las pantallas de casos existentes al contrato de acciones del servidor y a documentos firmados vinculados, sin depender del puesto ni publicar consultas/observaciones al emitir formatos. Incluye configuración explícita de ámbitos con los permisos existentes. No resuelve aún la creación de casos nuevos independientes del PDF ni constatación de muerte y rutas transversales pendientes. Sin despliegue ni apertura de beta.
+
+## Avance 2B-18, 16-oct-2026
+
+[13L](../permisos-etapa2b18-casos-independientes.md) permite registrar contexto de caso sin PDF con permiso explícito, paciente/MVZ elegidos y captura mínima. Conserva originales históricos y vincula hojas firmadas posteriores sin atribuir atención ni autorizaciones al registro inicial. Sustituye la limitación de creación de casos pendiente en 13K; constatación de muerte y dependencias transversales siguen pendientes. Sin aplicar a Supabase ni abrir beta.

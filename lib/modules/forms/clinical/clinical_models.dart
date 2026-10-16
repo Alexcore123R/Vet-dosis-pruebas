@@ -102,7 +102,7 @@ class ClinicalCase {
   String get id => data['id'];
   String get patientId => data['patient_id'];
   String get responsibleId => data['responsible_id'];
-  String get documentId => data['document_id'];
+  String? get documentId => data['document_id'];
   String get kind => data['kind'];
   String get title => data['title'];
   String get patientName => data['patient_name'];

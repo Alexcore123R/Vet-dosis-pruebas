@@ -51,3 +51,5 @@ Los fixtures SQL insertan metadatos firmados sintéticos para probar el vínculo
 `test/clinical_screen_contract_test.dart` prueba lectura denegada sin consultar filas, contrato perdido/desconocido, permiso independiente del puesto, ausencia de atribución ajena y documentos firmados separados del original. Se ejecutan además las regresiones clínicas, análisis y batería Flutter completa. El workflow manual incorpora el trabajo `clinical-screen-contract` sin despliegue.
 
 Validación local: **334 pruebas Flutter correctas**, análisis sin incidencias y **15 pruebas enfocadas** correctas (6 nuevas y regresiones clínicas/borradores). PostgreSQL aislado correcto. GitHub Actions: [ejecución 38981534052](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38981534052), commit de código `52fe855`: **18/18 trabajos correctos**, incluido `clinical-screen-contract`, sin despliegue ni APK.
+
+Continuación: [13L, casos sin PDF](permisos-etapa2b18-casos-independientes.md) sustituye la limitación de creación de casos nuevos de esta ronda mediante un permiso de preparación explícito. No transforma el registro inicial en atención, autorización ni documento emitido.

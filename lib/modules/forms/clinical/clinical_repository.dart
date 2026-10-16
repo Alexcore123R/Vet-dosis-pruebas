@@ -49,10 +49,34 @@ abstract interface class ClinicalPermissionRepository {
   );
 }
 
+abstract interface class ClinicalCaseRegistrationRepository {
+  Future<String> registerCase(
+    String clinicId,
+    Map<String, dynamic> data,
+    String operationId,
+  );
+}
+
 class SupabaseClinicalRepository
-    implements ClinicalRepository, ClinicalPermissionRepository {
+    implements
+        ClinicalRepository,
+        ClinicalPermissionRepository,
+        ClinicalCaseRegistrationRepository {
   SupabaseClinicalRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<String> registerCase(
+    String clinicId,
+    Map<String, dynamic> data,
+    String operationId,
+  ) async =>
+      await rpc('clinical_case_register', {
+            'p_clinic': clinicId,
+            'p_data': data,
+            'p_operation': operationId,
+          })
+          as String;
+
   @override
   Future<Map<String, dynamic>?> workspace(
     String clinicId,

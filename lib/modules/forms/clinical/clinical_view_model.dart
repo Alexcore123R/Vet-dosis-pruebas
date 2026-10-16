@@ -9,7 +9,11 @@ class ClinicalViewModel extends ChangeNotifier {
   final String? patientId;
   List<ClinicalCase> cases = [];
   ClinicalBundle? selected;
-  bool permissionsKnown = false;
+  bool permissionsKnown = false, registrationKnown = false;
+  bool get canCreate =>
+      registrationKnown &&
+      repository is ClinicalCaseRegistrationRepository &&
+      can("create");
   Map<String, dynamic>? workspace;
   bool can(String key) =>
       !busy && error == null && workspace?['actions']?[key] == true;
@@ -20,6 +24,25 @@ class ClinicalViewModel extends ChangeNotifier {
   List<String> get actScopes =>
       List<String>.from(workspace?['act_scopes'] as List? ?? []);
   void validateWorkspace(Map<String, dynamic> value, String? caseId) {
+    if (value.containsKey('registration_version')) {
+      registrationKnown = true;
+      if (value['registration_version'] != 1 ||
+          value['actions'] is! Map ||
+          value['actions']['create'] is! bool ||
+          const ['patients', 'responsibles'].any(
+            (k) =>
+                value[k] is! List ||
+                (value[k] as List).any(
+                  (r) =>
+                      r is! Map || r['id'] is! String || r['name'] is! String,
+                ),
+          ) ||
+          (value['responsibles'] as List).any((r) => r['license'] is! String)) {
+        throw StateError('unknown_case_registration_contract');
+      }
+    } else if (registrationKnown) {
+      throw StateError('case_registration_contract_lost');
+    }
     if (value['schema_version'] != 1 ||
         value['mode'] != 'explicit_clinical' ||
         value['clinic_id'] != clinicId ||

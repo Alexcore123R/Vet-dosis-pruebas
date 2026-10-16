@@ -59,7 +59,12 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
     String? title,
   }) async {
     try {
-      final pdf = await widget.forms.pdf(documentId ?? c.documentId);
+      final id = documentId ?? c.documentId;
+      if (id == null) {
+        message('Este caso todavía no tiene un documento firmado.');
+        return;
+      }
+      final pdf = await widget.forms.pdf(id);
       if (!mounted) return;
       await Navigator.push(
         context,
@@ -73,6 +78,92 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
       );
     } catch (_) {
       message('No se pudo abrir el PDF original.');
+    }
+  }
+
+  bool registering = false;
+  Future<void> registerCase() async {
+    if (registering || model.busy) {
+      return;
+    }
+    registering = true;
+    try {
+      await model.load();
+      if (!mounted || !model.canCreate) {
+        return;
+      }
+      final source = widget.repository as ClinicalCaseRegistrationRepository;
+      String? created;
+      await Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => RxEntryScreen(
+            title: 'Registrar caso',
+            reviewText:
+                'Registra el contexto inicial. Elegir al MVZ no acredita que atendió ni autoriza procedimientos. No se crea PDF ni se rellenan mediciones o SOAP.',
+            fields: [
+              RxField(
+                'patient_id',
+                'Paciente',
+                type: 'select',
+                options: {
+                  for (final r
+                      in model
+                          .rows('patients')
+                          .where(
+                            (r) =>
+                                widget.patientId == null ||
+                                r['id'] == widget.patientId,
+                          ))
+                    r['id'] as String: r['name'] as String,
+                },
+                required: true,
+              ),
+              RxField(
+                'responsible_id',
+                'MVZ responsable seleccionado',
+                type: 'select',
+                options: {
+                  for (final r in model.rows('responsibles'))
+                    r['id'] as String: '${r['name']} · ${r['license']}',
+                },
+                required: true,
+              ),
+              const RxField(
+                'kind',
+                'Contexto del caso (no acredita realización)',
+                type: 'select',
+                options: {
+                  'clinical_history': 'Atención clínica',
+                  'surgical_sheet': 'Cirugía',
+                  'surgical_risk': 'Evaluación prequirúrgica',
+                },
+                required: true,
+              ),
+              const RxField(
+                'clinical_date',
+                'Fecha clínica',
+                type: 'local_date',
+                required: true,
+              ),
+              const RxField('reason', 'Motivo de atención', required: true),
+              const RxField('notes', 'Notas iniciales (opcional)'),
+            ],
+            submit: (data, operation) async {
+              created = await source.registerCase(
+                widget.member.clinicId,
+                data,
+                operation,
+              );
+            },
+          ),
+        ),
+      );
+      if (mounted) {
+        await model.load(caseId: created);
+      }
+    } finally {
+      registering = false;
     }
   }
 
@@ -351,6 +442,12 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
               icon: const Icon(Icons.refresh),
               label: const Text('Actualizar'),
             ),
+            if (model.canCreate)
+              FilledButton.icon(
+                onPressed: registerCase,
+                icon: const Icon(Icons.add),
+                label: const Text('Registrar caso sin PDF'),
+              ),
             if (model.busy) const LinearProgressIndicator(),
             if (model.error != null) Text(model.error!),
             if (model.cases.isEmpty && !model.busy)
