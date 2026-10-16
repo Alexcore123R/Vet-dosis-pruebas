@@ -52,4 +52,4 @@ No hay una decisión nueva pendiente para esta separación de capacidades operat
 - Concurrencia: una edición por versión esperada, revocación durante espera y aprobación que vence mientras espera el bloqueo; sin persistir una versión aprobada vencida.
 - Flutter: permisos sobre puesto, no leer documentos desde plantilla, contrato perdido/malformado, fallo/revocación de lectura y aprobación deshabilitada.
 
-Suite completa local: **319 pruebas Flutter correctas**; `flutter analyze --no-pub` sin incidencias. SQL y concurrencia correctos. Evidencia de GitHub pendiente de ejecución sobre el commit de código.
+Suite completa local: **319 pruebas Flutter correctas**; `flutter analyze --no-pub` sin incidencias. SQL y concurrencia correctos. GitHub Actions: [ejecución 38973275235](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38973275235), commit de código `53c0768`: **15/15 trabajos correctos**, incluido `form-templates` y regresiones de recetas, reportes, inventario/caja y hospitalización. Bases aisladas; sin despliegue a Supabase ni APK.

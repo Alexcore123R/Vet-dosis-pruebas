@@ -2,6 +2,10 @@
 
 Recibidas el 16-oct-2026. La usuaria pidió retomarlas **después de estas rondas**, sin cambiar el orden actual. No implementadas ni importadas por este archivo.
 
+## Reutilizar lo existente antes de ampliar
+
+La lista no significa que todo falte. Las rondas ya prepararon y probaron recetas con firma propia de quien realizó, MVZ separado y PDF revisado (13H2/13H3); reportes de referencia con permisos y exportación (13J1); inventario/caja por persona (13I1/13I2). Existe generador de XLSX real y PDF con membrete. Son candidatos locales, no afirmación de despliegue remoto. Contrastar cada mejora con el módulo y sus pruebas antes de implementarla; no rehacer estos flujos.
+
 ## Mejoras propuestas
 
 - Fluidoterapia: procedimiento visible, déficit/mantenimiento/pérdidas, bomba y goteo según factor del equipo, tipo de solución y programación de avisos.
