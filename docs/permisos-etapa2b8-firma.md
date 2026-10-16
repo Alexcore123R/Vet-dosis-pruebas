@@ -37,4 +37,6 @@ Ejecutar `bash supabase/tests/run_consultation_attestation.sh` en PostgreSQL ais
 
 Resultado local de este bloque: PostgreSQL y carreras satisfactorios; **15 pruebas del renderer satisfactorias**. No se modificó Flutter ni se atribuye a este cambio una nueva ejecución de sus 284 pruebas previas. Se añadieron trabajos de firma y PDF al workflow manual `test-permission-cutover.yml`, sin secretos de servicio ni despliegue.
 
+GitHub confirmó **nueve trabajos satisfactorios** sobre `125fd46`: [run 38950491414](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38950491414). Incluye los siete bloques previos, `consultation-signature` y `prescription-pdf`. Esta evidencia prueba el candidato/renderer en aislamiento; no implica aplicación remota ni integración de Flutter.
+
 No se modifican tablas remotas, habilitaciones reales, datos clínicos ni el APK instalado.
