@@ -67,6 +67,36 @@ select public.permission_responsible_respond(:'designation',true);
 select pg_temp.expect_error('select public.permission_professional_review(current_setting(''test.clinic'')::uuid,current_setting(''test.version'')::uuid,now(),repeat(''b'',64),''Self evidence'',now()+interval ''1 day'')','self_review_forbidden');
 reset role;
 select pg_temp.assert_true(private.permission_responsible(:'clinic'),'accepted responsible missing');
+-- A responsible can verify another member locally, never globally or in a second clinic.
+insert into public.clinic_members(clinic_id,user_id,role) values(:'other','00000000-0000-0000-0000-000000000033','auxiliar');
+insert into public.professional_profiles(clinic_id,user_id) values(:'clinic','00000000-0000-0000-0000-000000000033') returning id as local_profile \gset
+insert into private.professional_profile_versions(profile_id,version,name,license,created_by) values(:'local_profile',1,'Synthetic Local Professional','LOCAL-TEST','00000000-0000-0000-0000-000000000033') returning id as local_version \gset
+insert into public.professional_profiles(clinic_id,user_id) values(:'other','00000000-0000-0000-0000-000000000033') returning id as other_profile \gset
+insert into private.professional_profile_versions(profile_id,version,name,license,created_by) values(:'other_profile',1,'Synthetic Local Professional','LOCAL-TEST','00000000-0000-0000-0000-000000000033');
+set role authenticated;
+select public.permission_professional_review(:'clinic',:'local_version',now(),repeat('b',64),'Synthetic local evidence',now()+interval '1 day') as local_verification \gset
+reset role;
+select pg_temp.assert_true(private.professional_current(:'clinic','00000000-0000-0000-0000-000000000033'),'local review missing');
+select pg_temp.assert_true(not private.professional_current(:'other','00000000-0000-0000-0000-000000000033'),'local review became global');
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000033',false);
+set role authenticated;
+select pg_temp.assert_true(jsonb_array_length(public.permission_professional_snapshot(:'clinic')->'verifications')=1,'member evidence scope leaked');
+select pg_temp.assert_true(jsonb_array_length(public.permission_snapshot(:'clinic')->'members')=1,'member team scope leaked');
+reset role;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000031',false);
+set role authenticated;
+select pg_temp.assert_true(jsonb_array_length(public.permission_professional_snapshot(:'clinic')->'verifications')=0,'administrative role exposed evidence');
+select public.permission_procedure_set(:'clinic',:'procedure','Synthetic procedure A',false);
+reset role;
+select pg_temp.assert_true(private.permission_effective(:'clinic','00000000-0000-0000-0000-000000000033','drug.administer',:'procedure') is null,'inactive procedure authorized');
+set role authenticated;
+select public.permission_procedure_set(:'clinic',:'procedure','Synthetic procedure A',true);
+reset role;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000032',false);
+set role authenticated;
+select public.permission_professional_revoke(:'local_verification','Synthetic local withdrawal');
+reset role;
+select pg_temp.assert_true(not private.professional_current(:'clinic','00000000-0000-0000-0000-000000000033'),'local revocation ineffective');
 -- Cross-clinic and ordinary member cannot manage grants or read another clinic.
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000034',false);
 set role authenticated;

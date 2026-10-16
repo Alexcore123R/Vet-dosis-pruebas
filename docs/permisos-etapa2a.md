@@ -61,3 +61,7 @@ Las transferencias, restauración y catálogo global de controlados continúan f
 - La propietaria ya confirmó el acceso real a administración de plataforma con 2FA. Esa comprobación no acredita evidencia profesional ni pruebas clínicas de extremo a extremo.
 
 La prueba adicional de presentación en pantalla de 360 × 740 también pasó, sin desbordamientos. No modifica el código del APK en compilación. En el corte posterior deben probarse de forma específica la serialización de revocación frente a emisión/aplicación y las rutas de plataforma bajo el hook REST activo: los RPC `permission_*` no tienen por sí mismos una exención de acceso beta para cuentas de plataforma. No habilitar el candado global sin resolver y probar esas rutas.
+
+APK terminado correctamente: flujo 38833593757, con verificación de identidad/versión/firma de ambos APK y registro de publicación correctos. Artefacto `vetdosis-pruebas-apks`, accesible desde el enlace de compilación indicado arriba. La pantalla se abre con la cuenta de clínica; la cuenta separada de plataforma no debe crear un espacio para acceder a ella.
+
+Prueba SQL adicional posterior: revisión local de otra persona por responsable aceptado, ausencia de habilitación global/cross-clínica, proyección de evidencia solo del sujeto y del responsable, admin administrativo sin acceso a evidencia privada ajena, revocación local e inactivación del tipo de procedimiento. Resultado correcto. Solo amplía fixtures sintéticos locales, sin alterar datos remotos ni código del APK.
