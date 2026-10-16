@@ -21,6 +21,7 @@ class SupabasePrescribingRepository
     'rx_reports',
     'rx_hospital',
     'rx_consultations',
+    'rx_standing_workspace',
   };
   static const writes = {
     'rx_profile_save',
@@ -34,6 +35,11 @@ class SupabasePrescribingRepository
     'rx_authorize_individual',
     'rx_return_to_draft',
     'rx_finalize',
+    'rx_standing_offer',
+    'rx_standing_accept',
+    'rx_prepare_standing',
+    'rx_standing_resume',
+    'rx_standing_review',
     'rx_vial_open',
     'rx_vial_close',
     'rx_vial_adjust',

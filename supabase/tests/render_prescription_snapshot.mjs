@@ -11,8 +11,11 @@ const output=await renderForm(snapshot,font);
 const directory=mkdtempSync(join(tmpdir(),'vetdosis-rx-snapshot-'));
 try {
  const path=join(directory,'synthetic.pdf');writeFileSync(path,output.bytes);
- const text=execFileSync('pdftotext',[path,'-'],{encoding:'utf8'});
- for(const value of ['Consulta realizada por: Synthetic person who attended','MVZ responsable:','Cédula profesional:','Autorización individual','Firma de quien realizó la consulta','Synthetic instructions'])assert.ok(text.includes(value),value);
+ const text=execFileSync('pdftotext',[path,'-'],{encoding:'utf8'}).replace(/\s+/g,' ');
+ const standing=snapshot.prescription_identity.authorization.mode==='standing';
+ const expectedName=standing?'Synthetic participant':'Synthetic person who attended';
+ for(const value of [`Consulta realizada por: ${expectedName}`,'MVZ responsable:','Cédula profesional:',standing?'Autorización previa':'Autorización individual','Firma de quien realizó la consulta',standing?'Synthetic standing':'Synthetic instructions'])assert.ok(text.includes(value),value);
+ if(standing){assert.ok(text.includes('No consta revisión individual'));assert.ok(!text.includes('Autorización individual'));}
  assert.ok(!text.includes('Firma del MVZ responsable'));
  assert.deepEqual(output.consultationPng,signatureImage(snapshot.prescription_identity.consultation.signature));
  assert.equal(snapshot.prescription_identity.authorization.actor_id,snapshot.prescription_identity.responsible.user_id);

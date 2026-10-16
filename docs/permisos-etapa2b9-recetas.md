@@ -2,6 +2,8 @@
 
 Candidato **13H2**, posterior a 13H1, 16-oct-2026. SQL y Flutter locales; sin despliegue, nuevo APK ni apertura de beta. Usa la atribución aprobada por la usuaria, sin pedir otra vez esa decisión.
 
+Actualización posterior: [13H3 añade la autorización temporal para casos seleccionados](permisos-etapa2b10-a-cargo.md). La lista de pendientes de este documento describe el cierre de H2; el bloque nuevo sigue siendo local, sin despliegue.
+
 ## Comportamiento
 
 1. Quien realizó la consulta firma su participación desde su sesión, con nombre y confirmación explícita. No se toma una firma del perfil del responsable ni se acepta un usuario firmante enviado por otra persona.

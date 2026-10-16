@@ -88,3 +88,17 @@ jobs:
         run: npm ci --prefix supabase
       - name: Probar preparación, autorización individual, PDF y emisión concurrente
         run: bash supabase/tests/run_prescription_individual.sh
+  prescription-standing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Preparar comprobación del PDF emitido bajo autorización previa
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - name: Instalar dependencias fijadas del renderer
+        run: npm ci --prefix supabase
+      - name: Probar autorización temporal, aceptación, revisión posterior y concurrencia
+        run: bash supabase/tests/run_prescription_standing.sh

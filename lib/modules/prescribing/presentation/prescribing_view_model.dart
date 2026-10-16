@@ -35,12 +35,69 @@ class PrescribingViewModel extends ChangeNotifier {
 
   bool operationalKnown = false;
   bool prescriptionKnown = false;
+  bool standingKnown = false;
+  List<Map<String, dynamic>> standingMembers = [],
+      standingOffers = [],
+      standingEvents = [];
+  bool get standingAvailable =>
+      prescriptionPermissions?['mode'] == 'individual_standing' &&
+      error == null;
+  bool get canOfferStanding =>
+      standingAvailable &&
+      prescriptionPermissions?['can_authorize'] == true &&
+      standingError == null &&
+      !busy;
+  List<Map<String, dynamic>> standingFor(Map<String, dynamic> r) =>
+      standingOffers
+          .where(
+            (d) =>
+                d['case_id'] == r['case_id'] &&
+                d['recipient_id'] == member.userId &&
+                d['active'] == true,
+          )
+          .toList();
+  bool _refreshingStanding = false;
+  String? standingError;
+  Future<void> refreshStanding() async {
+    if (_disposed || busy || !standingAvailable || _refreshingStanding) return;
+    _refreshingStanding = true;
+    final generation = _generation;
+    try {
+      final data = Map<String, dynamic>.from(
+        await repository.read('rx_standing_workspace', {
+              'p_clinic': member.clinicId,
+            })
+            as Map,
+      );
+      if (_disposed || generation != _generation) return;
+      standingMembers = _maps(data['members']);
+      standingOffers = _maps(data['offers']);
+      standingEvents = _maps(data['events']);
+      standingError = null;
+    } catch (_) {
+      if (_disposed || generation != _generation) return;
+      standingMembers = [];
+      standingOffers = [];
+      standingEvents = [];
+      standingError =
+          'No se pudieron actualizar los avisos. Actualiza antes de continuar.';
+    } finally {
+      _refreshingStanding = false;
+      if (!_disposed && generation == _generation) notifyListeners();
+    }
+  }
+
   Map<String, dynamic>? prescriptionPermissions;
   bool get canPreparePrescription => prescriptionKnown
       ? (prescriptionPermissions?['can_prepare'] == true)
       : true;
   bool prescriptionAction(Map<String, dynamic> row, String action) {
     if (!prescriptionKnown || busy || error != null) return false;
+    if ((action == 'prepare_standing' ||
+            (action == 'issue' && row['authorization_mode'] == 'standing')) &&
+        (!standingAvailable || standingError != null)) {
+      return false;
+    }
     if (!prescriptions.any(
       (current) =>
           current['id'] == row['id'] && current['revision'] == row['revision'],
@@ -105,12 +162,27 @@ class PrescribingViewModel extends ChangeNotifier {
       if (rxPermissions != null) {
         prescriptionKnown = true;
         if (rxPermissions['schema_version'] != 1 ||
-            rxPermissions['mode'] != 'individual') {
+            !(rxPermissions['mode'] == 'individual' ||
+                (rxPermissions['mode'] == 'individual_standing' &&
+                    rxPermissions['standing_version'] == 1))) {
           throw StateError('unknown_prescription_permission_contract');
         }
       } else if (prescriptionKnown) {
         throw StateError('prescription_permission_contract_lost');
       }
+      if (rxPermissions?['mode'] == 'individual_standing') {
+        standingKnown = true;
+      } else if (standingKnown) {
+        throw StateError('standing_contract_lost');
+      }
+      final standing = standingKnown
+          ? Map<String, dynamic>.from(
+              await repository.read('rx_standing_workspace', {
+                    'p_clinic': member.clinicId,
+                  })
+                  as Map,
+            )
+          : null;
       final profileRows = await repository.read('rx_profiles', {
         'p_clinic': member.clinicId,
       });
@@ -152,6 +224,10 @@ class PrescribingViewModel extends ChangeNotifier {
       if (_disposed || generation != _generation) return;
       operational = permissionRows;
       prescriptionPermissions = rxPermissions;
+      standingMembers = standing == null ? [] : _maps(standing['members']);
+      standingOffers = standing == null ? [] : _maps(standing['offers']);
+      standingEvents = standing == null ? [] : _maps(standing['events']);
+      standingError = null;
       profiles = _maps(profileRows);
       delegations = _maps(grants);
       products = catalog;
@@ -177,6 +253,10 @@ class PrescribingViewModel extends ChangeNotifier {
   static List<Map<String, dynamic>> _maps(dynamic rows) =>
       (rows as List).map((r) => Map<String, dynamic>.from(r)).toList();
   void _clear() {
+    standingMembers = [];
+    standingOffers = [];
+    standingEvents = [];
+    standingError = null;
     prescriptionPermissions = null;
     operational = null;
     profiles = [];

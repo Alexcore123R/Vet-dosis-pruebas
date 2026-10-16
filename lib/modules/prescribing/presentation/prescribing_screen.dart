@@ -2,6 +2,7 @@ import '../../identity/domain/identity_repository.dart';
 import '../../exports/domain/branded_export.dart';
 import '../../exports/presentation/branded_export_action.dart';
 import 'dart:convert';
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -39,22 +40,45 @@ class PrescribingScreen extends StatefulWidget {
 }
 
 class _PrescribingScreenState extends State<PrescribingScreen> {
-  late final model = PrescribingViewModel(
+  late PrescribingViewModel model;
+  PrescribingViewModel createModel() => PrescribingViewModel(
     widget.repository,
     widget.clinical,
     widget.member,
     widget.patientId,
   );
   String section = 'Perfil';
+  Timer? _inboxTimer;
+  bool _entryOpen = false;
   @override
   void initState() {
     super.initState();
+    model = createModel();
     model.load(selectedCase: widget.initialCase);
     if (widget.initialCase != null) section = 'Medicación';
+    _inboxTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!_entryOpen) model.refreshStanding();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant PrescribingScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.member.clinicId != widget.member.clinicId ||
+        oldWidget.member.userId != widget.member.userId ||
+        oldWidget.patientId != widget.patientId ||
+        oldWidget.repository != widget.repository ||
+        oldWidget.clinical != widget.clinical) {
+      model.dispose();
+      model = createModel();
+      section = widget.initialCase == null ? 'Perfil' : 'Medicación';
+      model.load(selectedCase: widget.initialCase);
+    }
   }
 
   @override
   void dispose() {
+    _inboxTimer?.cancel();
     model.dispose();
     super.dispose();
   }
@@ -73,6 +97,7 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
     String? reviewText,
     String submitLabel = 'Guardar',
   }) async {
+    _entryOpen = true;
     await Navigator.push(
       context,
       MaterialPageRoute<void>(
@@ -87,8 +112,220 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
         ),
       ),
     );
+    _entryOpen = false;
     if (mounted) await model.load();
   }
+
+  Future<void> offerStanding() async {
+    if (!model.canOfferStanding) return;
+    await entry(
+      'Dejar a cargo',
+      [
+        RxField(
+          'case',
+          'Caso seleccionado',
+          type: 'select',
+          required: true,
+          options: {
+            for (final c in model.cases.where(
+              (c) => c.responsibleId == widget.member.userId,
+            ))
+              c.id: '${c.patientName} · ${c.title}',
+          },
+        ),
+        RxField(
+          'recipient',
+          'Persona a cargo',
+          type: 'select',
+          required: true,
+          options: {
+            for (final m in model.standingMembers)
+              m['id'] as String: m['label'] as String,
+          },
+        ),
+        const RxField(
+          'until',
+          'Vencimiento de la autorización',
+          type: 'local_instant',
+          required: true,
+        ),
+        const RxField(
+          'confirmed',
+          'Autorizo previamente las recetas ordinarias de este caso, con revisión posterior. No comparto mi firma ni autorizo controlados.',
+          type: 'checkbox',
+          required: true,
+        ),
+      ],
+      (d, op) async {
+        if (!model.canOfferStanding) {
+          throw StateError('standing_authorization_unavailable');
+        }
+        await widget.repository.write('rx_standing_offer', {
+          'p_case': d['case'],
+          'p_recipient': d['recipient'],
+          'p_until': d['until'],
+          'p_confirmed': d['confirmed'] == true,
+          'p_operation': op,
+        });
+      },
+      reviewText:
+          'La persona deberá aceptar. Necesita sus propios permisos vigentes. El vencimiento debe estar dentro de la vigencia de ambos permisos.',
+      submitLabel: 'Ofrecer autorización',
+    );
+  }
+
+  Future<void> acceptStanding(Map<String, dynamic> offer) async {
+    await entry(
+      'Aceptar estar a cargo',
+      [
+        const RxField(
+          'confirmed',
+          'Acepto emitir con mi nombre y firma bajo esta autorización previa para recetas ordinarias del caso indicado.',
+          type: 'checkbox',
+          required: true,
+        ),
+      ],
+      (d, op) async {
+        await widget.repository.write('rx_standing_accept', {
+          'p_id': offer['id'],
+          'p_confirmed': d['confirmed'] == true,
+          'p_operation': op,
+        });
+      },
+      reviewText:
+          'Caso: ${offer['case_id']}\nVence: ${offer['valid_until']}\nSin controlados, firma compartida ni habilitación profesional adicional.',
+      submitLabel: 'Aceptar autorización',
+    );
+  }
+
+  Future<void> resumeStanding() async {
+    await entry(
+      'Retomar revisión',
+      [const RxField('reason', 'Motivo', required: true)],
+      (d, op) async {
+        await widget.repository.write('rx_standing_resume', {
+          'p_clinic': widget.member.clinicId,
+          'p_reason': d['reason'],
+          'p_operation': op,
+        });
+      },
+      reviewText:
+          'Revoca todas las autorizaciones temporales de recetas ordinarias que tú ofreciste en esta clínica. Las recetas ya emitidas conservan su historial; las pendientes deberán volver a revisión.',
+      submitLabel: 'Retomar revisión',
+    );
+  }
+
+  Future<void> postReview(Map<String, dynamic> event) async {
+    try {
+      final record = model.prescriptions
+          .where((r) => r['id'] == event['prescription_id'])
+          .firstOrNull;
+      if (record == null) {
+        message('Actualiza para consultar la receta emitida.');
+        return;
+      }
+      if (!await review(
+        'prescription',
+        record,
+        expectedHash: event['pdf_hash'] as String,
+      )) {
+        return;
+      }
+      if (!mounted) return;
+      await entry(
+        'Revisión posterior del MVZ',
+        [
+          const RxField('note', 'Nota de revisión (opcional)'),
+          const RxField(
+            'confirmed',
+            'Revisé la receta emitida y su PDF. Registro esta revisión posterior sin alterar la emisión original.',
+            type: 'checkbox',
+            required: true,
+          ),
+        ],
+        (d, op) async {
+          await widget.repository.write('rx_standing_review', {
+            'p_event': event['id'],
+            'p_content_hash': event['content_hash'],
+            'p_pdf_hash': event['pdf_hash'],
+            'p_confirmed': d['confirmed'] == true,
+            'p_note': d['note'] ?? '',
+          });
+        },
+        submitLabel: 'Registrar revisión posterior',
+      );
+    } catch (e) {
+      message(rxError(e));
+    }
+  }
+
+  List<Widget> standingPanel() => [
+    const Text('Recetas ordinarias · casos seleccionados'),
+    const Text(
+      'Avisos dentro de la app. Se actualizan cada 30 segundos mientras esta pantalla permanece abierta; no son notificaciones con la app cerrada.',
+    ),
+    if (model.standingError != null) Text(model.standingError!),
+    if (model.canOfferStanding)
+      FilledButton(
+        onPressed: offerStanding,
+        child: const Text('Dejar a cargo'),
+      ),
+    if (!model.busy &&
+        model.standingOffers.any(
+          (d) =>
+              d['created_by'] == widget.member.userId && d['revoked'] != true,
+        ))
+      OutlinedButton(
+        onPressed: resumeStanding,
+        child: const Text('Retomar revisión'),
+      ),
+    for (final d in model.standingOffers)
+      Card(
+        child: ListTile(
+          title: Text(
+            d['revoked'] == true
+                ? 'Revocada'
+                : d['active'] == true
+                ? 'Activa y aceptada'
+                : d['available'] == true
+                ? 'Pendiente de aceptación'
+                : 'No vigente',
+          ),
+          subtitle: Text(
+            'Caso: ${d['case_id']}\nPersona: ${d['recipient_id']}\nVence: ${d['valid_until']}',
+          ),
+          trailing:
+              d['recipient_id'] == widget.member.userId &&
+                  d['available'] == true &&
+                  d['accepted'] != true
+              ? TextButton(
+                  onPressed: () => acceptStanding(d),
+                  child: const Text('Aceptar'),
+                )
+              : null,
+        ),
+      ),
+    Text(
+      'Revisiones pendientes: ${model.standingEvents.where((e) => e['reviewed'] != true).length}',
+    ),
+    for (final e in model.standingEvents)
+      Card(
+        child: ListTile(
+          title: Text(
+            '${e['patient_name']} · ${e['reviewed'] == true ? 'Revisada' : 'Pendiente de revisión posterior'}',
+          ),
+          subtitle: Text(
+            'Emitida por ${e['recipient_id']} · ${e['created_at']}',
+          ),
+          trailing: e['reviewed'] == true
+              ? const Icon(Icons.check)
+              : TextButton(
+                  onPressed: model.busy ? null : () => postReview(e),
+                  child: const Text('Revisar'),
+                ),
+        ),
+      ),
+  ];
 
   Future<void> profile() async {
     final p = model.ownProfile;
@@ -436,9 +673,10 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
     }
   }
 
-  Future<void> prepare(Map<String, dynamic> r) async {
+  Future<void> prepare(Map<String, dynamic> r, {bool standing = false}) async {
+    final action = standing ? 'prepare_standing' : 'prepare';
     if (model.prescriptionKnown) {
-      if (!model.prescriptionAction(r, 'prepare')) return;
+      if (!model.prescriptionAction(r, action)) return;
       try {
         final signatures =
             (await widget.repository.read('rx_consultations', {'p_id': r['id']})
@@ -452,8 +690,21 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
           return;
         }
         await entry(
-          'Preparar para autorización del MVZ',
+          standing
+              ? 'Preparar con autorización temporal'
+              : 'Preparar para autorización del MVZ',
           [
+            if (standing)
+              RxField(
+                'delegation',
+                'Autorización aceptada para este caso',
+                type: 'select',
+                required: true,
+                options: {
+                  for (final d in model.standingFor(r))
+                    d['id'] as String: 'Vence ${d['valid_until']}',
+                },
+              ),
             RxField(
               'attestation',
               'Consulta realizada por',
@@ -472,18 +723,27 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
             ),
           ],
           (d, op) async {
-            if (!model.prescriptionAction(r, 'prepare')) {
+            if (!model.prescriptionAction(r, action)) {
               throw StateError('prescription_revision_conflict');
             }
-            await widget.repository.write('rx_prepare_attributed', {
-              'p_id': r['id'],
-              'p_revision': r['revision'],
-              'p_attestation': d['attestation'],
-              'p_preparer_name': d['name'],
-            });
+            await widget.repository.write(
+              standing ? 'rx_prepare_standing' : 'rx_prepare_attributed',
+              {
+                if (standing) 'p_delegation': d['delegation'],
+                'p_id': r['id'],
+                'p_revision': r['revision'],
+                'p_attestation': d['attestation'],
+                'p_preparer_name': d['name'],
+              },
+            );
           },
           initial: {'name': model.ownProfile?['name'] ?? ''},
-          submitLabel: 'Enviar para autorización',
+          submitLabel: standing
+              ? 'Preparar bajo autorización previa'
+              : 'Enviar para autorización',
+          reviewText: standing
+              ? 'Solo receta ordinaria de este caso. La emisión registrará tu identidad y quedará pendiente de revisión posterior del MVZ; no equivale a revisión individual previa.'
+              : null,
         );
       } catch (e) {
         message(rxError(e));
@@ -638,10 +898,18 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
     }
   }
 
-  Future<void> review(String kind, Map<String, dynamic> record) async {
+  Future<bool> review(
+    String kind,
+    Map<String, dynamic> record, {
+    String? expectedHash,
+  }) async {
     try {
       final pdf = await widget.repository.pdf(kind, record['id']);
-      if (!mounted) return;
+      if (!mounted) return false;
+      if (expectedHash != null && pdf.hash != expectedHash) {
+        throw StateError('reviewed_prescription_mismatch');
+      }
+      _entryOpen = true;
       await Navigator.push(
         context,
         MaterialPageRoute<void>(
@@ -650,7 +918,9 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
             title: kind == 'report' ? 'Reporte del periodo' : 'Receta médica',
             signed: record['state'] == 'issued',
             confirmLabel: kind == 'prescription' && model.prescriptionKnown
-                ? 'Revisé el PDF completo, la identidad de quien realizó la consulta y su firma; confirmo mi responsabilidad al emitirlo.'
+                ? (record['authorization_mode'] == 'standing'
+                      ? 'Revisé el PDF y lo emito con mi identidad bajo autorización temporal previa. Quedará pendiente de revisión posterior del MVZ.'
+                      : 'Revisé el PDF completo, la identidad de quien realizó la consulta y su firma; confirmo mi responsabilidad al emitirlo.')
                 : 'Revisé el PDF completo y confirmo sus datos, la firma utilizada y mi responsabilidad al emitirlo.',
             confirm:
                 record['state'] == 'issued' ||
@@ -673,8 +943,12 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
         ),
       );
       if (mounted) await model.load();
+      return true;
     } catch (e) {
       message(rxError(e));
+      return false;
+    } finally {
+      _entryOpen = false;
     }
   }
 
@@ -1115,6 +1389,7 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
             for (final s in [
               'Perfil',
               'Recetas',
+              if (model.standingKnown) 'A cargo',
               'Medicación',
               'Frascos',
               'Reportes',
@@ -1123,6 +1398,14 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
           ],
           onChanged: model.busy ? null : (v) => setState(() => section = v!),
         ),
+        if (model.standingEvents.any((e) => e['reviewed'] != true))
+          TextButton.icon(
+            onPressed: () => setState(() => section = 'A cargo'),
+            icon: const Icon(Icons.notifications_active_outlined),
+            label: Text(
+              '${model.standingEvents.where((e) => e['reviewed'] != true).length} recetas pendientes de revisión posterior',
+            ),
+          ),
         if (model.busy) const LinearProgressIndicator(),
         if (model.error != null) Text(model.error!),
         if (['Recetas', 'Medicación'].contains(section))
@@ -1185,6 +1468,7 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
               ),
             ),
         ],
+        if (section == 'A cargo') ...standingPanel(),
         if (section == 'Recetas') ...[
           if (model.products.isEmpty)
             const Text(
@@ -1237,6 +1521,13 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
                           TextButton(
                             onPressed: () => signConsultation(r),
                             child: const Text('Firmar consulta realizada'),
+                          ),
+                        if (model.prescriptionAction(r, 'prepare_standing'))
+                          OutlinedButton(
+                            onPressed: () => prepare(r, standing: true),
+                            child: const Text(
+                              'Preparar con autorización temporal',
+                            ),
                           ),
                         if (model.prescriptionAction(r, 'authorize'))
                           TextButton(

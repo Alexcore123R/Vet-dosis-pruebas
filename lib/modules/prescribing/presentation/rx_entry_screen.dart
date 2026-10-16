@@ -365,6 +365,26 @@ String rxError(Object error) {
   if (planMessage != null) return planMessage;
   final text = error.toString();
   for (final e in {
+    'standing_authorization_unavailable':
+        'La autorización temporal venció, fue revocada o cambiaron sus permisos. Actualiza; el documento no se emitió.',
+    'standing_expiry_outside_permissions':
+        'Elige un vencimiento futuro dentro de la vigencia de tus permisos y los de la persona a cargo.',
+    'standing_acceptance_required':
+        'La persona a cargo debe aceptar explícitamente la autorización.',
+    'standing_recipient_only':
+        'Esta acción corresponde únicamente a la persona destinataria de la autorización.',
+    'responsible_explicit_authorization_required':
+        'El MVZ responsable de este caso debe confirmar la autorización previa.',
+    'recipient_preparation_permissions_required':
+        'La persona necesita permisos vigentes para consultar el caso y preparar recetas.',
+    'responsible_review_only':
+        'Solo el MVZ que otorgó esta autorización puede registrar su revisión posterior.',
+    'reviewed_prescription_mismatch':
+        'El PDF o la versión no coincide con la receta seleccionada. Actualiza y vuelve a revisarlo.',
+    'post_review_confirmation_required':
+        'Confirma que revisaste la receta emitida y su PDF.',
+    'post_review_already_recorded':
+        'Esta revisión ya quedó registrada y no se sobrescribe.',
     'invalid_signature': 'Dibuja tu firma en el recuadro antes de continuar.',
     'prescription_revision_conflict':
         'La receta cambió. Actualiza y revisa la versión vigente antes de continuar.',
