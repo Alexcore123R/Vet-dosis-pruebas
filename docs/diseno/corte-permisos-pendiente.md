@@ -77,3 +77,7 @@ El [candidato 13H2](../permisos-etapa2b9-recetas.md) conecta firma de consulta c
 ## Avance 2B-14, 16-oct-2026
 
 [13J2](../permisos-etapa2b14-plantillas.md) prepara consulta/edición/aprobación de plantillas y membrete por persona. La aprobación profesional no convierte fuentes en verificadas ni firma documentos. Flutter reconoce el alcance solo de plantillas y no consulta/emite documentos por esa capacidad. Preparación/firmas/autoridad/artefactos de documentos y demás dependencias siguen pendientes; no desplegar aisladamente ni abrir beta. Las recomendaciones y SQL nuevos están archivados para después de estas rondas, sin ejecución.
+
+## Avance 2B-15, 16-oct-2026
+
+[13J3](../permisos-etapa2b15-borradores-firma.md) añade borradores con MVZ elegido explícitamente y firma propia **de elaboración** para una revisión exacta. Esa firma no atribuye automáticamente atención clínica ni sustituye al tutor o autorización. Cierra mutaciones/firmas compartidas antiguas, conserva archivos ya firmados y conecta Flutter sin autoridad por puesto. Autorización, atribución clínica, aceptación del tutor, PDF/emisión y adaptación de otras pantallas siguen pendientes: no desplegar aisladamente ni abrir beta.

@@ -137,3 +137,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Probar permisos de plantillas, aprobación, membrete y concurrencia
         run: bash supabase/tests/run_permission_form_templates.sh
+  form-document-drafts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar borradores, firma propia exacta, revocación y concurrencia
+        run: bash supabase/tests/run_permission_form_document_drafts.sh

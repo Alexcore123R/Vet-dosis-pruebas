@@ -58,3 +58,24 @@ abstract interface class FormRepository {
 abstract interface class FormTemplatePermissionRepository {
   Future<Map<String, dynamic>?> templatePermissions(String clinicId);
 }
+
+abstract interface class FormDraftRepository {
+  Future<Map<String, dynamic>?> documentWorkspace(String clinicId);
+  Future<FormDocument> createAttributedDraft(
+    String clinicId,
+    String patientId,
+    String versionId,
+    String responsibleId,
+    Map<String, dynamic> values,
+    Map<String, dynamic> branding,
+    String operationId,
+  );
+  Future<void> signAuthorship(
+    String id,
+    int revision,
+    String name,
+    List<List<double>?> signature,
+    bool confirmed,
+    String operationId,
+  );
+}

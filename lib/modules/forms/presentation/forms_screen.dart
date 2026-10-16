@@ -119,6 +119,8 @@ class _FormsScreenState extends State<FormsScreen> {
             template: version,
             patients: patients,
             initialBranding: branding,
+            draftOnly: model.documentsKnown,
+            draftResponsibles: model.documentResponsibles,
           ),
         ),
       );
@@ -141,6 +143,12 @@ class _FormsScreenState extends State<FormsScreen> {
           ),
         );
       } else {
+        if (model.documentsKnown && doc.snapshot['can_edit'] != true) {
+          message(
+            'Este borrador requiere revisión de su responsable antes de continuar.',
+          );
+          return;
+        }
         if (!mounted) return;
         await Navigator.push(
           context,
@@ -151,6 +159,8 @@ class _FormsScreenState extends State<FormsScreen> {
               professionalAdmin: professionalAdmin,
               prescribing: widget.prescribing,
               document: doc,
+              draftOnly: model.documentsKnown,
+              draftResponsibles: model.documentResponsibles,
             ),
           ),
         );
@@ -309,10 +319,12 @@ class _FormsScreenState extends State<FormsScreen> {
                               : () => editor(version, restore: true),
                           child: const Text('Restaurar base en versión nueva'),
                         ),
-                      if (model.documentsAvailable &&
-                          (model.access.finalize || professionalAdmin) &&
-                          version.clinicId != null &&
-                          version.approved)
+                      if (model.documentsKnown
+                          ? model.canCreateDraft(version)
+                          : (model.documentsAvailable &&
+                                (model.access.finalize || professionalAdmin) &&
+                                version.clinicId != null &&
+                                version.approved))
                         FilledButton(
                           onPressed: model.busy ? null : () => create(version),
                           child: Text(

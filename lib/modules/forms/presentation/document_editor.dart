@@ -25,7 +25,11 @@ class DocumentEditor extends StatefulWidget {
     this.initialBranding = const {},
     this.professionalAdmin = false,
     this.prescribing,
+    this.draftOnly = false,
+    this.draftResponsibles = const [],
   });
+  final bool draftOnly;
+  final List<Map<String, dynamic>> draftResponsibles;
   final FormRepository repository;
   final bool professionalAdmin;
   final PrescribingRepository? prescribing;
@@ -55,7 +59,11 @@ class _DocumentEditorState extends State<DocumentEditor> {
   List<Map<String, dynamic>> staff = [];
   List<FormDocument> consents = [];
   List<Map<String, dynamic>> professionalProfiles = [];
-  String? selectedProfile;
+  String? selectedProfile, draftResponsible;
+  String authorName = '';
+  bool authorshipConfirmed = false;
+  String authorshipOperation = newOperationId();
+  String? authorshipFingerprint;
   bool shareProfileSignature = false;
   int professionalGeneration = 0;
   bool get clinical => clinicalTypes.contains(schema['type']);
@@ -84,8 +92,9 @@ class _DocumentEditorState extends State<DocumentEditor> {
             ...widget.initialBranding,
           },
     );
-    if (clinical) loadClinicalChoices();
-    if (widget.prescribing != null) loadProfiles();
+    draftResponsible = document?.responsibleId;
+    if (clinical && !widget.draftOnly) loadClinicalChoices();
+    if (widget.prescribing != null && !widget.draftOnly) loadProfiles();
   }
 
   Future<void> loadClinicalChoices() async {
@@ -214,19 +223,44 @@ class _DocumentEditorState extends State<DocumentEditor> {
       if (patientId == null) {
         throw const FormatException('Selecciona paciente.');
       }
-      final fingerprint = jsonEncode([patientId, values, branding]);
+      final fingerprint = jsonEncode([
+        patientId,
+        values,
+        branding,
+        if (widget.draftOnly) draftResponsible,
+      ]);
       if (operationFingerprint != null && operationFingerprint != fingerprint) {
         operation = newOperationId();
       }
       operationFingerprint = fingerprint;
-      document = await widget.repository.createDocument(
-        widget.member.clinicId,
-        patientId!,
-        widget.template!.id,
-        values,
-        branding,
-        operation,
-      );
+      if (widget.draftOnly) {
+        if (draftResponsible == null) {
+          throw const FormatException(
+            'Elige explícitamente al MVZ responsable.',
+          );
+        }
+        document = await (widget.repository as FormDraftRepository)
+            .createAttributedDraft(
+              widget.member.clinicId,
+              patientId!,
+              widget.template!.id,
+              draftResponsible!,
+              values,
+              branding,
+              operation,
+            );
+        values = Map<String, dynamic>.from(document!.values);
+        professionalGeneration++;
+      } else {
+        document = await widget.repository.createDocument(
+          widget.member.clinicId,
+          patientId!,
+          widget.template!.id,
+          values,
+          branding,
+          operation,
+        );
+      }
     } else if (dirty) {
       document = await widget.repository.saveDocument(
         document!.id,
@@ -252,6 +286,53 @@ class _DocumentEditorState extends State<DocumentEditor> {
           () => error = e is FormatException
               ? e.message
               : 'No se guardó el borrador. Actualiza antes de reintentar.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> signAuthorship() async {
+    if (busy) return;
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      if (!authorshipConfirmed || authorName.trim().isEmpty || mvz.isEmpty) {
+        throw const FormatException(
+          'Escribe tu nombre, dibuja tu firma y confirma la elaboración.',
+        );
+      }
+      final signature = List<List<double>?>.from(mvz);
+      await saveDraft();
+      final fingerprint = jsonEncode([
+        document!.id,
+        document!.revision,
+        authorName.trim(),
+        signature,
+      ]);
+      if (authorshipFingerprint != null &&
+          authorshipFingerprint != fingerprint) {
+        authorshipOperation = newOperationId();
+      }
+      authorshipFingerprint = fingerprint;
+      await (widget.repository as FormDraftRepository).signAuthorship(
+        document!.id,
+        document!.revision,
+        authorName.trim(),
+        signature,
+        true,
+        authorshipOperation,
+      );
+      if (mounted) exit.close(context, true);
+    } catch (e) {
+      if (mounted) {
+        setState(
+          () => error = e is FormatException
+              ? e.message
+              : 'No se registró la firma. Revisa el permiso y la versión actual del borrador.',
         );
       }
     } finally {
@@ -594,7 +675,9 @@ class _DocumentEditorState extends State<DocumentEditor> {
                   : 'Contenido de la clínica · Identificación: solo número, sin foto. Modificar contenido invalida las firmas y la revisión anterior.',
             ),
             Text(
-              'Estado: ${document == null ? 'Borrador nuevo' : formStateLabel(document!.state)} · Las firmas dibujadas no finalizan el documento hasta revisar y confirmar el PDF.',
+              widget.draftOnly
+                  ? 'Borrador sin autorización del MVZ ni aceptación firmada del tutor.'
+                  : 'Estado: ${document == null ? 'Borrador nuevo' : formStateLabel(document!.state)} · Las firmas dibujadas no finalizan el documento hasta revisar y confirmar el PDF.',
             ),
             if (schema['type'] == 'euthanasia')
               const Padding(
@@ -620,6 +703,35 @@ class _DocumentEditorState extends State<DocumentEditor> {
                     ? null
                     : (id) {
                         patientId = id;
+                        changed();
+                      },
+              ),
+            if (widget.draftOnly && document != null)
+              Text(
+                'MVZ responsable seleccionado: ${values['mvz_name']} · ${values['mvz_license']}. Autorización pendiente.',
+              ),
+            if (widget.draftOnly && document == null)
+              DropdownButtonFormField<String>(
+                initialValue: draftResponsible,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText:
+                      'MVZ responsable (su autorización quedará pendiente)',
+                ),
+                items: [
+                  for (final r in widget.draftResponsibles)
+                    DropdownMenuItem(
+                      value: r['id'] as String,
+                      child: Text(
+                        '${r['name']} · ${r['license']}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: busy
+                    ? null
+                    : (id) {
+                        draftResponsible = id;
                         changed();
                       },
               ),
@@ -665,7 +777,9 @@ class _DocumentEditorState extends State<DocumentEditor> {
                     },
               title: const Text('Incluir logo en el PDF'),
             ),
-            if (responsible && widget.prescribing != null) ...[
+            if (!widget.draftOnly &&
+                responsible &&
+                widget.prescribing != null) ...[
               DropdownButtonFormField<String>(
                 initialValue: selectedProfile,
                 isExpanded: true,
@@ -702,13 +816,17 @@ class _DocumentEditorState extends State<DocumentEditor> {
                 'Cambiar el perfil exige revisar y firmar de nuevo. Sin firma compartida se usa la firma propia de quien emite.',
               ),
             ],
-            for (final f in (schema['fields'] as List).cast<Map>()) field(f),
+            for (final f in (schema['fields'] as List).cast<Map>())
+              if (!(widget.draftOnly &&
+                  ['mvz_name', 'mvz_license'].contains(f['id'])))
+                field(f),
             for (final c in schema['clauses'])
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(c['text']),
               ),
-            if (responsible &&
+            if (!widget.draftOnly &&
+                responsible &&
                 (document == null || document!.state == 'draft' || dirty)) ...[
               if (!clinical)
                 SignaturePad(
@@ -727,6 +845,45 @@ class _DocumentEditorState extends State<DocumentEditor> {
                 }),
               ),
             ],
+            if (widget.draftOnly) ...[
+              const Text(
+                'Firma de elaboración: solo acredita quién elaboró esta versión. No autoriza el documento, no es firma del tutor y no acredita un procedimiento realizado.',
+              ),
+              TextField(
+                decoration: const InputDecoration(
+                  labelText: 'Tu nombre completo',
+                ),
+                enabled: !busy,
+                onChanged: (v) {
+                  authorName = v;
+                  signatureDirty = true;
+                  authorshipConfirmed = false;
+                  setState(() {});
+                },
+              ),
+              SignaturePad(
+                key: ValueKey('authorship-$signatureGeneration'),
+                label: 'Tu firma de elaboración',
+                onChanged: (points) => setState(() {
+                  mvz = points;
+                  signatureDirty = true;
+                  authorshipConfirmed = false;
+                }),
+              ),
+              CheckboxListTile(
+                value: authorshipConfirmed,
+                onChanged: busy
+                    ? null
+                    : (v) => setState(() => authorshipConfirmed = v ?? false),
+                title: const Text(
+                  'Confirmo que elaboré y revisé esta versión con mi propia identidad y firma.',
+                ),
+              ),
+              FilledButton(
+                onPressed: busy ? null : signAuthorship,
+                child: const Text('Guardar firma de elaboración'),
+              ),
+            ],
             if (error != null)
               Text(
                 error!,
@@ -736,12 +893,14 @@ class _DocumentEditorState extends State<DocumentEditor> {
               onPressed: busy ? null : save,
               child: const Text('Guardar borrador'),
             ),
-            if (responsible && (document == null || document!.state == 'draft'))
+            if (!widget.draftOnly &&
+                responsible &&
+                (document == null || document!.state == 'draft'))
               TextButton(
                 onPressed: busy ? null : assign,
                 child: const Text('Asignar borrador a auxiliar'),
               ),
-            if (responsible)
+            if (!widget.draftOnly && responsible)
               FilledButton(
                 onPressed: busy ? null : review,
                 child: Text(
@@ -751,7 +910,7 @@ class _DocumentEditorState extends State<DocumentEditor> {
                       : 'Preparar PDF con firmas para revisar',
                 ),
               ),
-            if (!responsible)
+            if (!widget.draftOnly && !responsible)
               const Text(
                 'El auxiliar puede llenar el borrador asignado. Solo el MVZ responsable prepara y confirma las firmas.',
               ),

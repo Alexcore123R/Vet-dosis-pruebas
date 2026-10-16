@@ -5,9 +5,65 @@ import '../domain/form_models.dart';
 import '../domain/form_repository.dart';
 
 class SupabaseFormRepository
-    implements FormRepository, FormTemplatePermissionRepository {
+    implements
+        FormRepository,
+        FormTemplatePermissionRepository,
+        FormDraftRepository {
   SupabaseFormRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<Map<String, dynamic>?> documentWorkspace(String clinicId) async {
+    try {
+      return Map<String, dynamic>.from(
+        await rpc('form_document_workspace', {'p_clinic': clinicId}) as Map,
+      );
+    } on PostgrestException catch (e) {
+      if (e.code == 'PGRST202' || e.code == '42883') return null;
+      rethrow;
+    }
+  }
+
+  @override
+  Future<FormDocument> createAttributedDraft(
+    String clinicId,
+    String patientId,
+    String versionId,
+    String responsibleId,
+    Map<String, dynamic> values,
+    Map<String, dynamic> branding,
+    String operationId,
+  ) async => FormDocument.read(
+    Map<String, dynamic>.from(
+      await rpc('form_document_draft_create', {
+        'p_clinic': clinicId,
+        'p_patient': patientId,
+        'p_version': versionId,
+        'p_responsible': responsibleId,
+        'p_values': values,
+        'p_branding': branding,
+        'p_operation': operationId,
+      }),
+    ),
+  );
+  @override
+  Future<void> signAuthorship(
+    String id,
+    int revision,
+    String name,
+    List<List<double>?> signature,
+    bool confirmed,
+    String operationId,
+  ) async {
+    await rpc('form_document_authorship_sign', {
+      'p_id': id,
+      'p_revision': revision,
+      'p_name': name,
+      'p_signature': signature,
+      'p_confirmed': confirmed,
+      'p_operation': operationId,
+    });
+  }
+
   @override
   Future<Map<String, dynamic>?> templatePermissions(String clinicId) async {
     try {

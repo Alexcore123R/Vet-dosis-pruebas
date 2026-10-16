@@ -53,3 +53,7 @@ No hay una decisión nueva pendiente para esta separación de capacidades operat
 - Flutter: permisos sobre puesto, no leer documentos desde plantilla, contrato perdido/malformado, fallo/revocación de lectura y aprobación deshabilitada.
 
 Suite completa local: **319 pruebas Flutter correctas**; `flutter analyze --no-pub` sin incidencias. SQL y concurrencia correctos. GitHub Actions: [ejecución 38973275235](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38973275235), commit de código `53c0768`: **15/15 trabajos correctos**, incluido `form-templates` y regresiones de recetas, reportes, inventario/caja y hospitalización. Bases aisladas; sin despliegue a Supabase ni APK.
+
+## Avance posterior
+
+[13J3](permisos-etapa2b15-borradores-firma.md) habilita un contrato separado para borradores y firma propia de elaboración; sustituye la limitación de no consultar documentos **solo cuando ese contrato nuevo está presente y válido**. El permiso de plantilla por sí solo sigue sin abrir documentos. Autorización, firma del tutor y PDF/emisión nuevos continúan pendientes; no desplegar por separado.
