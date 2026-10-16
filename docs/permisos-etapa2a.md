@@ -51,3 +51,11 @@ Las transferencias, restauración y catálogo global de controlados continúan f
 - `flutter test test/permission_screen_test.dart`: estado de preparación, ausencia de facultades por puesto, separación del admin/miembro, alcance obligatorio, vigencia/motivo/confirmación y limpieza tras fallo.
 - Pruebas Python del operador: inspección sin cambios, confirmación, dependencias, beta cerrada, esquema parcial y no reaplicar una instalación completa.
 - Pendiente real: primer expediente de evidencia revisado y pruebas de extremo a extremo con Auth real, realizadas por quienes mantienen sus propias sesiones.
+
+## Evidencia de entrega, 16-oct-2026
+
+- Base aplicada en el proyecto de pruebas, desactivada: https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38833593695. Preflight remoto: M6 y beta disponibles, admisiones y candado global cerrados, cero tablas nuevas antes de aplicar. Validación posterior: nueve tablas y once RPC disponibles, migración sin activar.
+- Veintiuna pruebas Python; SQL aislado correcto; 250 pruebas Flutter y análisis sin observaciones.
+- HTTP real sin sesión contra `permission_snapshot`, `permission_professional_snapshot` y `permission_grant`: las tres devolvieron 401 / SQLSTATE 42501. No se usan credenciales Auth de usuarios para estas pruebas.
+- APK iniciado en https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38833593757. Registrar resultado verificado al terminar; iniciar la compilación no acredita un APK listo.
+- La propietaria ya confirmó el acceso real a administración de plataforma con 2FA. Esa comprobación no acredita evidencia profesional ni pruebas clínicas de extremo a extremo.
