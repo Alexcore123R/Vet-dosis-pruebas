@@ -53,3 +53,7 @@ Aplicación/extracción, validación y frascos: [candidato 13F, esquema y límit
 ## Avance 2B-7, 16-oct-2026
 
 Alta revisada y seguimiento de dosis: [candidato 13G, esquema y límites](../permisos-etapa2b7.md). Posponer/no aplicada no administran ni extraen; el alta requiere habilitación y revisión de todos los pendientes. Se valida versión al aplicar y se conserva la primera resolución concurrente. SQL/UI preparados sin despliegue. El resto de rutas de recetas/delegaciones/reportes, lectura de bitácora/agregados, Storage/Edge, navegación e históricos sigue pendiente: no activar el corte ni declarar lista toda la beta.
+
+## Revisión siguiente: recetas 13H, 16-oct-2026
+
+Se revisó preparación → PDF → emisión y delegaciones: [hallazgos, esquema concreto, fases y decisiones](recetas-autorizacion-13h.md). La preparación actual todavía exige autoridad de emisión y utiliza habilitación heredada; la firma compartida no distingue el acto previo de una revisión individual. Hay propuesta documentada, **sin SQL/UI 13H implementados**. Resolver alcance y firma de autorización permanente antes de código; conservar históricos y no desplegar ni abrir beta.
