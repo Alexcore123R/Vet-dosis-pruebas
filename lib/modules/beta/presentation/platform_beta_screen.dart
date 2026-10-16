@@ -1,3 +1,4 @@
+import 'platform_professional_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -251,6 +252,23 @@ class _PlatformBetaScreenState extends State<PlatformBetaScreen> {
                     ),
                   ],
                 ),
+                if (widget.repository is PlatformProfessionalRepository)
+                  OutlinedButton.icon(
+                    onPressed: busy
+                        ? null
+                        : () => Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => PlatformProfessionalScreen(
+                                repository:
+                                    widget.repository
+                                        as PlatformProfessionalRepository,
+                              ),
+                            ),
+                          ),
+                    icon: const Icon(Icons.verified_user_outlined),
+                    label: const Text('Habilitaciones profesionales globales'),
+                  ),
                 for (final section in [
                   'approvals',
                   'invites',

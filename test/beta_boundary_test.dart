@@ -8,7 +8,9 @@ class BetaFake implements BetaRepository {
     'mode': 'not_enrolled',
     'admissions_enabled': false,
   });
-  int enrollments = 0;
+  int enrollments = 0, acceptances = 0;
+  String? acceptedVersion, acceptedHash, enrolledVersion, enrolledHash;
+  bool replaceTermsOnAcceptance = false;
   bool offline = false;
   @override
   Future<BetaState> status(String? clinic) async {
@@ -19,7 +21,24 @@ class BetaFake implements BetaRepository {
   @override
   Future<void> enroll(String version, String hash, String? token) async {
     enrollments++;
+    enrolledVersion = version;
+    enrolledHash = hash;
     current = const BetaState({'mode': 'active'});
+  }
+
+  @override
+  Future<void> acceptTerms(String version, String hash) async {
+    if (replaceTermsOnAcceptance) {
+      current = BetaState({
+        ...current.data,
+        'terms': {'version': '2', 'hash': 'hash-2', 'content': 'Texto segundo'},
+      });
+      throw StateError('beta_terms_changed');
+    }
+    acceptances++;
+    acceptedVersion = version;
+    acceptedHash = hash;
+    current = BetaState({...current.data, 'terms_acceptance_required': false});
   }
 
   @override
@@ -121,6 +140,8 @@ void main() {
       await tester.tap(find.text('Ingresar a la beta'));
       await tester.pumpAndSettle();
       expect(repository.enrollments, 1);
+      expect(repository.enrolledVersion, 'test');
+      expect(repository.enrolledHash, 'synthetic');
       expect(find.text('Workspace sintético'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     },
@@ -173,6 +194,134 @@ void main() {
       expect(find.text('Aprobar correo'), findsOneWidget);
       expect(find.text('Workspace sintético'), findsNothing);
       expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+  BetaFake pendingTerms() => BetaFake()
+    ..current = const BetaState({
+      'mode': 'active',
+      'terms_acceptance_required': true,
+      'terms': {'version': '1', 'hash': 'hash-1', 'content': 'Texto primero'},
+    });
+  testWidgets('La versión visible es la enviada al aceptar actualización', (
+    tester,
+  ) async {
+    final repository = pendingTerms();
+    await tester.pumpWidget(app(repository));
+    await tester.pumpAndSettle();
+    expect(find.text('Términos de uso · versión 1'), findsOneWidget);
+    expect(find.text('Texto primero'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Aceptar versión 1'),
+          )
+          .onPressed,
+      isNull,
+    );
+    await tester.tap(find.byType(Checkbox));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Aceptar versión 1'));
+    await tester.pumpAndSettle();
+    expect(repository.acceptedVersion, '1');
+    expect(repository.acceptedHash, 'hash-1');
+    expect(repository.enrollments, 0);
+    expect(find.text('Workspace sintético'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('Puede consultar y exportar sin aceptar ni renovar la beta', (
+    tester,
+  ) async {
+    final repository = pendingTerms();
+    await tester.pumpWidget(app(repository));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continuar solo consulta y exportación'));
+    await tester.pumpAndSettle();
+    expect(find.text('Workspace sintético'), findsOneWidget);
+    expect(find.textContaining('Términos pendientes'), findsOneWidget);
+    expect(repository.acceptances, 0);
+    expect(repository.enrollments, 0);
+    await tester.tap(find.text('Leer y aceptar términos actualizados'));
+    await tester.pumpAndSettle();
+    expect(find.text('Texto primero'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('Cambiar número de versión con mismo hash quita la selección', (
+    tester,
+  ) async {
+    final repository = pendingTerms();
+    await tester.pumpWidget(app(repository));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(Checkbox));
+    repository.current = const BetaState({
+      'mode': 'active',
+      'terms_acceptance_required': true,
+      'terms': {'version': '2', 'hash': 'hash-1', 'content': 'Texto primero'},
+    });
+    await tester.pump(const Duration(minutes: 1));
+    await tester.pumpAndSettle();
+    expect(find.text('Términos de uso · versión 2'), findsOneWidget);
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, false);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, 'Aceptar versión 2'),
+          )
+          .onPressed,
+      isNull,
+    );
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets(
+    'Si servidor cambió texto, carga versión actual y exige aceptarla',
+    (tester) async {
+      final repository = pendingTerms()..replaceTermsOnAcceptance = true;
+      await tester.pumpWidget(app(repository));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(Checkbox));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Aceptar versión 1'));
+      await tester.pumpAndSettle();
+      expect(find.text('Texto segundo'), findsOneWidget);
+      expect(find.textContaining('Los términos cambiaron'), findsOneWidget);
+      expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, false);
+      expect(repository.acceptances, 0);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+  testWidgets(
+    'Aceptar términos conserva el borrador sin refrescar membresías',
+    (tester) async {
+      final repository = BetaFake()
+        ..current = const BetaState({'mode': 'active'});
+      var membershipRefreshes = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BetaBoundary(
+            repository: repository,
+            onSignOut: () async {},
+            onRefresh: () async {
+              membershipRefreshes++;
+            },
+            child: const Scaffold(
+              body: TextField(
+                decoration: InputDecoration(labelText: 'Captura en curso'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Borrador intacto');
+      repository.current = pendingTerms().current;
+      await tester.pump(const Duration(minutes: 1));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(Checkbox));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Aceptar versión 1'));
+      await tester.pumpAndSettle();
+      expect(find.text('Borrador intacto'), findsOneWidget);
+      expect(membershipRefreshes, 0);
       await tester.pumpWidget(const SizedBox());
     },
   );

@@ -1,0 +1,58 @@
+create function pg_temp.assert_true(v boolean,msg text) returns void language plpgsql as $$begin if v is distinct from true then raise exception 'ASSERT: %',msg;end if;end$$;
+create function pg_temp.expect_error(sql text,expected text) returns void language plpgsql as $$begin
+ begin execute sql;exception when others then if position(expected in sqlerrm)>0 then return;end if;raise;end;
+ raise exception 'Expected rejection: %',expected;
+end$$;
+select pg_temp.assert_true((select count(*)=1 from public.terms_acceptances),'historical acceptance not preserved');
+select pg_temp.assert_true((select a.accepted_at=e.accepted_at and a.origin='beta_enrollment_migration' from public.terms_acceptances a join private.beta_enrollments e using(user_id)),'historical acceptance altered');
+insert into private.beta_terms(version,content,content_hash,published,published_at) values('test-1','Synthetic current terms',encode(sha256(convert_to('Synthetic current terms','UTF8')),'hex'),true,now());
+insert into private.beta_builds(version_code) values(1);
+update private.beta_policy set admissions_enabled=true,enforcement_enabled=true;
+insert into private.beta_email_approvals(email,enabled,changed_by,reason) values('new@example.test',true,'00000000-0000-0000-0000-000000000001','Synthetic approval');
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000002',false);
+select set_config('request.headers','{"x-vetdosis-build":"1"}',false);
+set role authenticated;
+select pg_temp.assert_true((public.beta_status(1)->>'terms_acceptance_required')::boolean,'new version not required');
+select public.beta_access_check(false);
+select pg_temp.expect_error('insert into public.terms_test_mutations values(1)','terms_acceptance_required');
+select pg_temp.expect_error('select public.beta_accept_terms(''test-1'',''wrong hash'')','beta_terms_changed');
+select pg_temp.expect_error('select public.beta_accept_terms(''test-0'',encode(sha256(convert_to(''Synthetic historical terms'',''UTF8'')),''hex''))','beta_terms_changed');
+select public.beta_accept_terms('test-1',encode(sha256(convert_to('Synthetic current terms','UTF8')),'hex'));
+select public.beta_accept_terms('test-1',encode(sha256(convert_to('Synthetic current terms','UTF8')),'hex'));
+select pg_temp.assert_true(not(public.beta_status(1)->>'terms_acceptance_required')::boolean,'acceptance not recognized');
+insert into public.terms_test_mutations values(1);
+select pg_temp.assert_true((select count(*)=2 from public.terms_acceptances),'history replaced or retry duplicated');
+select pg_temp.expect_error('insert into public.terms_acceptances(user_id,terms_version,terms_hash,origin) values(auth.uid(),''fake'',''fake'',''explicit'')','permission denied');
+reset role;
+select pg_temp.assert_true((select terms_version='test-0' and starts_at<now()-interval '4 days' from private.beta_enrollments where user_id=auth.uid()),'reacceptance changed admission');
+select pg_temp.expect_error('update public.terms_acceptances set accepted_at=now()','beta_version_is_immutable');
+-- New enrollment records precisely the text displayed, not another user's acceptance.
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',false);
+set role authenticated;
+select public.beta_enroll('test-1',encode(sha256(convert_to('Synthetic current terms','UTF8')),'hex'));
+select pg_temp.assert_true((select count(*)=1 from public.terms_acceptances),'cross-user history leaked');
+select pg_temp.assert_true((select terms_version='test-1' and origin='explicit' from public.terms_acceptances),'wrong initial version');
+reset role;
+-- Expired beta can accept updated terms but never acquires a new trial or write access.
+select set_config('request.jwt.claim.sub','',false);
+update private.beta_enrollments set starts_at=now()-interval '61 days',expires_at=now()-interval '1 day' where user_id='00000000-0000-0000-0000-000000000003';
+insert into private.beta_terms(version,content,content_hash,published,published_at) values('test-2','Synthetic second terms',encode(sha256(convert_to('Synthetic second terms','UTF8')),'hex'),true,clock_timestamp());
+select private.beta_install_guards();
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000003',false);
+set role authenticated;
+select public.beta_accept_terms('test-2',encode(sha256(convert_to('Synthetic second terms','UTF8')),'hex'));
+select pg_temp.assert_true(public.beta_status(1)->>'mode'='read_export','expired trial renewed');
+select pg_temp.expect_error('insert into public.terms_test_mutations values(2)','beta_read_export_only');
+reset role;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000004',false);
+set role authenticated;
+select pg_temp.assert_true((select count(*)=0 from public.terms_acceptances),'another user sees acceptances');
+select pg_temp.expect_error('select public.beta_accept_terms(''test-2'',encode(sha256(convert_to(''Synthetic second terms'',''UTF8'')),''hex''))','beta_enrollment_required');
+reset role;
+set role anon;
+select pg_temp.expect_error('select public.beta_accept_terms(''test-2'',''fake'')','permission denied');
+reset role;
+-- Hook permits only reaching the acceptance endpoint; its own checks still apply.
+select set_config('request.path','/rpc/beta_accept_terms',false);
+select private.beta_request_guard();
+select pg_temp.expect_error('update private.beta_terms set content=''changed'' where version=''test-1''','beta_version_is_immutable');

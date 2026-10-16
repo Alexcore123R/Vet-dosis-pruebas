@@ -1,7 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../domain/beta_repository.dart';
 
-class SupabaseBetaRepository implements BetaRepository {
+class SupabaseBetaRepository
+    implements BetaRepository, PlatformProfessionalRepository {
   SupabaseBetaRepository(this.client, this.build);
   final SupabaseClient client;
   final int build;
@@ -19,6 +20,14 @@ class SupabaseBetaRepository implements BetaRepository {
     await client.rpc(
       'beta_enroll',
       params: {'p_terms': version, 'p_hash': hash, 'p_token': token},
+    );
+  }
+
+  @override
+  Future<void> acceptTerms(String version, String hash) async {
+    await client.rpc(
+      'beta_accept_terms',
+      params: {'p_terms': version, 'p_hash': hash},
     );
   }
 
@@ -80,5 +89,18 @@ class SupabaseBetaRepository implements BetaRepository {
   Future<void> verifyMfa(String factorId, String code) async {
     await client.auth.mfa.challengeAndVerify(factorId: factorId, code: code);
     await client.auth.refreshSession();
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> globalProfessionalReviews() async =>
+      (await client.rpc('platform_beta_professional_list') as List)
+          .map((row) => Map<String, dynamic>.from(row as Map))
+          .toList();
+  @override
+  Future<void> revokeGlobalProfessionalReview(String id, String reason) async {
+    await client.rpc(
+      'platform_beta_professional_revoke',
+      params: {'p_id': id, 'p_reason': reason},
+    );
   }
 }

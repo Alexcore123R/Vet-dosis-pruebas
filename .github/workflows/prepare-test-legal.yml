@@ -1,0 +1,34 @@
+name: Preparar términos versionados y administración profesional
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        type: choice
+        options: [inspect, prepare]
+        default: inspect
+        required: true
+      confirmation:
+        description: PREPARAR_TERMINOS_SIN_PUBLICAR
+        type: string
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: supabase-test-beta-preparation
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar operador y origen de borradores
+        run: python3 -m unittest discover -s scripts/supabase -p 'test_*.py'
+      - name: Probar términos y plataforma con candado real en PostgreSQL aislado
+        run: bash supabase/tests/run_terms_acceptances.sh
+      - name: Preparar sin publicar ni abrir beta
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          LEGAL_ACTION: ${{ inputs.action }}
+          LEGAL_CONFIRMATION: ${{ inputs.confirmation }}
+        run: python3 scripts/supabase/legal_schema.py

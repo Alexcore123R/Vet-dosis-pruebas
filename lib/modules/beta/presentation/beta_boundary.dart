@@ -25,7 +25,7 @@ class BetaBoundary extends StatefulWidget {
 class _BetaBoundaryState extends State<BetaBoundary> {
   BetaState? state;
   bool busy = false, accepted = false;
-  bool entered = false;
+  bool entered = false, termsReadOnly = false;
   String? error;
   final token = TextEditingController();
   Timer? timer;
@@ -60,7 +60,11 @@ class _BetaBoundaryState extends State<BetaBoundary> {
       final value = await widget.repository.status(widget.clinicId);
       if (!mounted || request != revision) return;
       setState(() {
-        if (value.terms?['hash'] != state?.terms?['hash']) accepted = false;
+        if (value.terms?['hash'] != state?.terms?['hash'] ||
+            value.terms?['version'] != state?.terms?['version']) {
+          accepted = false;
+          termsReadOnly = false;
+        }
         state = value;
         error = null;
       });
@@ -74,18 +78,23 @@ class _BetaBoundaryState extends State<BetaBoundary> {
     }
   }
 
-  Future<void> run(Future<void> Function() action) async {
+  Future<void> run(
+    Future<void> Function() action, {
+    bool refreshMemberships = true,
+  }) async {
     if (busy) return;
     setState(() => busy = true);
     try {
       await action();
       await refresh();
-      await widget.onRefresh();
-    } catch (_) {
+      if (refreshMemberships) await widget.onRefresh();
+    } catch (failure) {
+      await refresh();
       if (mounted) {
         setState(
-          () => error =
-              'No se completó la operación. Revisa correo aprobado, invitación, términos y conexión.',
+          () => error = failure.toString().contains('beta_terms_changed')
+              ? 'Los términos cambiaron. Lee la versión actual y vuelve a aceptarla.'
+              : 'No se completó la operación. Revisa correo aprobado, invitación, términos y conexión.',
         );
       }
     } finally {
@@ -104,8 +113,60 @@ class _BetaBoundaryState extends State<BetaBoundary> {
         onVerified: refresh,
       );
     }
+    if (value?.canEnter == true && value!.termsPending && !termsReadOnly) {
+      return frame(
+        Scaffold(
+          appBar: AppBar(
+            title: const Text('Términos actualizados'),
+            actions: [
+              TextButton(
+                onPressed: busy ? null : widget.onSignOut,
+                child: const Text('Salir'),
+              ),
+            ],
+          ),
+          body: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              const Text(
+                'Lee y acepta la nueva versión para registrar cambios. Puedes seguir consultando y exportando sin ampliar la duración de tu beta.',
+              ),
+              if (error != null) Text(error!),
+              if (value.terms != null) ...[
+                ...termsFields(value),
+                FilledButton(
+                  onPressed: busy || !accepted
+                      ? null
+                      : () => run(
+                          () => widget.repository.acceptTerms(
+                            value.terms!['version'] as String,
+                            value.terms!['hash'] as String,
+                          ),
+                          refreshMemberships: false,
+                        ),
+                  child: Text('Aceptar versión ${value.terms!['version']}'),
+                ),
+              ],
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () => setState(() => termsReadOnly = true),
+                child: const Text('Continuar solo consulta y exportación'),
+              ),
+              TextButton(
+                onPressed: busy ? null : refresh,
+                child: const Text('Revisar acceso'),
+              ),
+              if (busy) const LinearProgressIndicator(),
+            ],
+          ),
+        ),
+      );
+    }
     if (value?.canEnter == true && error == null) {
-      final banner = value!.data['update_required'] == true
+      final banner = value!.termsPending
+          ? 'Términos pendientes de aceptación. Solo consulta y exportación.'
+          : value.data['update_required'] == true
           ? 'Esta versión requiere actualización. Puedes consultar y exportar; solicita el APK actualizado.'
           : value.readOnly
           ? 'Beta en modo consulta y exportación. No se permiten nuevos registros.'
@@ -170,16 +231,7 @@ class _BetaBoundaryState extends State<BetaBoundary> {
                   ),
                   if (value.admissionsOpen && value.terms != null) ...[
                     const SizedBox(height: 16),
-                    Text(value.terms!['content'] as String),
-                    CheckboxListTile(
-                      value: accepted,
-                      onChanged: busy
-                          ? null
-                          : (v) => setState(() => accepted = v ?? false),
-                      title: const Text(
-                        'Leí y acepto estos términos de la beta',
-                      ),
-                    ),
+                    ...termsFields(value),
                     TextField(
                       controller: token,
                       decoration: const InputDecoration(
@@ -217,6 +269,22 @@ class _BetaBoundaryState extends State<BetaBoundary> {
     );
   }
 
+  List<Widget> termsFields(BetaState value) => [
+    Text(
+      'Términos de uso · versión ${value.terms!['version']}',
+      style: Theme.of(context).textTheme.titleLarge,
+    ),
+    const SizedBox(height: 12),
+    SelectableText(value.terms!['content'] as String),
+    CheckboxListTile(
+      value: accepted,
+      onChanged: busy ? null : (v) => setState(() => accepted = v ?? false),
+      title: Text(
+        'Leí y acepto la versión ${value.terms!['version']} de estos términos',
+      ),
+    ),
+  ];
+
   Widget frame(Widget? blocked, {String? banner}) {
     if (blocked == null) entered = true;
     return Stack(
@@ -238,6 +306,11 @@ class _BetaBoundaryState extends State<BetaBoundary> {
                           child: Text(banner),
                         ),
                       ),
+                    ),
+                  if (state?.termsPending == true)
+                    TextButton(
+                      onPressed: () => setState(() => termsReadOnly = false),
+                      child: const Text('Leer y aceptar términos actualizados'),
                     ),
                   Expanded(child: widget.child),
                 ],
