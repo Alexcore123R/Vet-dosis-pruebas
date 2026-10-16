@@ -172,3 +172,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Probar registro sin PDF, autoridad separada y concurrencia
         run: bash supabase/tests/run_independent_clinical_cases.sh
+
+  death-attestation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar constatación con permiso y firma propios
+        run: bash supabase/tests/run_death_attestation.sh

@@ -5,6 +5,7 @@ import '../../patients/presentation/patient_view_model.dart'
     show newOperationId;
 import '../domain/form_models.dart';
 import 'clinical_models.dart';
+import '../../patients/presentation/signature_pad.dart';
 import 'clinical_repository.dart';
 
 class DeathScreen extends StatefulWidget {
@@ -25,42 +26,97 @@ class _DeathScreenState extends State<DeathScreen> {
   List<Map<String, dynamic>> records = [];
   bool busy = true;
   String? error;
-  final data = <String, dynamic>{
-    'result': 'no_confirmada',
-    'observed_at': DateTime.now().toUtc().toIso8601String(),
-  };
+  final data = <String, dynamic>{};
+  List<Map<String, dynamic>> procedures = [];
+  bool responsible = false;
+  int generation = 0;
   String operation = newOperationId(), lastPayload = '';
-  bool get responsible =>
-      widget.member.role == ClinicRole.mvz &&
-      widget.document.responsibleId == widget.member.userId;
   @override
   void initState() {
     super.initState();
     load();
   }
 
+  @override
+  void didUpdateWidget(covariant DeathScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.document.id != widget.document.id ||
+        oldWidget.member.userId != widget.member.userId ||
+        oldWidget.member.clinicId != widget.member.clinicId ||
+        oldWidget.repository != widget.repository) {
+      data.clear();
+      records = [];
+      procedures = [];
+      responsible = false;
+      busy = true;
+      error = null;
+      operation = newOperationId();
+      lastPayload = '';
+      load();
+    }
+  }
+
   Future<void> load() async {
+    final request = ++generation;
     try {
-      final rows = await widget.repository.deathRecords(widget.document.id);
-      if (mounted) setState(() => records = rows);
-    } catch (_) {
+      if (widget.repository is! DeathPermissionRepository) {
+        throw const FormatException('Contrato requerido');
+      }
+      final w = await (widget.repository as DeathPermissionRepository)
+          .deathWorkspace(widget.document.id);
+      if (!mounted || request != generation) return;
+      if (w['version'] != 1 ||
+          w['consent_id'] != widget.document.id ||
+          w['can_record'] is! bool ||
+          w['procedures'] is! List ||
+          w['records'] is! List) {
+        throw const FormatException('Contrato desconocido');
+      }
+      final ps = (w['procedures'] as List)
+          .map((r) => Map<String, dynamic>.from(r))
+          .toList();
+      if (ps.any((p) => p['id'] is! String || p['name'] is! String)) {
+        throw const FormatException('Procedimientos inválidos');
+      }
       if (mounted) {
         setState(() {
+          records = (w['records'] as List)
+              .map((r) => Map<String, dynamic>.from(r))
+              .toList();
+          procedures = ps;
+          responsible = w['can_record'] == true && ps.isNotEmpty;
+        });
+      }
+    } catch (_) {
+      if (mounted && request == generation) {
+        setState(() {
           records = [];
+          responsible = false;
+          procedures = [];
           error = 'No se pudo consultar. Revisa acceso y conexión.';
         });
       }
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted && request == generation) setState(() => busy = false);
     }
   }
 
   Future<void> save() async {
+    if (busy || !responsible) return;
     setState(() {
       busy = true;
       error = null;
     });
     try {
+      if (!['confirmada', 'no_confirmada'].contains(data['result']) ||
+          data['procedure_id'] == null ||
+          data['confirmed'] != true ||
+          (data['signer_name'] as String? ?? '').trim().isEmpty ||
+          data['signature'] == null) {
+        throw const FormatException(
+          'Selecciona resultado y procedimiento; indica tu nombre, firma y confirma la constatación propia.',
+        );
+      }
       clinicalInstant(data['observed_at']);
       if ((data['method'] as String? ?? '').trim().isEmpty ||
           (data['findings'] as String? ?? '').trim().isEmpty) {
@@ -94,6 +150,9 @@ class _DeathScreenState extends State<DeathScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Constatación posterior de muerte')),
     body: ListView(
+      key: ValueKey(
+        '${widget.member.clinicId}/${widget.member.userId}/${widget.document.id}',
+      ),
       padding: const EdgeInsets.all(20),
       children: [
         Text('Paciente: ${widget.document.snapshot['patient']['name']}'),
@@ -110,13 +169,26 @@ class _DeathScreenState extends State<DeathScreen> {
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Text(
-                '${r['result'] == 'confirmada' ? 'Muerte confirmada' : 'Muerte no confirmada'} · ${r['observed_at']}\nMétodo: ${r['method']}\nHallazgos: ${r['findings']}\nMVZ: ${r['recorded_by']} · Servidor: ${r['created_at']}\nDisposición realizada: ${r['body_disposition']} · Costo registrado: ${r['cost']}\n${r['notes']}\n${r['replaces_id'] == null ? '' : 'Corrige: ${r['replaces_id']} · ${r['correction_reason']}'}',
+                '${r['result'] == 'confirmada' ? 'Muerte confirmada' : 'Muerte no confirmada'} · ${r['observed_at']}\nMétodo: ${r['method']}\nHallazgos: ${r['findings']}\nConstató: ${r['signer_name'] ?? r['recorded_by']} · Servidor: ${r['created_at']}\nDisposición realizada: ${r['body_disposition']} · Costo registrado: ${r['cost']}\n${r['notes']}\n${r['replaces_id'] == null ? '' : 'Corrige: ${r['replaces_id']} · ${r['correction_reason']}'}',
               ),
             ),
           ),
         if (responsible) ...[
           DropdownButtonFormField<String>(
-            initialValue: 'no_confirmada',
+            decoration: const InputDecoration(
+              labelText: 'Tipo de procedimiento',
+            ),
+            items: procedures
+                .map(
+                  (p) => DropdownMenuItem(
+                    value: p['id'] as String,
+                    child: Text(p['name'] as String),
+                  ),
+                )
+                .toList(),
+            onChanged: busy ? null : (v) => data['procedure_id'] = v,
+          ),
+          DropdownButtonFormField<String>(
             decoration: const InputDecoration(labelText: 'Resultado'),
             items: const [
               DropdownMenuItem(
@@ -160,6 +232,7 @@ class _DeathScreenState extends State<DeathScreen> {
                     }),
             ),
           for (final e in {
+            'signer_name': 'Nombre de quien constató',
             'observed_at': 'Fecha y hora observada (UTC)',
             'method': 'Método de constatación empleado',
             'findings': 'Hallazgos observados',
@@ -183,13 +256,29 @@ class _DeathScreenState extends State<DeathScreen> {
               ),
               onChanged: (v) => data[e.key] = v,
             ),
+          IgnorePointer(
+            ignoring: busy,
+            child: SignaturePad(
+              label: 'Firma propia de quien constató',
+              onChanged: (v) => data['signature'] = v,
+            ),
+          ),
+          CheckboxListTile(
+            value: data['confirmed'] == true,
+            title: const Text(
+              'Confirmo que realicé esta constatación y que la firma es mía',
+            ),
+            onChanged: busy
+                ? null
+                : (v) => setState(() => data['confirmed'] = v),
+          ),
           FilledButton(
             onPressed: busy ? null : save,
             child: const Text('Anexar registro del MVZ'),
           ),
         ] else
           const Text(
-            'Consulta únicamente. El registro corresponde al MVZ responsable del consentimiento.',
+            'Consulta únicamente. El registro requiere al MVZ responsable habilitado y permisos vigentes para el procedimiento.',
           ),
       ],
     ),

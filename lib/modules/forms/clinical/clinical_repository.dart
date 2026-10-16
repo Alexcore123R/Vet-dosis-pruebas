@@ -57,13 +57,23 @@ abstract interface class ClinicalCaseRegistrationRepository {
   );
 }
 
+abstract interface class DeathPermissionRepository {
+  Future<Map<String, dynamic>> deathWorkspace(String consentId);
+}
+
 class SupabaseClinicalRepository
     implements
         ClinicalRepository,
         ClinicalPermissionRepository,
-        ClinicalCaseRegistrationRepository {
+        ClinicalCaseRegistrationRepository,
+        DeathPermissionRepository {
   SupabaseClinicalRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<Map<String, dynamic>> deathWorkspace(String consentId) async =>
+      Map<String, dynamic>.from(
+        await rpc('clinical_death_workspace', {'p_consent': consentId}),
+      );
   @override
   Future<String> registerCase(
     String clinicId,
