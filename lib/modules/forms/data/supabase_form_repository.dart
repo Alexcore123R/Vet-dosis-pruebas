@@ -8,9 +8,32 @@ class SupabaseFormRepository
     implements
         FormRepository,
         FormTemplatePermissionRepository,
-        FormDraftRepository {
+        FormDraftRepository,
+        FormWorkflowRepository {
   SupabaseFormRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<Map<String, dynamic>> documentFlow(String id) async =>
+      Map<String, dynamic>.from(await rpc('form_document_flow', {'p_id': id}));
+  @override
+  Future<void> flowAction(String action, Map<String, dynamic> arguments) async {
+    if (!const {
+      'form_attention_select',
+      'form_attention_sign',
+      'form_review_submit',
+      'form_authorize_individual',
+      'form_tutor_capture',
+      'form_document_reopen',
+      'form_review_reject',
+    }.contains(action)) {
+      throw ArgumentError('unknown_form_action');
+    }
+    await rpc(action, arguments);
+  }
+
+  @override
+  Future<ReviewedPdf> tutorPreview(String id) =>
+      edge({'action': 'document_preview', 'document': id});
   @override
   Future<Map<String, dynamic>?> documentWorkspace(String clinicId) async {
     try {

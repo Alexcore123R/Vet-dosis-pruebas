@@ -144,3 +144,17 @@ jobs:
       - uses: actions/checkout@v4
       - name: Probar borradores, firma propia exacta, revocación y concurrencia
         run: bash supabase/tests/run_permission_form_document_drafts.sh
+  form-individual-workflow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Preparar validación de PDF real con datos ficticios
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - name: Instalar dependencias fijadas del renderer
+        run: npm ci --prefix supabase
+      - name: Probar firmas separadas, autorización, tutor, PDF y correcciones
+        run: bash supabase/tests/run_form_individual_workflow.sh

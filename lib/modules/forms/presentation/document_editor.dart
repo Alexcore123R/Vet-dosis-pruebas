@@ -26,9 +26,12 @@ class DocumentEditor extends StatefulWidget {
     this.professionalAdmin = false,
     this.prescribing,
     this.draftOnly = false,
+    this.deferAuthorship = false,
+    this.fieldChoices = const {},
     this.draftResponsibles = const [],
   });
-  final bool draftOnly;
+  final bool draftOnly, deferAuthorship;
+  final Map<String, dynamic> fieldChoices;
   final List<Map<String, dynamic>> draftResponsibles;
   final FormRepository repository;
   final bool professionalAdmin;
@@ -473,7 +476,11 @@ class _DocumentEditorState extends State<DocumentEditor> {
     final label = '${f['label']}${f['required'] == true ? ' *' : ''}';
     if (type == 'person' || type == 'consent') {
       final patient = patientId ?? document?.snapshot['patient']['id'];
-      final choices = type == 'person'
+      final choices = widget.draftOnly
+          ? ((widget.fieldChoices[id] as List?) ?? [])
+                .map((r) => (r['id'] as String, r['label'] as String))
+                .toList()
+          : type == 'person'
           ? staff
                 .where((p) => p['role'] == 'mvz' || p['professional'] == true)
                 .map((p) => (p['id'] as String, p['label'] as String))
@@ -845,7 +852,7 @@ class _DocumentEditorState extends State<DocumentEditor> {
                 }),
               ),
             ],
-            if (widget.draftOnly) ...[
+            if (widget.draftOnly && !widget.deferAuthorship) ...[
               const Text(
                 'Firma de elaboración: solo acredita quién elaboró esta versión. No autoriza el documento, no es firma del tutor y no acredita un procedimiento realizado.',
               ),

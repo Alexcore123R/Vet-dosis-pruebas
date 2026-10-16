@@ -8,8 +8,9 @@ class FormViewModel extends ChangeNotifier {
   final FormRepository repository;
   final ClinicMembership member;
   FormsAccess get access => FormsAccess(member.role);
-  bool templateKnown = false, documentsKnown = false;
+  bool templateKnown = false, documentsKnown = false, individualKnown = false;
   Map<String, dynamic>? documentWorkspace;
+  bool get individualFlow => documentWorkspace?['mode'] == 'individual_forms';
   List<Map<String, dynamic>> get documentResponsibles =>
       (documentWorkspace?['responsibles'] as List? ?? [])
           .map((r) => Map<String, dynamic>.from(r))
@@ -90,8 +91,15 @@ class FormViewModel extends ChangeNotifier {
           : null;
       if (workspace != null) {
         documentsKnown = true;
-        if (workspace['schema_version'] != 1 ||
-            workspace['mode'] != 'draft_authorship' ||
+        if (workspace['mode'] == 'individual_forms') {
+          individualKnown = true;
+        }
+        if ((individualKnown && workspace['mode'] != 'individual_forms') ||
+            workspace['schema_version'] != 1 ||
+            !(workspace['mode'] == 'draft_authorship' ||
+                (workspace['mode'] == 'individual_forms' &&
+                    workspace['flow_version'] == 1 &&
+                    repository is FormWorkflowRepository)) ||
             workspace['can_read'] is! bool ||
             workspace['can_prepare'] is! bool ||
             workspace['responsibles'] is! List ||

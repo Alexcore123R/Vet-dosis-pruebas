@@ -79,3 +79,9 @@ abstract interface class FormDraftRepository {
     String operationId,
   );
 }
+
+abstract interface class FormWorkflowRepository {
+  Future<Map<String, dynamic>> documentFlow(String id);
+  Future<void> flowAction(String action, Map<String, dynamic> arguments);
+  Future<ReviewedPdf> tutorPreview(String id);
+}

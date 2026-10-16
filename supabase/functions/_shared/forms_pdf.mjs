@@ -2,6 +2,7 @@ import { PDFDocument, PDFName, PDFArray, PDFString, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { PNG } from 'pngjs';
 import { prescriptionIdentity } from './prescription_identity.mjs';
+import { formDocumentIdentity } from './form_document_identity.mjs';
 
 export const rendererVersion = 'vetdosis-pdf-3';
 export async function pdfHash(bytes) {
@@ -34,11 +35,14 @@ function imageBytes(text) {
   if (bytes.length<12 || bytes.length>250000) throw Error('invalid_logo');
   return bytes;
 }
-export async function renderForm(snapshot, fontBytes, { templatePreview = false } = {}) {
+export async function renderForm(snapshot, fontBytes, { templatePreview = false, tutorPreview = false } = {}) {
   const schema=snapshot.schema, values=snapshot.values ?? {}, brand=snapshot.branding ?? {};
   if (!schema || !Array.isArray(schema.fields) || schema.fields.length>80 || !Array.isArray(schema.clauses) || schema.clauses.length>40 || typeof schema.title!=='string') throw Error('invalid_template');
   const identity = templatePreview ? null : prescriptionIdentity(snapshot);
   // Validate before generating bytes. A legacy signature cannot fill this slot.
+  const formIdentity=templatePreview ? null : formDocumentIdentity(snapshot,{tutorPreview});
+  const attentionPng=formIdentity ? signatureImage(formIdentity.attention.signature) : undefined;
+  const authorPng=formIdentity ? signatureImage(formIdentity.author.signature) : undefined;
   const consultationPng = identity ? signatureImage(identity.consultation.signature) : undefined;
   const pdf=await PDFDocument.create(); pdf.registerFontkit(fontkit);
   const font=await pdf.embedFont(fontBytes,{subset:true});
@@ -95,6 +99,14 @@ export async function renderForm(snapshot, fontBytes, { templatePreview = false 
   if(!brand.header && !snapshot.clinic_name)paragraph('[Membrete configurable]',11);
   paragraph(schema.title,15);
   if(templatePreview)paragraph('VISTA PREVIA DE PLANTILLA · SIN FIRMAR',11);
+  if(tutorPreview)paragraph('VISTA PREVIA PARA EL TUTOR · PENDIENTE DE SU FIRMA',11);
+  if(formIdentity){
+    paragraph(`Documento elaborado por: ${formIdentity.author.name}`,10);
+    paragraph(`${formIdentity.attentionLabel}: ${formIdentity.attention.name}`,11);
+    paragraph(`MVZ responsable: ${formIdentity.responsible.name}`,11);
+    paragraph(`Cédula profesional: ${formIdentity.responsible.license}`,10);
+    paragraph(formIdentity.authorizationLabel,9);
+  }
   paragraph(`Versión de plantilla: ${snapshot.template_version??'propuesta'} · Contenido de referencia revisable por la clínica.`,9);
   if(snapshot.prepared_at)paragraph(`Firmas capturadas para revisión (servidor UTC): ${snapshot.prepared_at}`,9);
   if(identity) {
@@ -130,11 +142,15 @@ export async function renderForm(snapshot, fontBytes, { templatePreview = false 
   for(const clause of schema.clauses){paragraph(clause.text);y-=7;}
   let tutorPng,mvzPng;
   if(!templatePreview) {
-    if(!snapshot.clinical)tutorPng=signatureImage(snapshot.tutor_signature);
+    if(!snapshot.clinical && !tutorPreview)tutorPng=signatureImage(formIdentity ? formIdentity.tutor.signature : snapshot.tutor_signature);
     // mvzPng is the existing artifact transport field, not a claim about the
     // signer's profession. New prescription snapshots bind it to consultation.
-    mvzPng=consultationPng ?? signatureImage(snapshot.mvz_signature);
-    const signatures=identity ? [
+    mvzPng=attentionPng ?? consultationPng ?? signatureImage(snapshot.mvz_signature);
+    const signatures=formIdentity ? [
+      ['Firma de elaboración',formIdentity.author.name,null,authorPng],
+      [`Firma · ${formIdentity.attentionLabel}`,formIdentity.attention.name,null,attentionPng],
+      ...(!snapshot.clinical&&!tutorPreview ? [['Firma del tutor',formIdentity.tutor.name,formIdentity.tutor.identification_number,tutorPng]] : []),
+    ] : identity ? [
       ['Firma de quien realizó la consulta',identity.consultation.name,null,consultationPng],
     ] : [
       ...(!snapshot.clinical ? [['Firma del tutor',values.signer_name,values.signer_id,tutorPng]] : []),
@@ -145,9 +161,10 @@ export async function renderForm(snapshot, fontBytes, { templatePreview = false 
       if(number !== null)paragraph(`Identificación / cédula: ${number}`);
       const img=await pdf.embedPng(png);page.drawImage(img,{x:44,y:y-65,width:216,height:65});y-=90;
     }
+    if(tutorPreview)paragraph('El tutor debe revisar este contenido y firmar personalmente. Esta vista previa no es un documento emitido.',10);
     paragraph('La confirmación final y su hora del servidor constan en el registro de VetDosis Pro. El archivo se conserva sin regeneración tras la confirmación.',9);
     if(schema.type==='euthanasia')paragraph('La constatación de muerte se documenta posteriormente en una entrada vinculada; no modifica este consentimiento.',9);
   }
   const bytes=await pdf.save();if(bytes.length>2097152)throw Error('pdf_too_large');
-  return {bytes,hash:await pdfHash(bytes),tutorPng,mvzPng,consultationPng};
+  return {bytes,hash:await pdfHash(bytes),tutorPng,mvzPng,consultationPng,authorPng,attentionPng};
 }

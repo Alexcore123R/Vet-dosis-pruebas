@@ -9,6 +9,7 @@ class FormPdfScreen extends StatefulWidget {
     required this.title,
     this.confirm,
     this.signed = false,
+    this.actionLabel = 'Confirmar y conservar PDF firmado',
     this.confirmLabel =
         'El tutor y el MVZ revisaron este PDF completo y confirman el contenido y sus firmas.',
   });
@@ -17,6 +18,7 @@ class FormPdfScreen extends StatefulWidget {
   final Future<void> Function()? confirm;
   final bool signed;
   final String confirmLabel;
+  final String actionLabel;
   @override
   State<FormPdfScreen> createState() => _FormPdfScreenState();
 }
@@ -25,6 +27,9 @@ class _FormPdfScreenState extends State<FormPdfScreen> {
   bool accepted = false, busy = false;
   String? error;
   Future<void> confirm() async {
+    if (busy) {
+      return;
+    }
     setState(() {
       busy = true;
       error = null;
@@ -83,9 +88,7 @@ class _FormPdfScreenState extends State<FormPdfScreen> {
               padding: const EdgeInsets.all(12),
               child: FilledButton(
                 onPressed: accepted && !busy ? confirm : null,
-                child: Text(
-                  busy ? 'Confirmando…' : 'Confirmar y conservar PDF firmado',
-                ),
+                child: Text(busy ? 'Confirmando…' : widget.actionLabel),
               ),
             ),
           ),

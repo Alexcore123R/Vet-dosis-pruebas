@@ -81,3 +81,7 @@ El [candidato 13H2](../permisos-etapa2b9-recetas.md) conecta firma de consulta c
 ## Avance 2B-15, 16-oct-2026
 
 [13J3](../permisos-etapa2b15-borradores-firma.md) añade borradores con MVZ elegido explícitamente y firma propia **de elaboración** para una revisión exacta. Esa firma no atribuye automáticamente atención clínica ni sustituye al tutor o autorización. Cierra mutaciones/firmas compartidas antiguas, conserva archivos ya firmados y conecta Flutter sin autoridad por puesto. Autorización, atribución clínica, aceptación del tutor, PDF/emisión y adaptación de otras pantallas siguen pendientes: no desplegar aisladamente ni abrir beta.
+
+## Avance 2B-16, 16-oct-2026
+
+[13J4](../permisos-etapa2b16-autorizacion-formatos.md) conecta atención/explicación firmada desde su propia cuenta, revisión individual del MVZ, tutor presencial, PDF exacto y permiso explícito de emisión. Sustituye las limitaciones de autorización/PDF de 13J3 en el contrato nuevo; no atribuye automáticamente procedimientos ni publica casos/observaciones desde formatos. Las pantallas clínicas antiguas y dependencias transversales aún requieren adaptación. Candidato local, sin despliegue ni apertura de beta.

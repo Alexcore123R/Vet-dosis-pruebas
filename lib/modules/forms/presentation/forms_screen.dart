@@ -10,6 +10,7 @@ import '../domain/form_repository.dart';
 import 'form_view_model.dart';
 import 'template_editor.dart';
 import 'document_editor.dart';
+import 'document_flow_screen.dart';
 import 'form_pdf_screen.dart';
 import 'branding_editor.dart';
 
@@ -120,6 +121,7 @@ class _FormsScreenState extends State<FormsScreen> {
             patients: patients,
             initialBranding: branding,
             draftOnly: model.documentsKnown,
+            deferAuthorship: model.individualFlow,
             draftResponsibles: model.documentResponsibles,
           ),
         ),
@@ -140,6 +142,31 @@ class _FormsScreenState extends State<FormsScreen> {
           MaterialPageRoute<void>(
             builder: (_) =>
                 FormPdfScreen(pdf: pdf, title: 'PDF firmado', signed: true),
+          ),
+        );
+      } else if (model.individualFlow) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => DocumentFlowScreen(
+              repository: widget.repository,
+              id: doc.id,
+              edit: (current, choices) async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => DocumentEditor(
+                      repository: widget.repository,
+                      member: widget.member,
+                      document: current,
+                      fieldChoices: choices,
+                      draftOnly: true,
+                      draftResponsibles: model.documentResponsibles,
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         );
       } else {

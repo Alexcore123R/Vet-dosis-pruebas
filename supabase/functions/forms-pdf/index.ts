@@ -50,6 +50,20 @@ Deno.serve(async req => {
       const {data:stored,error:lastError}=await user.rpc('rx_pdf_read',args);
       if(lastError||!stored)return reply({error:'rx_access_denied'},403);return reply(stored);
     }
+    if(input.action==='document_preview' && typeof input.document==='string') {
+      const args={p_id:input.document};
+      const {data:doc,error}=await user.rpc('form_document_preview_snapshot',args);
+      if(error||!doc)return reply({error:'document_access_denied'},403);
+      const {data:existing,error:readError}=await user.rpc('form_preview_read',args);
+      if(readError)return reply({error:'document_access_denied'},403);if(existing)return reply(existing);
+      if(!await betaAccess(user,true,doc.clinic_id))return reply({error:'beta_write_denied'},403);
+      const rendered=await renderForm(doc.snapshot,font,{tutorPreview:true});
+      const server=createClient(url,serviceKey,{auth:{persistSession:false}});
+      const {error:saveError}=await server.rpc('form_preview_register',{...args,p_revision:doc.revision,p_content_hash:doc.content_hash,p_pdf:base64(rendered.bytes)});
+      if(saveError)return reply({error:'preview_revision_conflict'},409);
+      const {data:stored,error:lastError}=await user.rpc('form_preview_read',args);
+      if(lastError||!stored)return reply({error:'document_access_denied'},403);return reply(stored);
+    }
     if(input.action!=='document' || typeof input.document!=='string')return reply({error:'invalid_action'},400);
     const {data:doc,error}=await user.rpc('form_document_snapshot',{p_id:input.document});
     if(error || !doc)return reply({error:'document_access_denied'},403);
