@@ -635,10 +635,6 @@ class CoreShell extends StatelessWidget {
                             ? const Text(
                                 'Inventario, ventas y caja requieren conexión para confirmar saldos y permisos.',
                               )
-                            : auth!.active!.role == ClinicRole.estilista
-                            ? const Text(
-                                'Inventario y caja requieren permiso operativo de la clínica.',
-                              )
                             : InventoryScreen(
                                 identity: identity,
                                 key: ValueKey('inventory:${model.screen}'),

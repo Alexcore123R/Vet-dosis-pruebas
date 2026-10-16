@@ -12,6 +12,28 @@ class InventoryViewModel extends ChangeNotifier {
   bool busy = false, disposed = false;
   int generation = 0;
   int cutGeneration = 0;
+  bool managementKnown = false;
+  Map<String, dynamic>? management;
+  bool allowed(String code, {bool legacy = false}) =>
+      !busy &&
+      error == null &&
+      (managementKnown ? (management?['actions']?[code] == true) : legacy);
+  bool get canManage => allowed('inventory.manage', legacy: admin);
+  bool get canReceive => allowed('inventory.receive', legacy: admin);
+  bool get canAdjust => allowed('inventory.adjust', legacy: admin);
+  bool get canCollect => allowed('sales.collect', legacy: true);
+  bool get canReadFinance => allowed('sales.read', legacy: admin);
+  bool get canMoveCash => canCollect && allowed('cash.move', legacy: true);
+  bool get canReverse => canCollect && allowed('sales.reverse', legacy: admin);
+  bool get canManual => allowed('sales.manual', legacy: admin);
+  bool get canPrepareOrder => allowed('inventory.order.prepare', legacy: admin);
+  bool get canApproveOrder => allowed('inventory.order.approve', legacy: admin);
+  bool get canLinkVial =>
+      !busy &&
+      error == null &&
+      (managementKnown
+          ? (management?['can_link_vial'] == true)
+          : (dashboard?['professional'] == true));
   bool dispensingKnown = false;
   Map<String, dynamic>? dispensing;
   bool get canDispense =>
@@ -49,6 +71,22 @@ class InventoryViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       final repo = repository;
+      final managementContract = repo is InventoryManagementRepository
+          ? await (repo as InventoryManagementRepository).managementPermissions(
+              member.clinicId,
+            )
+          : null;
+      if (disposed || revision != generation) return;
+      if (managementContract != null) {
+        managementKnown = true;
+        if (managementContract['schema_version'] != 1 ||
+            managementContract['mode'] != 'explicit_inventory' ||
+            managementContract['actions'] is! Map) {
+          throw StateError('unknown_inventory_contract');
+        }
+      } else if (managementKnown) {
+        throw StateError('inventory_contract_lost');
+      }
       final permissions = repo is DispensingPermissionRepository
           ? await (repo as DispensingPermissionRepository)
                 .dispensingPermissions(member.clinicId)
@@ -67,11 +105,13 @@ class InventoryViewModel extends ChangeNotifier {
         'p_clinic': member.clinicId,
       });
       if (disposed || revision != generation) return;
+      management = managementContract;
       dispensing = permissions;
       dashboard = Map<String, dynamic>.from(data);
       cut = null;
     } catch (_) {
       if (disposed || revision != generation) return;
+      management = null;
       dispensing = null;
       dashboard = null;
       cut = null;
@@ -87,20 +127,30 @@ class InventoryViewModel extends ChangeNotifier {
   Future<Map<String, dynamic>> readCut(String id) async {
     final revision = generation;
     final cutRevision = ++cutGeneration;
-    final result = Map<String, dynamic>.from(
-      await repository.read('inv_shift_snapshot', {'p_shift': id}),
-    );
-    if (!disposed && revision == generation && cutRevision == cutGeneration) {
-      cut = result;
-      notifyListeners();
+    try {
+      final result = Map<String, dynamic>.from(
+        await repository.read('inv_shift_snapshot', {'p_shift': id}),
+      );
+      if (!disposed && revision == generation && cutRevision == cutGeneration) {
+        cut = result;
+        notifyListeners();
+      }
+      return result;
+    } catch (_) {
+      if (!disposed && revision == generation && cutRevision == cutGeneration) {
+        cut = null;
+        error = 'No se pudo consultar el corte. Actualiza y revisa tu acceso.';
+        notifyListeners();
+      }
+      rethrow;
     }
-    return result;
   }
 
   @override
   void dispose() {
     disposed = true;
     generation++;
+    management = null;
     dispensing = null;
     dashboard = null;
     cut = null;

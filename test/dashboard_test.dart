@@ -86,16 +86,21 @@ void main() {
       model.dispose();
     },
   );
-  test('Stylist does not request inventory', () async {
-    final stock = BrokenStock();
-    final model = DashboardViewModel(
-      member: member(ClinicRole.estilista),
-      inventory: stock,
-    );
-    await model.load();
-    expect(stock.calls, 0);
-    model.dispose();
-  });
+  test(
+    'Inventory access is decided by the server, not the visual job',
+    () async {
+      final stock = BrokenStock();
+      final model = DashboardViewModel(
+        member: member(ClinicRole.estilista),
+        inventory: stock,
+      );
+      await model.load();
+      expect(stock.calls, 1);
+      expect(model.stock, isNull);
+      expect(model.errors, contains('Inventario'));
+      model.dispose();
+    },
+  );
   test(
     'Agenda filters cancelled and completed future visits, sorts recent',
     () {

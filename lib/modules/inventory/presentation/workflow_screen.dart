@@ -25,6 +25,18 @@ class _InventoryWorkflowScreenState extends State<InventoryWorkflowScreen> {
   String? error;
   int _generation = 0;
   bool loading = false;
+  bool managementKnown = false;
+  Map<String, dynamic>? management;
+  bool get canManage =>
+      !loading &&
+      error == null &&
+      (managementKnown
+          ? (management?['actions']?['inventory.manage'] == true)
+          : widget.member.role == ClinicRole.admin);
+  bool get canPrepareCharge =>
+      !loading &&
+      error == null &&
+      (managementKnown ? (management?['can_prepare_charge'] == true) : true);
   bool dispensingKnown = false;
   Map<String, dynamic>? dispensing;
   bool get canDispense =>
@@ -52,6 +64,8 @@ class _InventoryWorkflowScreenState extends State<InventoryWorkflowScreen> {
       data = null;
       dispensing = null;
       dispensingKnown = false;
+      management = null;
+      managementKnown = false;
       load();
     }
   }
@@ -67,6 +81,22 @@ class _InventoryWorkflowScreenState extends State<InventoryWorkflowScreen> {
     setState(() => loading = true);
     try {
       final repo = widget.repository;
+      final managementContract = repo is InventoryManagementRepository
+          ? await (repo as InventoryManagementRepository).managementPermissions(
+              widget.member.clinicId,
+            )
+          : null;
+      if (!mounted || generation != _generation) return;
+      if (managementContract != null) {
+        managementKnown = true;
+        if (managementContract['schema_version'] != 1 ||
+            managementContract['mode'] != 'explicit_inventory' ||
+            managementContract['actions'] is! Map) {
+          throw StateError('unknown_inventory_contract');
+        }
+      } else if (managementKnown) {
+        throw StateError('inventory_contract_lost');
+      }
       final permissions = repo is DispensingPermissionRepository
           ? await (repo as DispensingPermissionRepository)
                 .dispensingPermissions(widget.member.clinicId)
@@ -87,6 +117,7 @@ class _InventoryWorkflowScreenState extends State<InventoryWorkflowScreen> {
       if (mounted && generation == _generation) {
         setState(() {
           loading = false;
+          management = managementContract;
           dispensing = permissions;
           data = Map<String, dynamic>.from(d);
           error = null;
@@ -96,6 +127,7 @@ class _InventoryWorkflowScreenState extends State<InventoryWorkflowScreen> {
       if (mounted && generation == _generation) {
         setState(() {
           loading = false;
+          management = null;
           dispensing = null;
           data = null;
           error = 'No se pudo cargar el flujo de entregas y aplicaciones.';
@@ -286,7 +318,7 @@ class _InventoryWorkflowScreenState extends State<InventoryWorkflowScreen> {
           ),
           if (error != null) Text(error!),
           TextButton(onPressed: load, child: const Text('Actualizar')),
-          if (widget.member.role == ClinicRole.admin)
+          if (canManage)
             TextButton(
               onPressed: tariff,
               child: const Text('Configurar precio por aplicación'),
@@ -333,7 +365,7 @@ class _InventoryWorkflowScreenState extends State<InventoryWorkflowScreen> {
                 '${r['observed_at']} · misma receta ${r['prescription_id']}',
               ),
               trailing: TextButton(
-                onPressed: () => prepare(r),
+                onPressed: canPrepareCharge ? () => prepare(r) : null,
                 child: const Text('Preparar cargo'),
               ),
             ),

@@ -26,10 +26,9 @@ class PaymentsScreen extends StatefulWidget {
 }
 
 class _PaymentsScreenState extends State<PaymentsScreen> {
-  late final model = PaymentsViewModel(
-    widget.repository,
-    widget.member.clinicId,
-  );
+  late PaymentsViewModel model;
+  PaymentsViewModel createModel() =>
+      PaymentsViewModel(widget.repository, widget.member.clinicId);
   String filter = 'todos';
   bool get busy => model.busy;
   String? get error => model.error;
@@ -38,7 +37,21 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   @override
   void initState() {
     super.initState();
+    model = createModel();
     model.load();
+  }
+
+  @override
+  void didUpdateWidget(covariant PaymentsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.member.userId != widget.member.userId ||
+        oldWidget.member.clinicId != widget.member.clinicId ||
+        oldWidget.repository != widget.repository) {
+      model.dispose();
+      model = createModel();
+      filter = 'todos';
+      model.load();
+    }
   }
 
   @override
@@ -49,6 +62,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
 
   Future<void> load() => model.load();
   Future<void> report() async {
+    if (!model.canReport) return;
     final ok = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -128,6 +142,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   }
 
   Future<void> reconcile(Map<String, dynamic> t) async {
+    if (!model.canReconcile(admin)) return;
     final ok = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -170,12 +185,23 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     if (ok == true && mounted) await load();
   }
 
+  Future<List<Map<String, dynamic>>> freshTransactions() async {
+    final current = model;
+    if (current.busy) throw StateError('payment_refresh_required');
+    await current.load();
+    if (!mounted || current != model || current.error != null) {
+      throw StateError('payment_access_required');
+    }
+    return current.rows('transactions');
+  }
+
   Future<void> export() async {
     try {
+      final transactions = await freshTransactions();
       await FilePicker.saveFile(
         fileName: 'transacciones.csv',
         bytes: Uint8List.fromList(
-          utf8.encode('\uFEFF${BackupArchive.tableCsv(rows('transactions'))}'),
+          utf8.encode('\uFEFF${BackupArchive.tableCsv(transactions)}'),
         ),
       );
     } catch (_) {
@@ -202,7 +228,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
             title: 'Transacciones · Reporte interno · No comprobante fiscal',
             fileName: 'transacciones',
             rows: () async =>
-                csvRows(BackupArchive.tableCsv(rows('transactions'))),
+                csvRows(BackupArchive.tableCsv(await freshTransactions())),
           ),
           const Text(
             'Las ventas ya registran efectivo, tarjeta o transferencia. Aquí se añaden referencias externas sin duplicar venta, caja o inventario. Las referencias nuevas quedan pendientes de revisión; no confirman el pago por sí mismas.',
@@ -216,7 +242,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
             spacing: 8,
             children: [
               FilledButton(
-                onPressed: busy ? null : report,
+                onPressed: model.canReport ? report : null,
                 child: const Text('Registrar transacción'),
               ),
               TextButton(
@@ -248,7 +274,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                 subtitle: Text(
                   '${t['provider']} · ${t['external_reference'] ?? 'sin referencia externa'}\n${t['state']} · ${t['occurred_at']}\n${t['net'] == null ? '' : 'Comisión \$${t['fee']} · neto \$${t['net']}'}${t['review_reason'] == null ? '' : '\n${t['review_reason']}'}',
                 ),
-                trailing: admin
+                trailing: model.canReconcile(admin)
                     ? IconButton(
                         icon: const Icon(Icons.fact_check_outlined),
                         onPressed: busy ? null : () => reconcile(t),
@@ -283,6 +309,10 @@ String paymentError(Object error) {
     'fee_exceeds_payment': 'La comisión supera el importe de la transacción.',
     'reversed_sale': 'La venta tiene un reverso; revisa su conciliación.',
     'own_sale_required': 'La venta no pertenece a tu caja o clínica.',
+    'explicit_permission_required':
+        'Falta un permiso vigente para esta acción. Actualiza o consulta con la administración.',
+    'inventory_read_permission_required':
+        'Tu acceso de consulta a inventario dejó de estar vigente.',
     'admin_required': 'Solo admin puede conciliar.',
     'unsupported_payment_fields':
         'El registro incluye campos bancarios no admitidos.',

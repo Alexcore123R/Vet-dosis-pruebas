@@ -390,11 +390,17 @@ class _InventoryScreenState extends State<InventoryScreen> {
           'p_clinic': widget.member.clinicId,
         }),
       );
-      final operations = Map<String, dynamic>.from(
-        await widget.repository.read('ops_dashboard', {
-          'p_clinic': widget.member.clinicId,
-        }),
-      );
+      final operations = model.managementKnown
+          ? {
+              'acts': await widget.repository.read('inv_billable_services', {
+                'p_clinic': widget.member.clinicId,
+              }),
+            }
+          : Map<String, dynamic>.from(
+              await widget.repository.read('ops_dashboard', {
+                'p_clinic': widget.member.clinicId,
+              }),
+            );
       if (!mounted) return;
 
       final result = await Navigator.push<bool>(
@@ -419,7 +425,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             acts: (operations['acts'] as List? ?? [])
                 .map((e) => Map<String, dynamic>.from(e as Map))
                 .toList(),
-            admin: model.admin,
+            admin: model.canManual,
           ),
         ),
       );
@@ -517,11 +523,23 @@ class _InventoryScreenState extends State<InventoryScreen> {
       });
     },
   );
+  Future<Map<String, dynamic>> freshCut() async {
+    final selectedModel = model;
+    final id = selectedModel.cut?['shift_id'];
+    if (id is! String) throw StateError('shift_access_required');
+    final result = await selectedModel.readCut(id);
+    if (!mounted || selectedModel != model) {
+      throw StateError('shift_access_required');
+    }
+    return result;
+  }
+
   Future<void> exportCut() async {
     try {
+      final current = await freshCut();
       await FilePicker.saveFile(
-        fileName: 'corte-${model.cut!['shift_id']}.csv',
-        bytes: Uint8List.fromList(utf8.encode(cutCsv(model.cut!))),
+        fileName: 'corte-${current['shift_id']}.csv',
+        bytes: Uint8List.fromList(utf8.encode(cutCsv(current))),
       );
     } catch (_) {
       if (mounted) {
@@ -756,7 +774,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 onPressed: model.busy ? null : model.load,
                 child: const Text('Actualizar'),
               ),
-              if (model.admin)
+              if (model.canManage)
                 TextButton(
                   onPressed: model.busy
                       ? null
@@ -804,22 +822,25 @@ class _InventoryScreenState extends State<InventoryScreen> {
               },
               child: const Text('Entregas, aplicaciones y permisos'),
             ),
-            TextButton.icon(
-              onPressed: model.busy
-                  ? null
-                  : () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => PaymentsScreen(
-                          repository: widget.repository,
-                          member: widget.member,
-                          identity: widget.identity,
+            if (!model.managementKnown ||
+                model.canCollect ||
+                model.canReadFinance)
+              TextButton.icon(
+                onPressed: model.busy
+                    ? null
+                    : () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PaymentsScreen(
+                            repository: widget.repository,
+                            member: widget.member,
+                            identity: widget.identity,
+                          ),
                         ),
                       ),
-                    ),
-              icon: const Icon(Icons.payments_outlined),
-              label: const Text('Cobros, pagos y referencias externas'),
-            ),
+                icon: const Icon(Icons.payments_outlined),
+                label: const Text('Cobros, pagos y referencias externas'),
+              ),
 
             Text(
               'Fecha del servidor en clínica: ${model.dashboard!['today']} · ${model.dashboard!['timezone']}',
@@ -862,12 +883,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     onPressed: scan,
                     child: const Text('Escanear código'),
                   ),
-                  if (model.admin)
+                  if (model.canManage)
                     TextButton(
                       onPressed: () => product(),
                       child: const Text('Nuevo producto'),
                     ),
-                  if (model.dashboard?['professional'] == true)
+                  if (model.canLinkVial)
                     TextButton(
                       onPressed: linkVial,
                       child: const Text('Vincular frasco abierto'),
@@ -947,29 +968,35 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           const Text(
                             'Registro anterior: necesita revisión de saldos y clasificación antes de usarlo.',
                           ),
-                        if (p['m8_enabled'] == true && model.admin)
+                        if (p['m8_enabled'] == true &&
+                            (model.canManage || model.canReceive))
                           Wrap(
                             spacing: 8,
                             children: [
-                              TextButton(
-                                onPressed: () => product(p),
-                                child: const Text('Editar datos/precios'),
-                              ),
-                              TextButton(
-                                onPressed: () => receive(p),
-                                child: const Text('Entrada de lote'),
-                              ),
-                              TextButton(
-                                onPressed: () => photo(p, ImageSource.camera),
-                                child: const Text('Foto con cámara'),
-                              ),
-                              TextButton(
-                                onPressed: () => photo(p, ImageSource.gallery),
-                                child: const Text('Elegir foto'),
-                              ),
+                              if (model.canManage)
+                                TextButton(
+                                  onPressed: () => product(p),
+                                  child: const Text('Editar datos/precios'),
+                                ),
+                              if (model.canReceive)
+                                TextButton(
+                                  onPressed: () => receive(p),
+                                  child: const Text('Entrada de lote'),
+                                ),
+                              if (model.canManage)
+                                TextButton(
+                                  onPressed: () => photo(p, ImageSource.camera),
+                                  child: const Text('Foto con cámara'),
+                                ),
+                              if (model.canManage)
+                                TextButton(
+                                  onPressed: () =>
+                                      photo(p, ImageSource.gallery),
+                                  child: const Text('Elegir foto'),
+                                ),
                             ],
                           ),
-                        if (p['m8_enabled'] != true && model.admin)
+                        if (p['m8_enabled'] != true && model.canManage)
                           TextButton(
                             onPressed: () => enable(p),
                             child: const Text('Revisar inventario anterior'),
@@ -996,7 +1023,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                                     : null,
                               ),
                             ),
-                            trailing: model.admin && p['m8_enabled'] == true
+                            trailing: model.canAdjust && p['m8_enabled'] == true
                                 ? IconButton(
                                     onPressed: () =>
                                         adjust(Map<String, dynamic>.from(l)),
@@ -1014,7 +1041,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ),
             ],
             if (section == 'cash') ...[
-              if (model.ownShift == null)
+              if (model.ownShift == null && model.canCollect)
                 FilledButton(
                   onPressed: openShift,
                   child: const Text('Abrir mi turno'),
@@ -1024,11 +1051,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   spacing: 8,
                   children: [
                     FilledButton(
-                      onPressed: sale,
+                      onPressed: model.canCollect ? sale : null,
                       child: const Text('Nueva venta'),
                     ),
                     TextButton(
-                      onPressed: cashMove,
+                      onPressed: model.canMoveCash ? cashMove : null,
                       child: const Text('Ingreso / retiro / gasto'),
                     ),
                     TextButton(
@@ -1036,12 +1063,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       child: const Text('Revisar corte actual'),
                     ),
                     TextButton(
-                      onPressed: closeShift,
+                      onPressed: model.canCollect ? closeShift : null,
                       child: const Text('Contar y cerrar turno'),
                     ),
                   ],
                 ),
-              if (model.admin && model.dashboard!['day_totals'] != null) ...[
+              if (model.canReadFinance &&
+                  model.dashboard!['day_totals'] != null) ...[
                 const Text('Resumen del día · todas las cajas de la clínica'),
                 totals(
                   Map<String, dynamic>.from(model.dashboard!['day_totals']),
@@ -1074,7 +1102,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   clinicName: widget.member.clinicName,
                   title: 'Corte interno · No comprobante fiscal · MXN',
                   fileName: 'corte-${model.cut!["shift_id"]}',
-                  rows: () async => csvRows(cutCsv(model.cut!)),
+                  rows: () async => csvRows(cutCsv(await freshCut())),
                 ),
                 for (final s in (model.cut!['sales'] as List).cast<Map>())
                   ListTile(
@@ -1082,7 +1110,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       '${s['method']} · ${Money.parse(s['total']).display}',
                     ),
                     subtitle: Text('${s['created_at']} · ${s['id']}'),
-                    trailing: model.admin && model.ownShift != null
+                    trailing: model.canReverse && model.ownShift != null
                         ? TextButton(
                             onPressed: () => reverse(s['id']),
                             child: const Text('Reverso completo'),
@@ -1095,14 +1123,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
               const Text(
                 'Borradores preparados con datos de inventario. El envío se abre manualmente después de aprobar el texto exacto. La redacción con proveedor de IA y la comparación de mercado siguen pendientes.',
               ),
-              if (model.admin && model.rows('top_products').isNotEmpty) ...[
+              if (model.canReadFinance &&
+                  model.rows('top_products').isNotEmpty) ...[
                 const Text('Mayor importe vendido en 30 días, menos reversos'),
                 for (final p in model.rows('top_products'))
                   Text(
                     '${p['name']} · ${p['quantity']} ${p['unit']} · ${displayMoney(p['amount'], signed: true)}',
                   ),
               ],
-              if (model.admin)
+              if (model.canPrepareOrder)
                 TextButton(
                   onPressed: newOrder,
                   child: const Text('Preparar borrador de resurtimiento'),
@@ -1118,12 +1147,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           '${d['supplier']} · ${d['approval'] == null ? 'Pendiente de aprobación' : 'Aprobado'}',
                         ),
                         SelectableText(d['message']),
-                        if (model.admin && d['approval'] == null)
+                        if (model.canApproveOrder && d['approval'] == null)
                           TextButton(
                             onPressed: () => approve(d),
                             child: const Text('Revisar y aprobar'),
                           ),
-                        if (model.admin && d['approval'] != null)
+                        if (model.canPrepareOrder && d['approval'] != null)
                           Wrap(
                             children: [
                               TextButton(

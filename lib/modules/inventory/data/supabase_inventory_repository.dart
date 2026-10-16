@@ -5,7 +5,10 @@ import '../../patients/presentation/patient_view_model.dart'
 import '../domain/inventory_repository.dart';
 
 class SupabaseInventoryRepository
-    implements InventoryRepository, DispensingPermissionRepository {
+    implements
+        InventoryRepository,
+        DispensingPermissionRepository,
+        InventoryManagementRepository {
   SupabaseInventoryRepository(this.client);
   final SupabaseClient client;
   static const reads = {
@@ -16,6 +19,7 @@ class SupabaseInventoryRepository
     'rx_vials',
     'inv_workflow_dashboard',
     'inv_delivery_items',
+    'inv_billable_services',
   };
   static const writes = {
     'inv_settings',
@@ -46,6 +50,22 @@ class SupabaseInventoryRepository
       return Map<String, dynamic>.from(
         await client.rpc(
               'inv_dispensing_permissions',
+              params: {'p_clinic': clinic},
+            )
+            as Map,
+      );
+    } on PostgrestException catch (e) {
+      if (e.code == 'PGRST202' || e.code == '42883') return null;
+      rethrow;
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>?> managementPermissions(String clinic) async {
+    try {
+      return Map<String, dynamic>.from(
+        await client.rpc(
+              'inv_management_permissions',
               params: {'p_clinic': clinic},
             )
             as Map,

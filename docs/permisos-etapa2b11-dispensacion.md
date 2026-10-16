@@ -2,6 +2,8 @@
 
 Candidato local **13I1**, posterior a 13H3. No desplegar aisladamente, no generar otro APK ni abrir beta. Primer bloque de inventario: la dispensación; la gestión completa de inventario/caja queda para 13I2.
 
+Actualización posterior: [13I2 prepara el corte de gestión, caja y referencias](permisos-etapa2b12-inventario-caja.md). La lista final de pendientes de este documento describe el cierre de 13I1. Ninguno está aplicado a Supabase.
+
 ## Se conserva y se corrige
 
 Ya existían entregas, ventas, cantidades máximas por receta, movimientos por lote y separación entre entrega y cobro. Se reutilizan. Se conserva la **última** implementación de `inv_sale_post` de operaciones M9, incluidas aplicaciones, entregas, actos de servicio y comisiones; no se vuelve a la versión inicial M8.

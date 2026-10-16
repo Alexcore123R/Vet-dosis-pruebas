@@ -12,9 +12,7 @@ bool navigationAllowed(String page, ClinicMembership? member) {
       ClinicRole.mvz,
       ClinicRole.auxiliar,
     ].contains(role),
-    'Inventario' ||
-    'Caja' ||
-    'Escanear producto' => role != ClinicRole.estilista,
+    'Inventario' || 'Caja' || 'Escanear producto' => true,
     'Estadísticas' ||
     'Respaldo' ||
     'Estadísticas y respaldo' => role == ClinicRole.admin,

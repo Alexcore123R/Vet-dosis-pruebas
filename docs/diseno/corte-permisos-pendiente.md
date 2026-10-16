@@ -65,3 +65,7 @@ El [candidato 13H2](../permisos-etapa2b9-recetas.md) conecta firma de consulta c
 ## Avance 2B-10 y 2B-11, 16-oct-2026
 
 [13H3](../permisos-etapa2b10-a-cargo.md) añade autorización temporal de recetas ordinarias para casos seleccionados, aceptación y revisión posterior, sin compartir firma ni autorizar controlados. [13I1](../permisos-etapa2b11-dispensacion.md) sustituye la autoridad de dispensación física y cantidades; conserva cobro separado. Ambos son candidatos locales. Las referencias antiguas a autorización temporal pendiente describen el cierre previo a H3. La gestión completa de inventario/caja y lecturas aún requiere 13I2; no marcar terminada esa fila ni abrir beta.
+
+## Avance 2B-12, 16-oct-2026
+
+[13I2](../permisos-etapa2b12-inventario-caja.md) prepara permisos por persona para catálogo, entradas, ajustes, pedidos, fotos, frascos, cobros, cortes y referencias externas. Sustituye las dependencias por puesto de las rutas finales M8/M9 y referencias, protege lectura/exportación contable y conserva 13I1 para dispensación. SQL/Flutter locales, sin aplicar a Supabase ni abrir beta. Respaldos/agregados/identidad de otros módulos, reportes/formatos, Auth/Storage/Edge reales y el editor por lotes de producto siguen pendientes del cierre correspondiente.

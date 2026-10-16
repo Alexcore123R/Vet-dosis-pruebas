@@ -12,6 +12,12 @@ String inventoryError(Object error) {
   if (planMessage != null) return planMessage;
   final text = error.toString();
   const messages = {
+    'explicit_permission_required':
+        'Falta un permiso vigente para esta acción. Actualiza o consulta con la administración.',
+    'inventory_read_permission_required':
+        'Tu acceso de consulta a inventario no está vigente.',
+    'cash_collection_permission_required':
+        'Cobrar requiere un permiso vigente de caja.',
     'verified_dispensing_permission_required':
         'Dispensar requiere MVZ habilitado y permiso vigente; cobrar una entrega ya registrada es un acto separado.',
     'dispensing_limit_reauthorization_required':

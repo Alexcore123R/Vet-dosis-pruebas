@@ -16,3 +16,7 @@ abstract interface class InventoryRepository {
 abstract interface class DispensingPermissionRepository {
   Future<Map<String, dynamic>?> dispensingPermissions(String clinic);
 }
+
+abstract interface class InventoryManagementRepository {
+  Future<Map<String, dynamic>?> managementPermissions(String clinic);
+}
