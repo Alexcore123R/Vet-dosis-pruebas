@@ -45,4 +45,4 @@ No hay nuevas decisiones de esquema pendientes para este bloque conservador. Amp
 - El renderer procesa un snapshot generado por SQL y `pdftotext` verifica la advertencia no oficial, una fila validada, dos pendientes y firma propia. Los bytes `%PDF-SYNTHETIC-*` usados en pruebas SQL son solo fixtures de frontera; esa comprobación no sustituye la del renderer real.
 - Flutter: contrato estricto, separación preparar/emitir y exportación con nueva comprobación. Suite completa: **315 pruebas**, análisis sin incidencias.
 
-Evidencia de GitHub pendiente de ejecución sobre el commit de código de este candidato.
+GitHub Actions: [ejecución 38971853794](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38971853794), commit de código `eb18405`: **14/14 trabajos correctos**, incluido el nuevo bloque `controlled-reports` y regresiones de recetas individual/temporal, dispensación, inventario y caja. Pruebas aisladas, sin despliegue remoto ni APK.
