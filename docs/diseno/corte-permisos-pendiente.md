@@ -57,3 +57,7 @@ Alta revisada y seguimiento de dosis: [candidato 13G, esquema y límites](../per
 ## Revisión siguiente: recetas 13H, 16-oct-2026
 
 Se revisó preparación → PDF → emisión y delegaciones: [hallazgos, esquema concreto, fases y decisiones](recetas-autorizacion-13h.md). La usuaria aprobó nombre y firma propia de quien realizó la consulta, datos del MVZ separados y controlados exclusivos del MVZ habilitado. Se preparó el [bloque parcial 13H1 de atestación y renderer](../permisos-etapa2b8-firma.md). **Las rutas de preparar/autorizar/emitir y Flutter todavía no lo consumen**; no declarar implementado el corte integral 13H. Conservar históricos y no desplegar ni abrir beta.
+
+## Avance 2B-9, 16-oct-2026
+
+El [candidato 13H2](../permisos-etapa2b9-recetas.md) conecta firma de consulta con preparación, autorización **individual**, PDF y emisión; incluye Flutter, corrección previa a emisión y guardas de artefactos. Sustituye la limitación de conexión descrita en 2B-8. No desplegado. Autorización permanente, dispensación, reportes, formatos y demás filas siguen pendientes: no declarar completo el corte de recetas ni abrir beta.

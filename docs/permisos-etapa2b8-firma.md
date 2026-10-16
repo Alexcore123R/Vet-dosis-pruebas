@@ -2,6 +2,8 @@
 
 Decisión aprobada por la usuaria, 16-oct-2026. Implementación **parcial y local** 13H1, sin desplegar ni abrir beta.
 
+Actualización posterior: [13H2 conecta el flujo individual con Flutter y emisión](permisos-etapa2b9-recetas.md). La lista de pendientes de este documento refleja el cierre del bloque 13H1; no reemplaza el estado posterior ni acredita autorización permanente.
+
 ## Preparado y probado en este bloque
 
 - Candidato `supabase/proposed/13H1_consultation_attestation.sql`: firma inmutable de la persona autenticada, nombre capturado, hora del servidor, revisión/hash del borrador, época de membresía y concesión `prescription.prepare` usada. No acepta un usuario firmante suministrado por el cliente ni exige inventar una cédula al participante.

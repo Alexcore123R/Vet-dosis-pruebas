@@ -5,7 +5,10 @@ import '../../forms/domain/form_models.dart';
 import '../domain/prescribing_repository.dart';
 
 class SupabasePrescribingRepository
-    implements PrescribingRepository, MedicationPermissionRepository {
+    implements
+        PrescribingRepository,
+        MedicationPermissionRepository,
+        PrescriptionPermissionRepository {
   SupabasePrescribingRepository(this.client);
   final SupabaseClient client;
   static const reads = {
@@ -17,6 +20,7 @@ class SupabasePrescribingRepository
     'rx_medications',
     'rx_reports',
     'rx_hospital',
+    'rx_consultations',
   };
   static const writes = {
     'rx_profile_save',
@@ -25,6 +29,10 @@ class SupabasePrescribingRepository
     'rx_create',
     'rx_save',
     'rx_prepare',
+    'rx_consultation_sign',
+    'rx_prepare_attributed',
+    'rx_authorize_individual',
+    'rx_return_to_draft',
     'rx_finalize',
     'rx_vial_open',
     'rx_vial_close',
@@ -36,6 +44,22 @@ class SupabasePrescribingRepository
     'rx_schedule',
     'rx_schedule_typed',
   };
+  @override
+  Future<Map<String, dynamic>?> prescriptionPermissions(String clinic) async {
+    try {
+      return Map<String, dynamic>.from(
+        await client.rpc(
+              'rx_prescription_permissions',
+              params: {'p_clinic': clinic},
+            )
+            as Map,
+      );
+    } on PostgrestException catch (e) {
+      if (e.code == 'PGRST202' || e.code == '42883') return null;
+      rethrow;
+    }
+  }
+
   @override
   Future<Map<String, dynamic>?> medicationPermissions(
     String clinic,

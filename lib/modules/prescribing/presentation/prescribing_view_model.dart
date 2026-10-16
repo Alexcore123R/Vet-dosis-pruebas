@@ -34,6 +34,27 @@ class PrescribingViewModel extends ChangeNotifier {
   }
 
   bool operationalKnown = false;
+  bool prescriptionKnown = false;
+  Map<String, dynamic>? prescriptionPermissions;
+  bool get canPreparePrescription => prescriptionKnown
+      ? (prescriptionPermissions?['can_prepare'] == true)
+      : true;
+  bool prescriptionAction(Map<String, dynamic> row, String action) {
+    if (!prescriptionKnown || busy || error != null) return false;
+    if (!prescriptions.any(
+      (current) =>
+          current['id'] == row['id'] && current['revision'] == row['revision'],
+    )) {
+      return false;
+    }
+    return (prescriptionPermissions?['recipes'] as List? ?? []).any(
+      (r) =>
+          r['id'] == row['id'] &&
+          r['revision'] == row['revision'] &&
+          r[action] == true,
+    );
+  }
+
   Map<String, dynamic>? operational;
   bool get canManageVials =>
       operationalKnown ? (operational?['vial.manage'] == true) : professional;
@@ -75,6 +96,21 @@ class PrescribingViewModel extends ChangeNotifier {
     error = null;
     notifyListeners();
     try {
+      final repo = repository;
+      final rxPermissions = repo is PrescriptionPermissionRepository
+          ? await (repo as PrescriptionPermissionRepository)
+                .prescriptionPermissions(member.clinicId)
+          : null;
+      if (_disposed || generation != _generation) return;
+      if (rxPermissions != null) {
+        prescriptionKnown = true;
+        if (rxPermissions['schema_version'] != 1 ||
+            rxPermissions['mode'] != 'individual') {
+          throw StateError('unknown_prescription_permission_contract');
+        }
+      } else if (prescriptionKnown) {
+        throw StateError('prescription_permission_contract_lost');
+      }
       final profileRows = await repository.read('rx_profiles', {
         'p_clinic': member.clinicId,
       });
@@ -106,7 +142,8 @@ class PrescribingViewModel extends ChangeNotifier {
           permissionRows != null && permissionRows['vial.read'] != true
           ? []
           : await repository.read('rx_vials', {'p_clinic': member.clinicId});
-      final reportRows = member.role == ClinicRole.auxiliar
+      final reportRows =
+          rxPermissions != null || member.role == ClinicRole.auxiliar
           ? []
           : await repository.read('rx_reports', {'p_clinic': member.clinicId});
       final records = valid == null
@@ -114,6 +151,7 @@ class PrescribingViewModel extends ChangeNotifier {
           : await repository.read('rx_medications', {'p_case': valid});
       if (_disposed || generation != _generation) return;
       operational = permissionRows;
+      prescriptionPermissions = rxPermissions;
       profiles = _maps(profileRows);
       delegations = _maps(grants);
       products = catalog;
@@ -139,6 +177,7 @@ class PrescribingViewModel extends ChangeNotifier {
   static List<Map<String, dynamic>> _maps(dynamic rows) =>
       (rows as List).map((r) => Map<String, dynamic>.from(r)).toList();
   void _clear() {
+    prescriptionPermissions = null;
     operational = null;
     profiles = [];
     delegations = [];

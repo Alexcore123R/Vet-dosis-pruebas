@@ -13,3 +13,7 @@ abstract interface class MedicationPermissionRepository {
     String? caseId,
   );
 }
+
+abstract interface class PrescriptionPermissionRepository {
+  Future<Map<String, dynamic>?> prescriptionPermissions(String clinic);
+}

@@ -74,3 +74,17 @@ jobs:
         run: npm ci --prefix supabase
       - name: Probar atribución, firma propia y regresiones de formatos
         run: npm run test:renderer --prefix supabase
+  prescription-individual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Preparar comprobación del PDF generado desde PostgreSQL
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - name: Instalar dependencias fijadas del renderer
+        run: npm ci --prefix supabase
+      - name: Probar preparación, autorización individual, PDF y emisión concurrente
+        run: bash supabase/tests/run_prescription_individual.sh

@@ -37,7 +37,7 @@ class _SignaturePadState extends State<SignaturePad> {
         builder: (context, constraints) {
           final size = Size(constraints.maxWidth, 180);
           return Semantics(
-            label: 'Área para dibujar la firma del tutor',
+            label: 'Área para dibujar: ${widget.label}',
             child: Container(
               height: 180,
               decoration: BoxDecoration(

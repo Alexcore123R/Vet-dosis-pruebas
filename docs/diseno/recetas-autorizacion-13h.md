@@ -2,6 +2,8 @@
 
 16-oct-2026. Revisión del código actual; atribución aprobada por la usuaria e integración por etapas. No es una migración aplicada ni habilita la beta. Complementa el esquema beta-permisos v1.1; no sustituye la revisión normativa.
 
+Actualización: [13H2 implementa localmente la ruta individual](../permisos-etapa2b9-recetas.md), incluida su conexión a Flutter/PDF. Los hallazgos siguientes describen la base M6 y la propuesta integral; la autorización permanente y los demás consumidores heredados siguen pendientes.
+
 ## Estado comprobado
 
 | Categoría | Evidencia / alcance |

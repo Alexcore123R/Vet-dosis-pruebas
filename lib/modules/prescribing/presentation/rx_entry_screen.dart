@@ -28,11 +28,15 @@ class RxEntryScreen extends StatefulWidget {
     required this.submit,
     this.initial = const {},
     this.products = const [],
+    this.reviewText,
+    this.submitLabel = 'Guardar',
   });
   final String title;
   final List<RxField> fields;
   final Map<String, dynamic> initial;
   final List<Map<String, dynamic>> products;
+  final String? reviewText;
+  final String submitLabel;
   final Future<void> Function(Map<String, dynamic>, String) submit;
   @override
   State<RxEntryScreen> createState() => _RxEntryScreenState();
@@ -96,6 +100,9 @@ class _RxEntryScreenState extends State<RxEntryScreen> {
                 (v is String && v.trim().isEmpty) ||
                 (v is List && v.isEmpty))) {
           throw FormatException('Completa ${f.label}.');
+        }
+        if (f.required && f.type == 'checkbox' && v != true) {
+          throw FormatException('Confirma ${f.label}.');
         }
         if (f.type == 'quantity' && v != null && v != '') {
           data[f.key] = exactMedicationQuantity(v);
@@ -336,6 +343,7 @@ class _RxEntryScreenState extends State<RxEntryScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          if (widget.reviewText != null) SelectableText(widget.reviewText!),
           for (final f in widget.fields) field(f),
           if (error != null)
             Text(
@@ -344,7 +352,7 @@ class _RxEntryScreenState extends State<RxEntryScreen> {
             ),
           FilledButton(
             onPressed: busy ? null : save,
-            child: Text(busy ? 'Guardando…' : 'Guardar'),
+            child: Text(busy ? 'Guardando…' : widget.submitLabel),
           ),
         ],
       ),
@@ -357,6 +365,33 @@ String rxError(Object error) {
   if (planMessage != null) return planMessage;
   final text = error.toString();
   for (final e in {
+    'invalid_signature': 'Dibuja tu firma en el recuadro antes de continuar.',
+    'prescription_revision_conflict':
+        'La receta cambió. Actualiza y revisa la versión vigente antes de continuar.',
+    'consultation_signature_stale':
+        'El contenido cambió después de firmar. Quien realizó la consulta debe firmar la nueva versión.',
+    'consultation_signature_required':
+        'Falta la firma de quien realizó la consulta sobre este borrador.',
+    'consultation_signer_authority_changed':
+        'Cambió el acceso de quien firmó. Actualiza y solicita revisión del responsable.',
+    'preparer_authority_changed':
+        'El acceso de quien preparó dejó de estar vigente. El documento no se emitió.',
+    'responsible_profile_changed':
+        'Los datos o la habilitación del responsable cambiaron. Devuelve a borrador para revisar.',
+    'prescription_authorization_changed':
+        'La autorización dejó de estar vigente. El documento no se emitió.',
+    'prescription_regulation_changed':
+        'Cambió la referencia del formato controlado. Devuelve a borrador para revisar antes de emitir.',
+    'individual_authorization_required':
+        'El MVZ responsable debe autorizar las indicaciones antes de generar el PDF.',
+    'individual_responsible_only':
+        'Solo el MVZ responsable habilitado y con permiso puede autorizar o emitir esta receta.',
+    'consultation_profile_name_mismatch':
+        'El nombre de quien realizó la consulta debe coincidir con sus datos profesionales.',
+    'preparer_profile_name_mismatch':
+        'Tu nombre debe coincidir con tus datos profesionales vigentes.',
+    'typed_standing_authorization_not_available':
+        'La autorización permanente todavía no está habilitada en este flujo.',
     'task_version_conflict':
         'La indicación cambió. Actualiza la hoja y revisa antes de confirmar.',
     'task_closed_without_application':
@@ -375,7 +410,7 @@ String rxError(Object error) {
         'El registro histórico requiere revisión antes de usar el nuevo flujo de autorización.',
     'profile_version_conflict': 'El perfil cambió. Actualiza antes de guardar.',
     'delegated_restricted_product_denied':
-        'El producto es restringido o su clasificación no está verificada. Un auxiliar no puede preparar esa receta.',
+        'La preparación por otra persona requiere un producto ordinario con clasificación verificada. Consulta con el MVZ responsable.',
     'controlled_responsible_only':
         'Solo el MVZ responsable puede preparar o emitir controlados.',
     'responsible_professional_only':
@@ -392,6 +427,7 @@ String rxError(Object error) {
         'Hay discrepancia. El cierre requiere una nota del MVZ y conserva la diferencia.',
     'unresolved_incidence_requires_correction':
         'La aplicación tiene una incidencia. Debe corregirse y revisarse antes de validarla.',
+    'signature_required': 'Falta una firma válida en el recuadro.',
   }.entries) {
     if (text.contains(e.key)) return e.value;
   }
