@@ -36,7 +36,7 @@ select public.create_vet_patient(:'clinic','{"name":"Synthetic blocked after rev
 SQL
 then echo 'ERROR: revoked grant authorized waiting registration';exit 1;fi
 wait "$publisher_pid" || { cat "$work_dir/revoke.log";exit 1; }
-rg -q 'explicit_permission_required' "$work_dir/stale.log" || { cat "$work_dir/stale.log";exit 1; }
+grep -Fq 'explicit_permission_required' "$work_dir/stale.log" || { cat "$work_dir/stale.log";exit 1; }
 # Expiration while blocked must also deny, even though statement time predates expiry.
 docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 > "$work_dir/expiry.log" 2>&1 <<'SQL' &
 begin;
@@ -65,7 +65,7 @@ select public.create_vet_patient(:'clinic','{"name":"Synthetic blocked after exp
 SQL
 then echo 'ERROR: expired grant authorized waiting registration';exit 1;fi
 wait "$publisher_pid" || { cat "$work_dir/expiry.log";exit 1; }
-rg -q 'explicit_permission_required' "$work_dir/expired.log" || { cat "$work_dir/expired.log";exit 1; }
+grep -Fq 'explicit_permission_required' "$work_dir/expired.log" || { cat "$work_dir/expired.log";exit 1; }
 docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 <<'SQL'
 do $$begin
  if exists(select 1 from public.vet_patients where name in ('Synthetic blocked after expiry','Synthetic blocked after revoke')) then raise exception 'unauthorized_concurrent_patient';end if;
