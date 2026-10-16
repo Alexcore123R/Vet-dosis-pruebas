@@ -1,8 +1,14 @@
 # Propuesta 12C: aviso de privacidad vinculado a los términos
 
-Estado: implementada y probada localmente; pendiente de revisión del esquema antes de aplicarlo en el proyecto remoto. No se publicaron documentos ni se abrieron admisiones.
+Estado: esquema aprobado expresamente por la usuaria y aplicado en el proyecto de pruebas el 16 de octubre de 2026. Borradores vinculados por versión y SHA-256, sin publicación de documentos ni apertura de admisiones.
 
-## Estado de partida
+Aplicación: [ejecución 38862986989](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38862986989), commit `de49511`. El operador confirmó `beta_closed=true` y `exact_unpublished_binding=true`. No creó aceptaciones ni renovó inscripciones.
+
+Comprobación posterior: [ejecución 38863156552](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38863156552), commit `3309e9e`, acción `inspect`. Esquema completo reconocido y tres pruebas HTTP anónimas satisfactorias: RPC de aceptación, RPC de inscripción y lectura del historial denegados por permisos. Se usa exclusivamente la clave pública de cliente mediante secretos del servicio; no se registran credenciales ni respuestas privadas.
+
+Pendientes actuales: comprobar aceptación/autorización con cuentas reales y documentos de prueba publicados de forma controlada, generar el APK actualizado y resolver los demás bloqueos de permisos antes de abrir la beta. La publicación de los documentos legales de la usuaria no fue autorizada ni realizada en este paso.
+
+## Estado de partida anterior a la aprobación
 
 - Implementado y probado: términos congelados por versión/hash, historial inmutable, validación en servidor, rechazo de versiones obsoletas y conservación del plazo original de la beta.
 - Preparado local: pantalla con ambos textos y controles separados; migración 12C; operador de importación de borradores; pruebas de base de datos y Flutter.
