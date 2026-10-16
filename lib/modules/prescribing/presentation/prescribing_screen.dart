@@ -547,10 +547,11 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
           !(hospital['tasks'] as List).any(
             (t) => t['id'] == widget.initialTask,
           )) {
-        if (mounted)
+        if (mounted) {
           message(
             'La dosis cambió o ya fue resuelta. Actualiza la hoja antes de registrar una aplicación.',
           );
+        }
         return;
       }
       if (!mounted) return;
