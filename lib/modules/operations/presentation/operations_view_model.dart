@@ -9,6 +9,14 @@ class OperationsViewModel extends ChangeNotifier {
   Map<String, dynamic> data = {};
   bool busy = false, _disposed = false;
   String? error;
+  bool explicitPermissions = false;
+  bool allowed(String code) =>
+      !busy &&
+      error == null &&
+      data['permissions'] is Map &&
+      (data['permissions'] as Map)[code] == true;
+  bool sectionAllowed(String section) =>
+      data['sections'] is Map && (data['sections'] as Map)[section] == true;
   List<Map<String, dynamic>> rows(String key) => (data[key] as List? ?? [])
       .map((e) => Map<String, dynamic>.from(e as Map))
       .toList();
@@ -18,7 +26,12 @@ class OperationsViewModel extends ChangeNotifier {
     error = null;
     notifyListeners();
     try {
-      data = await repository.dashboard(clinic);
+      final next = await repository.dashboard(clinic);
+      if (explicitPermissions && next['permissions'] is! Map) {
+        throw StateError('permission_snapshot_missing');
+      }
+      if (next['permissions'] is Map) explicitPermissions = true;
+      data = next;
     } catch (e) {
       data = {};
       error = operationError(e);
@@ -40,6 +53,8 @@ String operationError(Object e) {
   if (planMessage != null) return planMessage;
   final text = e.toString();
   const errors = {
+    'explicit_permission_required':
+        'Necesitas un permiso vigente para esta acción. Solicítalo a administración.',
     'clinic_appointments_check':
         'Revisa el horario: el fin debe ser posterior al inicio y la cita no puede durar más de 24 horas.',
     'invalid_display_name': 'Usa un nombre de entre 2 y 120 caracteres.',

@@ -44,6 +44,10 @@ class _OperationsScreenState extends State<OperationsScreen> {
         role: p['role'] as String,
       ),
   };
+  String get activeSection =>
+      model.explicitPermissions && !model.sectionAllowed(section)
+      ? 'blocked'
+      : section;
   String person(String id) => staffLabel(id, model.rows('people'));
   @override
   void initState() {
@@ -94,7 +98,9 @@ class _OperationsScreenState extends State<OperationsScreen> {
 
   Future<void> newAppointment() async {
     Map<String, dynamic> patient = {};
-    if (widget.member.role != ClinicRole.estilista &&
+    if ((model.explicitPermissions
+            ? model.allowed('patient.read')
+            : widget.member.role != ClinicRole.estilista) &&
         widget.repository is AppointmentPatientRepository) {
       final selected = await Navigator.push<Map<String, dynamic>>(
         context,
@@ -127,7 +133,7 @@ class _OperationsScreenState extends State<OperationsScreen> {
         ),
         RxField(
           'professional_id',
-          'Profesional',
+          model.explicitPermissions ? 'Integrante asignado' : 'Profesional',
           type: 'select',
           options: people,
           required: true,
@@ -258,11 +264,12 @@ class _OperationsScreenState extends State<OperationsScreen> {
               'suppliers': 'Distribuidores',
               'acts': 'Desempeño',
             }.entries)
-              ChoiceChip(
-                label: Text(e.value),
-                selected: section == e.key,
-                onSelected: (_) => setState(() => section = e.key),
-              ),
+              if (!model.explicitPermissions || model.sectionAllowed(e.key))
+                ChoiceChip(
+                  label: Text(e.value),
+                  selected: section == e.key,
+                  onSelected: (_) => setState(() => section = e.key),
+                ),
             TextButton(
               onPressed: model.busy
                   ? null
@@ -289,10 +296,11 @@ class _OperationsScreenState extends State<OperationsScreen> {
                     ),
               child: const Text('Mi nombre en el equipo'),
             ),
-            TextButton(
-              onPressed: model.busy ? null : medical,
-              child: const Text('Ficha médica privada'),
-            ),
+            if (!model.explicitPermissions)
+              TextButton(
+                onPressed: model.busy ? null : medical,
+                child: const Text('Ficha médica privada'),
+              ),
             IconButton(
               onPressed: model.busy ? null : model.load,
               icon: const Icon(Icons.refresh),
@@ -305,9 +313,16 @@ class _OperationsScreenState extends State<OperationsScreen> {
             model.error!,
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
-        if (section == 'appointments') ...[
+        if (activeSection == 'blocked')
+          const Text('No tienes permiso para esta sección.'),
+        if (activeSection == 'appointments') ...[
           FilledButton(
-            onPressed: model.busy ? null : newAppointment,
+            onPressed:
+                model.busy ||
+                    (model.explicitPermissions &&
+                        !model.allowed('appointment.manage'))
+                ? null
+                : newAppointment,
             child: const Text('Agendar cita'),
           ),
           ExpansionTile(
@@ -332,7 +347,11 @@ class _OperationsScreenState extends State<OperationsScreen> {
           }))
             Card(
               child: ListTile(
-                onTap: a['patient_id'] != null && widget.onOpenPatient != null
+                onTap:
+                    a['patient_id'] != null &&
+                        widget.onOpenPatient != null &&
+                        (!model.explicitPermissions ||
+                            model.allowed('patient.read'))
                     ? () => widget.onOpenPatient!(a['patient_id'] as String)
                     : null,
                 title: Text(
@@ -342,6 +361,9 @@ class _OperationsScreenState extends State<OperationsScreen> {
                   '${DateTime.parse(a['starts_at'] as String).toLocal()} · ${appointmentStateLabel(a['state'] as String)}\n${a['notes'] ?? ''}',
                 ),
                 trailing: PopupMenuButton<String>(
+                  enabled:
+                      !model.explicitPermissions ||
+                      model.allowed('appointment.manage'),
                   onSelected: (state) => state == 'reprogramar'
                       ? form(
                           'Reprogramar cita',
@@ -411,7 +433,7 @@ class _OperationsScreenState extends State<OperationsScreen> {
               ),
             ),
         ],
-        if (section == 'services') ...[
+        if (activeSection == 'services') ...[
           if (admin)
             FilledButton(
               onPressed: () => service(),
@@ -465,7 +487,7 @@ class _OperationsScreenState extends State<OperationsScreen> {
             child: const Text('Registrar servicio realizado'),
           ),
         ],
-        if (section == 'tasks') ...[
+        if (activeSection == 'tasks') ...[
           FilledButton(
             onPressed: () => form('Nuevo pendiente', 'task', [
               const RxField('title', 'Pendiente', required: true),
@@ -525,7 +547,7 @@ class _OperationsScreenState extends State<OperationsScreen> {
                   : const Icon(Icons.done_all),
             ),
         ],
-        if (section == 'messages') ...[
+        if (activeSection == 'messages') ...[
           FilledButton(
             onPressed: () => form('Mensaje al equipo', 'message', const [
               RxField(
@@ -556,7 +578,7 @@ class _OperationsScreenState extends State<OperationsScreen> {
               ),
             ),
         ],
-        if (section == 'suppliers') ...[
+        if (activeSection == 'suppliers') ...[
           if (admin || widget.member.role == ClinicRole.recepcion)
             FilledButton(
               onPressed: () => form('Distribuidor', 'supplier', const [
@@ -589,7 +611,7 @@ class _OperationsScreenState extends State<OperationsScreen> {
               ),
             ),
         ],
-        if (section == 'acts') ...[
+        if (activeSection == 'acts') ...[
           TextButton(
             onPressed: exportPerformance,
             child: const Text('Exportar servicios y comisiones CSV'),

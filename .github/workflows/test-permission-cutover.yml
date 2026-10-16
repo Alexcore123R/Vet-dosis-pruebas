@@ -11,3 +11,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Probar alta, lectura, auditoría y concurrencia en PostgreSQL aislado
         run: bash supabase/tests/run_permission_patient_registration.sh
+  agenda:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar agenda, agregados y concurrencia con dependencias reales
+        run: bash supabase/tests/run_permission_agenda.sh

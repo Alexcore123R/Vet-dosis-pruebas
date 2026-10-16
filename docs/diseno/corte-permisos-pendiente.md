@@ -29,3 +29,7 @@
 ## Avance 2B-1, 16-oct-2026
 
 Se preparó y probó localmente el candidato de alta administrativa y lectura directa de pacientes/tutores: [detalle y límites](../permisos-etapa2b1.md). No está desplegado y no cubre eventos clínicos, agenda ni consultas agregadas. El corte completo de esta tabla continúa pendiente; no marcar la fila de pacientes como migrada en su totalidad.
+
+## Avance 2B-2, 16-oct-2026
+
+Candidato local de agenda y `ops_dashboard`: [detalle y límites](../permisos-etapa2b2.md). Se separaron `appointment.read`, `appointment.manage` y `patient.read`, sin desplegar. Los otros agregados operativos quedan vacíos en el candidato hasta mapear sus permisos. No acredita la migración de `att_dashboard`, estadísticas, hospitalización ni todas las áreas del dashboard.
