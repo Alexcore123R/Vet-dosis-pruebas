@@ -37,3 +37,11 @@ Candidato local de agenda y `ops_dashboard`: [detalle y límites](../permisos-et
 ## Avance 2B-3, 16-oct-2026
 
 Candidato de expediente/actuaciones y propuesta de relación explícita de alcance a tipo de procedimiento: [esquema, restricción conservadora y límites](../permisos-etapa2b3.md). No desplegado. La autorización clínica histórica se conserva sin convertirse al nuevo modelo. La captura libre y la integración de UI/formularios/medicación siguen pendientes; no marcar terminado el corte clínico.
+
+## Avance 2B-4, 16-oct-2026
+
+Ingreso sin jaula y cambios de ubicación auditados: [candidato 13D y evidencia](../hospitalizacion-captura-flexible.md). SQL/UI preparados; no desplegados. No equivale a autorización de medicación ni a migración completa de navegación por permisos.
+
+## Avance 2B-5, 16-oct-2026
+
+Revisiones hospitalarias ligadas a tipo de procedimiento: [candidato 13E y límites](../permisos-etapa2b5.md). Se separan programación, posposición y confirmación con permisos explícitos; las revisiones históricas no reciben autoridad automática y la ruta genérica de medicación queda cerrada. Interfaz nueva, alta, `rx_schedule`, aplicaciones/frascos y validación siguen pendientes. No desplegar 13E aisladamente ni declarar terminado el corte hospitalario.

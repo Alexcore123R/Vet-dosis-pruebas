@@ -32,3 +32,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Probar ingreso sin jaula y cambios auditados en aislamiento
         run: bash supabase/tests/run_hospital_flexible_admission.sh
+  hospital-reviews:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar revisiones por procedimiento y confirmaciones concurrentes
+        run: bash supabase/tests/run_permission_hospital_reviews.sh
