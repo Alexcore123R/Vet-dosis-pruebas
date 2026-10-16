@@ -45,3 +45,7 @@ Ingreso sin jaula y cambios de ubicación auditados: [candidato 13D y evidencia]
 ## Avance 2B-5, 16-oct-2026
 
 Revisiones hospitalarias ligadas a tipo de procedimiento: [candidato 13E y límites](../permisos-etapa2b5.md). Se separan programación, posposición y confirmación con permisos explícitos; las revisiones históricas no reciben autoridad automática y la ruta genérica de medicación queda cerrada. Selector y controles por acción preparados en la UI; navegación completa, reautorización histórica, alta, `rx_schedule`, aplicaciones/frascos y validación siguen pendientes. No desplegar 13E aisladamente ni declarar terminado el corte hospitalario.
+
+## Avance 2B-6, 16-oct-2026
+
+Aplicación/extracción, validación y frascos: [candidato 13F, esquema y límites](../permisos-etapa2b6.md). Nuevas aplicaciones guardan autoridad explícita y las correcciones son anexas; administrar y extraer tienen permisos distintos. Incluye programación tipada y contrato de interfaz. Sin despliegue; alta, acciones completas de medicación, históricos, recetas/delegaciones/reportes/Storage/Edge siguen pendientes. No declarar terminado M6 ni abrir beta por este candidato.

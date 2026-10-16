@@ -4,7 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../forms/domain/form_models.dart';
 import '../domain/prescribing_repository.dart';
 
-class SupabasePrescribingRepository implements PrescribingRepository {
+class SupabasePrescribingRepository
+    implements PrescribingRepository, MedicationPermissionRepository {
   SupabasePrescribingRepository(this.client);
   final SupabaseClient client;
   static const reads = {
@@ -33,7 +34,27 @@ class SupabasePrescribingRepository implements PrescribingRepository {
     'rx_report_create',
     'rx_report_finalize',
     'rx_schedule',
+    'rx_schedule_typed',
   };
+  @override
+  Future<Map<String, dynamic>?> medicationPermissions(
+    String clinic,
+    String? caseId,
+  ) async {
+    try {
+      return Map<String, dynamic>.from(
+        await client.rpc(
+              'rx_operational_permissions',
+              params: {'p_clinic': clinic, 'p_case': caseId},
+            )
+            as Map,
+      );
+    } on PostgrestException catch (e) {
+      if (e.code == 'PGRST202' || e.code == '42883') return null;
+      rethrow;
+    }
+  }
+
   @override
   Future<dynamic> read(String command, Map<String, dynamic> args) {
     if (!reads.contains(command)) throw ArgumentError('Consulta no disponible');

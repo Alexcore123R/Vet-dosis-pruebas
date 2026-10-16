@@ -244,6 +244,19 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
   );
   Future<void> schedule(Map<String, dynamic> r) async {
     try {
+      if (!model.canScheduleMedication) return;
+      final source = widget.repository;
+      final permissions = source is MedicationPermissionRepository
+          ? await (source as MedicationPermissionRepository)
+                .medicationPermissions(
+                  widget.member.clinicId,
+                  r['case_id'] as String,
+                )
+          : null;
+      if (model.operationalKnown && permissions == null) {
+        throw StateError('permission_contract_lost');
+      }
+      final typed = permissions?['typed_medication_schedule'] == true;
       final info = Map<String, dynamic>.from(
         await widget.repository.read('rx_hospital', {'p_case': r['case_id']}),
       );
@@ -260,7 +273,8 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
             type: 'select',
             required: true,
             options: {
-              for (final st in info['stays']) st['id']: 'Jaula ${st['cage']}',
+              for (final st in info['stays'])
+                st['id']: 'Jaula ${st['cage'] ?? 'sin asignar'}',
             },
           ),
           RxField(
@@ -274,6 +288,25 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
                     '${it['product_name']} · ${it['quantity']} ${it['unit']}',
             },
           ),
+          if (typed) ...[
+            RxField(
+              'scope',
+              'Procedimiento / etapa',
+              type: 'select',
+              required: true,
+              options: {
+                for (final scope in permissions!['scopes'] as List)
+                  scope['scope'] as String:
+                      clinicalScopes[scope['scope']] ??
+                      scope['scope'] as String,
+              },
+            ),
+            const RxField(
+              'delay',
+              'Aviso de retraso tras (minutos)',
+              required: true,
+            ),
+          ],
           const RxField(
             'times',
             'Horas explícitas UTC: una por línea (no se infiere el intervalo)',
@@ -289,13 +322,16 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
           for (final t in times) {
             clinicalInstant(t);
           }
-          await widget.repository.write('rx_schedule', {
-            'p_id': r['id'],
-            'p_item': d['item'],
-            'p_stay': d['stay'],
-            'p_times': times,
-            'p_operation': op,
-          });
+          await widget.repository
+              .write(typed ? 'rx_schedule_typed' : 'rx_schedule', {
+                'p_id': r['id'],
+                'p_item': d['item'],
+                'p_stay': d['stay'],
+                'p_times': times,
+                if (typed) 'p_scope': d['scope'],
+                if (typed) 'p_delay': int.tryParse(d['delay'] as String? ?? ''),
+                'p_operation': op,
+              });
         },
       );
     } catch (e) {
@@ -472,10 +508,40 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
   Future<void> medication({Map<String, dynamic>? correction}) async {
     if (model.caseId == null) return;
     try {
-      final staff = await widget.forms.staff(widget.member.clinicId);
-      final hospital = Map<String, dynamic>.from(
-        await widget.repository.read('rx_hospital', {'p_case': model.caseId}),
-      );
+      if (correction == null && !model.canReportMedication ||
+          correction != null && !model.canCorrectMedication(correction)) {
+        return;
+      }
+      final staff = model.operationalKnown
+          ? <Map<String, dynamic>>[
+              {
+                'id': correction?['performed_by'] ?? widget.member.userId,
+                'label': correction == null
+                    ? 'Tú'
+                    : 'Integrante que aplicó · ${correction['performed_by']}',
+              },
+            ]
+          : await widget.forms.staff(widget.member.clinicId);
+      final productRows = [...model.products];
+      if (correction != null &&
+          !productRows.any(
+            (p) => p['id'] == correction['product_version_id'],
+          )) {
+        productRows.add({
+          'id': correction['product_version_id'],
+          'name': correction['product_name'],
+          'presentation': correction['presentation'],
+          'unit': correction['unit'],
+        });
+      }
+      final hospital =
+          model.operationalKnown && model.operational?['hospital.read'] != true
+          ? <String, dynamic>{'tasks': []}
+          : Map<String, dynamic>.from(
+              await widget.repository.read('rx_hospital', {
+                'p_case': model.caseId,
+              }),
+            );
       if (!mounted) return;
       await entry(
         correction == null
@@ -488,7 +554,7 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
             type: 'select',
             required: true,
             options: {
-              for (final p in model.products)
+              for (final p in productRows)
                 p['id']: '${p['name']} · ${p['presentation']}',
             },
           ),
@@ -504,8 +570,13 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
             'Procedimiento / etapa',
             type: 'select',
             required: true,
-            options: Map<String, String>.from(clinicalScopes)
-              ..remove('observaciones'),
+            options: correction != null && model.operationalKnown
+                ? {
+                    correction['procedure'] as String:
+                        clinicalScopes[correction['procedure']] ??
+                        correction['procedure'] as String,
+                  }
+                : model.medicationScopes,
           ),
           RxField(
             'performer',
@@ -567,7 +638,15 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
             const RxField('reason', 'Motivo de corrección', required: true),
         ],
         (d, op) async {
-          final product = model.products.firstWhere(
+          if (model.operationalKnown &&
+              correction == null &&
+              (d['vial'] as String? ?? '').isNotEmpty &&
+              !model.canDraw(d['procedure'] as String)) {
+            throw const FormatException(
+              'Falta permiso de extracción para este procedimiento.',
+            );
+          }
+          final product = productRows.firstWhere(
             (p) => p['id'] == d['product'],
           );
           await widget.repository.write('rx_medication_report', {
@@ -594,7 +673,7 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
           'product': correction?['product_version_id'],
           'quantity': correction?['quantity'],
           'route': correction?['route'],
-          'procedure': correction?['procedure'] ?? 'cuidados',
+          'procedure': correction?['procedure'],
           'performer': correction?['performed_by'] ?? widget.member.userId,
           'vial': correction?['vial_id'] ?? '',
           'prescription': '',
@@ -953,7 +1032,7 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
                           ),
                         if (r['state'] == 'issued' &&
                             r['responsible_id'] == widget.member.userId &&
-                            model.professional)
+                            model.canScheduleMedication)
                           TextButton(
                             onPressed: model.busy ? null : () => schedule(r),
                             child: const Text('Programar en hospitalización'),
@@ -975,7 +1054,10 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
         if (section == 'Medicación') ...[
           FilledButton(
             onPressed:
-                model.busy || model.caseId == null || model.products.isEmpty
+                model.busy ||
+                    model.caseId == null ||
+                    model.products.isEmpty ||
+                    !model.canReportMedication
                 ? null
                 : () => medication(),
             child: const Text('Reportar aplicación realizada'),
@@ -1005,7 +1087,8 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
                       Text(
                         'Corrige: ${r['replaces_id']} · ${r['correction_reason']}',
                       ),
-                    if (model.responsible && r['superseded'] != true)
+                    if (model.canCorrectMedication(r) &&
+                        r['superseded'] != true)
                       Wrap(
                         spacing: 8,
                         children: [
@@ -1013,12 +1096,13 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
                             onPressed: model.busy ? null : () => validate(r),
                             child: const Text('Validar / solicitar corrección'),
                           ),
-                          TextButton(
-                            onPressed: model.busy
-                                ? null
-                                : () => medication(correction: r),
-                            child: const Text('Anexar corrección'),
-                          ),
+                          if (model.canCorrectMedication(r))
+                            TextButton(
+                              onPressed: model.busy
+                                  ? null
+                                  : () => medication(correction: r),
+                              child: const Text('Anexar corrección'),
+                            ),
                         ],
                       ),
                   ],
@@ -1027,7 +1111,7 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
             ),
         ],
         if (section == 'Frascos') ...[
-          if (model.professional)
+          if (model.canManageVials)
             FilledButton(
               onPressed: model.busy || model.products.isEmpty ? null : vial,
               child: const Text('Abrir frasco'),
@@ -1052,14 +1136,16 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
                       ),
                     if (v['closed'] != true &&
                         v['responsible_id'] == widget.member.userId &&
-                        model.professional)
+                        model.canManageVials &&
+                        (!model.operationalKnown || v['can_adjust'] == true))
                       TextButton(
                         onPressed: model.busy ? null : () => adjustVial(v),
                         child: const Text('Anexar merma / devolución / ajuste'),
                       ),
                     if (v['closed'] != true &&
                         v['responsible_id'] == widget.member.userId &&
-                        model.professional)
+                        model.canManageVials &&
+                        (!model.operationalKnown || v['can_manage'] == true))
                       TextButton(
                         onPressed: model.busy ? null : () => closeVial(v),
                         child: const Text('Conciliar y cerrar'),

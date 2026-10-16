@@ -357,6 +357,16 @@ String rxError(Object error) {
   if (planMessage != null) return planMessage;
   final text = error.toString();
   for (final e in {
+    'task_already_confirmed':
+        'La tarea ya fue confirmada. Actualiza la hoja; no se registró otra toma.',
+    'explicit_permission_required':
+        'Falta un permiso vigente para esta acción. Actualiza o consulta con la administración.',
+    'permission_not_valid_at_application':
+        'El permiso no estaba vigente en la hora indicada. Revisa el registro con el responsable.',
+    'controlled_or_unverified_vial_adjustment_denied':
+        'Este frasco no admite ajustes libres: es controlado o su clasificación está sin verificar.',
+    'legacy_medication_reauthorization_required':
+        'El registro histórico requiere revisión antes de usar el nuevo flujo de autorización.',
     'profile_version_conflict': 'El perfil cambió. Actualiza antes de guardar.',
     'delegated_restricted_product_denied':
         'El producto es restringido o su clasificación no está verificada. Un auxiliar no puede preparar esa receta.',

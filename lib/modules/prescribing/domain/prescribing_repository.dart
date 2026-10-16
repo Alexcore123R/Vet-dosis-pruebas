@@ -6,3 +6,10 @@ abstract interface class PrescribingRepository {
   Future<List<Map<String, dynamic>>> products();
   Future<ReviewedPdf> pdf(String kind, String id);
 }
+
+abstract interface class MedicationPermissionRepository {
+  Future<Map<String, dynamic>?> medicationPermissions(
+    String clinic,
+    String? caseId,
+  );
+}
