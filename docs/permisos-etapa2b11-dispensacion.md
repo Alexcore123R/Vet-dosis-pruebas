@@ -44,6 +44,8 @@ Resultado local: **302 pruebas Flutter satisfactorias**, análisis sin incidenci
 
 Flutter comprueba prioridad del contrato sobre el indicador profesional antiguo, pérdida/versión desconocida, ocultación de delegación y entrega no permitidas, y entrega explícita sin volver a habilitar delegación. La prueba local no acredita HTTP/Storage/Edge ni teléfono físico.
 
+GitHub confirmó **doce trabajos satisfactorios** sobre `5cf38b6`: [run 38958804522](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38958804522), incluido `dispensing` y los once bloques anteriores. Son pruebas aisladas sin despliegue ni APK; las 302 pruebas Flutter corresponden a la ejecución local.
+
 ## Pendiente concreto: 13I2
 
 Este candidato **no termina todo inventario**. `inv_access`, el dashboard, políticas de lectura de movimientos/documentos, caja, catálogos/precios, proveedores/pedidos, fotos/Storage, preparación de cargos, enlace de frascos y parte de la navegación todavía necesitan sustituir sus dependencias antiguas. La venta conserva las condiciones actuales de caja/puesto **para cobrar**, además del candado nuevo independiente **para dispensar**. No afirmar que todos los permisos financieros o lecturas del módulo estén migrados.
