@@ -12,7 +12,7 @@ PREFLIGHT = """select
  to_regprocedure('public.permission_professional_revoke(uuid,text)') is not null as permissions_ready,
  (select not admissions_enabled and not enforcement_enabled from private.beta_policy) as beta_closed,
  to_regclass('public.terms_acceptances') is not null as acceptance_table,
- to_regprocedure('public.beta_accept_terms(text,text)') is not null as acceptance_rpc,
+ (to_regprocedure('public.beta_accept_terms(text,text)') is not null or to_regprocedure('public.beta_accept_terms(text,text,text,text)') is not null) as acceptance_rpc,
  to_regprocedure('public.platform_beta_professional_list()') is not null as platform_list,
  to_regprocedure('public.platform_beta_professional_revoke(uuid,text)') is not null as platform_revoke"""
 
@@ -74,7 +74,7 @@ def main():
     check=query(f"""select
  (select not admissions_enabled and not enforcement_enabled from private.beta_policy) as beta_closed,
  exists(select 1 from private.beta_terms where version={literal(data['version'])} and content_hash={literal(data['hash'])} and content_hash=encode(sha256(convert_to(content,'UTF8')),'hex') and not published) as exact_draft_unpublished,
- to_regprocedure('public.beta_accept_terms(text,text)') is not null as acceptance_ready,
+ (to_regprocedure('public.beta_accept_terms(text,text)') is not null or to_regprocedure('public.beta_accept_terms(text,text,text,text)') is not null) as acceptance_ready,
  to_regprocedure('public.platform_beta_professional_revoke(uuid,text)') is not null as platform_revocation_ready""")[0]
     if not all(check.values()):
         raise SystemExit('Verificación incompleta: revisar el estado antes de continuar.')

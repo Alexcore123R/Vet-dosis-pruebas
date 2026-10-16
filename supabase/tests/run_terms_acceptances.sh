@@ -28,4 +28,27 @@ do $$begin
 end$$;
 SQL
 bash supabase/tests/terms_concurrency.sh "$container_name"
+# Proposed privacy extension is tested locally, never applied by the remote operator.
+docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 <<'SQL'
+update private.beta_policy set admissions_enabled=false,enforcement_enabled=false;
+SQL
+for sql_file in supabase/proposed/12C_privacy_binding.sql supabase/tests/privacy_binding.sql;do
+ docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 < "$sql_file" > "$work_dir/privacy.log" 2>&1 || { echo "FAILED: $sql_file";cat "$work_dir/privacy.log";exit 1; }
+done
+PYTHONPATH=scripts/supabase python3 - "$work_dir/privacy-draft.sql" <<'PYTEST'
+from pathlib import Path
+import sys
+from privacy_schema import load_draft,load_privacy,binding_sql
+Path(sys.argv[1]).write_text("begin;\nupdate private.beta_policy set admissions_enabled=false,enforcement_enabled=false;\n"+binding_sql(load_draft(),load_privacy())+"\ncommit;")
+PYTEST
+docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 < "$work_dir/privacy-draft.sql" > "$work_dir/privacy-draft.log" 2>&1 || { cat "$work_dir/privacy-draft.log";exit 1; }
+docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 <<'SQL'
+do $$begin
+ if not exists(select 1 from private.beta_terms t join private.beta_privacy_notices n on n.version=t.privacy_version
+ where t.version='1' and n.version='1' and not t.published and not n.published
+ and t.content_hash=encode(sha256(convert_to(t.content,'UTF8')),'hex') and n.content_hash=encode(sha256(convert_to(n.content,'UTF8')),'hex')) then raise exception 'exact_privacy_draft_binding_failed';end if;
+ if exists(select 1 from public.terms_acceptances where terms_version='1') then raise exception 'draft_implicitly_accepted';end if;
+end$$;
+SQL
+echo 'Privacy passed: exact binding, legacy bypass rejected, historical rows preserved, own-user receipts, atomic enrollment and expired read/export.'
 echo 'Terms passed: displayed version/hash bound to immutable acceptance, own-user history, stale text rejected, consent renewal without trial renewal, expired read/export preserved and guard reinstall safe.'

@@ -8,6 +8,9 @@ class BetaState {
     'sponsor_grace',
     'read_export',
   ].contains(mode);
+  Map<String, dynamic>? get privacy => terms?['privacy'] is Map
+      ? Map<String, dynamic>.from(terms!['privacy'] as Map)
+      : null;
   bool get termsPending => data['terms_acceptance_required'] == true;
   bool get readOnly => mode == 'read_export' || termsPending;
   bool get warning => data['expiry_warning'] == true;
@@ -26,8 +29,19 @@ class BetaMfaSetup {
 
 abstract interface class BetaRepository {
   Future<BetaState> status(String? clinicId);
-  Future<void> enroll(String version, String hash, String? token);
-  Future<void> acceptTerms(String version, String hash);
+  Future<void> enroll(
+    String version,
+    String hash,
+    String? token, {
+    String? privacyVersion,
+    String? privacyHash,
+  });
+  Future<void> acceptTerms(
+    String version,
+    String hash, {
+    String? privacyVersion,
+    String? privacyHash,
+  });
   Future<void> sponsor(String clinicId);
   Future<Map<String, dynamic>> administration();
   Future<void> setEmail(String email, bool enabled, String reason);

@@ -24,7 +24,7 @@ class BetaBoundary extends StatefulWidget {
 
 class _BetaBoundaryState extends State<BetaBoundary> {
   BetaState? state;
-  bool busy = false, accepted = false;
+  bool busy = false, accepted = false, privacyRead = false;
   bool entered = false, termsReadOnly = false;
   String? error;
   final token = TextEditingController();
@@ -61,8 +61,11 @@ class _BetaBoundaryState extends State<BetaBoundary> {
       if (!mounted || request != revision) return;
       setState(() {
         if (value.terms?['hash'] != state?.terms?['hash'] ||
-            value.terms?['version'] != state?.terms?['version']) {
+            value.terms?['version'] != state?.terms?['version'] ||
+            value.privacy?['version'] != state?.privacy?['version'] ||
+            value.privacy?['hash'] != state?.privacy?['hash']) {
           accepted = false;
+          privacyRead = false;
           termsReadOnly = false;
         }
         state = value;
@@ -92,8 +95,10 @@ class _BetaBoundaryState extends State<BetaBoundary> {
       await refresh();
       if (mounted) {
         setState(
-          () => error = failure.toString().contains('beta_terms_changed')
-              ? 'Los términos cambiaron. Lee la versión actual y vuelve a aceptarla.'
+          () => error =
+              (failure.toString().contains('beta_terms_changed') ||
+                  failure.toString().contains('beta_privacy_changed'))
+              ? 'Los términos cambiaron o se actualizó el aviso de privacidad. Revisa los textos actuales y confirma de nuevo.'
               : 'No se completó la operación. Revisa correo aprobado, invitación, términos y conexión.',
         );
       }
@@ -135,12 +140,18 @@ class _BetaBoundaryState extends State<BetaBoundary> {
               if (value.terms != null) ...[
                 ...termsFields(value),
                 FilledButton(
-                  onPressed: busy || !accepted
+                  onPressed:
+                      busy ||
+                          !accepted ||
+                          (value.privacy != null && !privacyRead)
                       ? null
                       : () => run(
                           () => widget.repository.acceptTerms(
                             value.terms!['version'] as String,
                             value.terms!['hash'] as String,
+                            privacyVersion:
+                                value.privacy?['version'] as String?,
+                            privacyHash: value.privacy?['hash'] as String?,
                           ),
                           refreshMemberships: false,
                         ),
@@ -241,7 +252,10 @@ class _BetaBoundaryState extends State<BetaBoundary> {
                       enableSuggestions: false,
                     ),
                     FilledButton(
-                      onPressed: busy || !accepted
+                      onPressed:
+                          busy ||
+                              !accepted ||
+                              (value.privacy != null && !privacyRead)
                           ? null
                           : () => run(
                               () => widget.repository.enroll(
@@ -250,6 +264,9 @@ class _BetaBoundaryState extends State<BetaBoundary> {
                                 token.text.trim().isEmpty
                                     ? null
                                     : token.text.trim(),
+                                privacyVersion:
+                                    value.privacy?['version'] as String?,
+                                privacyHash: value.privacy?['hash'] as String?,
                               ),
                             ),
                       child: const Text('Ingresar a la beta'),
@@ -276,6 +293,24 @@ class _BetaBoundaryState extends State<BetaBoundary> {
     ),
     const SizedBox(height: 12),
     SelectableText(value.terms!['content'] as String),
+    if (value.privacy != null) ...[
+      const SizedBox(height: 20),
+      Text(
+        'Aviso de privacidad · versión ${value.privacy!['version']}',
+        style: Theme.of(context).textTheme.titleLarge,
+      ),
+      const SizedBox(height: 12),
+      SelectableText(value.privacy!['content'] as String),
+      CheckboxListTile(
+        value: privacyRead,
+        onChanged: busy
+            ? null
+            : (v) => setState(() => privacyRead = v ?? false),
+        title: Text(
+          'Leí el aviso de privacidad versión ${value.privacy!['version']}',
+        ),
+      ),
+    ],
     CheckboxListTile(
       value: accepted,
       onChanged: busy ? null : (v) => setState(() => accepted = v ?? false),

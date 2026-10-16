@@ -10,6 +10,7 @@ class BetaFake implements BetaRepository {
   });
   int enrollments = 0, acceptances = 0;
   String? acceptedVersion, acceptedHash, enrolledVersion, enrolledHash;
+  String? acceptedPrivacyVersion, acceptedPrivacyHash;
   bool replaceTermsOnAcceptance = false;
   bool offline = false;
   @override
@@ -19,7 +20,15 @@ class BetaFake implements BetaRepository {
   }
 
   @override
-  Future<void> enroll(String version, String hash, String? token) async {
+  Future<void> enroll(
+    String version,
+    String hash,
+    String? token, {
+    String? privacyVersion,
+    String? privacyHash,
+  }) async {
+    acceptedPrivacyVersion = privacyVersion;
+    acceptedPrivacyHash = privacyHash;
     enrollments++;
     enrolledVersion = version;
     enrolledHash = hash;
@@ -27,7 +36,12 @@ class BetaFake implements BetaRepository {
   }
 
   @override
-  Future<void> acceptTerms(String version, String hash) async {
+  Future<void> acceptTerms(
+    String version,
+    String hash, {
+    String? privacyVersion,
+    String? privacyHash,
+  }) async {
     if (replaceTermsOnAcceptance) {
       current = BetaState({
         ...current.data,
@@ -35,6 +49,8 @@ class BetaFake implements BetaRepository {
       });
       throw StateError('beta_terms_changed');
     }
+    acceptedPrivacyVersion = privacyVersion;
+    acceptedPrivacyHash = privacyHash;
     acceptances++;
     acceptedVersion = version;
     acceptedHash = hash;
@@ -325,4 +341,94 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+  testWidgets(
+    'El aviso visible debe confirmarse y se envía su versión y hash',
+    (tester) async {
+      final repository = pendingTerms();
+      repository.current = BetaState({
+        ...repository.current.data,
+        'terms': {
+          ...repository.current.terms!,
+          'privacy': {
+            'version': 'notice-1',
+            'hash': 'privacy-hash',
+            'content': 'Aviso sintético',
+          },
+        },
+      });
+      await tester.pumpWidget(app(repository));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Aviso de privacidad · versión notice-1'),
+        findsOneWidget,
+      );
+      expect(find.text('Aviso sintético'), findsOneWidget);
+      final checkboxes = find.byType(Checkbox);
+      await tester.ensureVisible(checkboxes.last);
+      await tester.tap(checkboxes.last);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Aceptar versión 1'),
+            )
+            .onPressed,
+        isNull,
+      );
+      await tester.ensureVisible(checkboxes.first);
+      await tester.tap(checkboxes.first);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Aceptar versión 1'));
+      await tester.tap(find.text('Aceptar versión 1'));
+      await tester.pumpAndSettle();
+      expect(repository.acceptedPrivacyVersion, 'notice-1');
+      expect(repository.acceptedPrivacyHash, 'privacy-hash');
+      expect(repository.acceptedVersion, '1');
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('Cambiar solo el aviso elimina ambas selecciones', (
+    tester,
+  ) async {
+    final repository = pendingTerms();
+    repository.current = BetaState({
+      ...repository.current.data,
+      'terms': {
+        ...repository.current.terms!,
+        'privacy': {
+          'version': 'notice-1',
+          'hash': 'privacy-hash',
+          'content': 'Aviso sintético',
+        },
+      },
+    });
+    await tester.pumpWidget(app(repository));
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 2; i++) {
+      final checkbox = find.byType(Checkbox).at(i);
+      await tester.ensureVisible(checkbox);
+      await tester.tap(checkbox);
+      await tester.pumpAndSettle();
+    }
+    repository.current = BetaState({
+      ...repository.current.data,
+      'terms': {
+        ...repository.current.terms!,
+        'privacy': {
+          'version': 'notice-2',
+          'hash': 'next-hash',
+          'content': 'Aviso actualizado',
+        },
+      },
+    });
+    await tester.pump(const Duration(minutes: 1));
+    await tester.pumpAndSettle();
+    expect(find.text('Aviso actualizado'), findsOneWidget);
+    for (final widget in tester.widgetList<Checkbox>(find.byType(Checkbox))) {
+      expect(widget.value, false);
+    }
+    expect(repository.acceptances, 0);
+    await tester.pumpWidget(const SizedBox());
+  });
 }

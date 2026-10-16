@@ -1,0 +1,34 @@
+name: Preparar aviso de privacidad versionado (requiere esquema revisado)
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        type: choice
+        options: [inspect, prepare]
+        default: inspect
+        required: true
+      confirmation:
+        description: PREPARAR_AVISO_SIN_PUBLICAR (solo tras aprobar 12C)
+        type: string
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: supabase-test-beta-preparation
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar operadores y fuentes exactas
+        run: python3 -m unittest discover -s scripts/supabase -p 'test_*.py'
+      - name: Probar esquema y flujos legales en PostgreSQL aislado
+        run: bash supabase/tests/run_terms_acceptances.sh
+      - name: Inspeccionar o preparar sin publicar
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PRIVACY_ACTION: ${{ inputs.action }}
+          PRIVACY_CONFIRMATION: ${{ inputs.confirmation }}
+        run: python3 scripts/supabase/privacy_schema.py

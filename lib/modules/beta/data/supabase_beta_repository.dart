@@ -16,18 +16,40 @@ class SupabaseBetaRepository
     ),
   );
   @override
-  Future<void> enroll(String version, String hash, String? token) async {
+  Future<void> enroll(
+    String version,
+    String hash,
+    String? token, {
+    String? privacyVersion,
+    String? privacyHash,
+  }) async {
     await client.rpc(
       'beta_enroll',
-      params: {'p_terms': version, 'p_hash': hash, 'p_token': token},
+      params: {
+        'p_terms': version,
+        'p_hash': hash,
+        'p_token': token,
+        'p_privacy_version': ?privacyVersion,
+        'p_privacy_hash': ?privacyHash,
+      },
     );
   }
 
   @override
-  Future<void> acceptTerms(String version, String hash) async {
+  Future<void> acceptTerms(
+    String version,
+    String hash, {
+    String? privacyVersion,
+    String? privacyHash,
+  }) async {
     await client.rpc(
       'beta_accept_terms',
-      params: {'p_terms': version, 'p_hash': hash},
+      params: {
+        'p_terms': version,
+        'p_hash': hash,
+        'p_privacy_version': ?privacyVersion,
+        'p_privacy_hash': ?privacyHash,
+      },
     );
   }
 
