@@ -49,3 +49,7 @@ Revisiones hospitalarias ligadas a tipo de procedimiento: [candidato 13E y lími
 ## Avance 2B-6, 16-oct-2026
 
 Aplicación/extracción, validación y frascos: [candidato 13F, esquema y límites](../permisos-etapa2b6.md). Nuevas aplicaciones guardan autoridad explícita y las correcciones son anexas; administrar y extraer tienen permisos distintos. Incluye programación tipada y contrato de interfaz. Sin despliegue; alta, acciones completas de medicación, históricos, recetas/delegaciones/reportes/Storage/Edge siguen pendientes. No declarar terminado M6 ni abrir beta por este candidato.
+
+## Avance 2B-7, 16-oct-2026
+
+Alta revisada y seguimiento de dosis: [candidato 13G, esquema y límites](../permisos-etapa2b7.md). Posponer/no aplicada no administran ni extraen; el alta requiere habilitación y revisión de todos los pendientes. Se valida versión al aplicar y se conserva la primera resolución concurrente. SQL/UI preparados sin despliegue. El resto de rutas de recetas/delegaciones/reportes, lectura de bitácora/agregados, Storage/Edge, navegación e históricos sigue pendiente: no activar el corte ni declarar lista toda la beta.

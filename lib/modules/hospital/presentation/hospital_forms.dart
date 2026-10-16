@@ -495,3 +495,182 @@ class _HospitalCageFormState extends State<HospitalCageForm> {
     ),
   );
 }
+
+enum HospitalResolutionAction { snooze, notGiven, discharge }
+
+class HospitalResolutionForm extends StatefulWidget {
+  const HospitalResolutionForm({
+    super.key,
+    required this.stay,
+    required this.action,
+    required this.save,
+    this.task,
+    this.preview,
+  });
+  final HospitalStay stay;
+  final HospitalResolutionAction action;
+  final HospitalTask? task;
+  final HospitalDischargePreview? preview;
+  final Future<bool> Function(int?, String, String) save;
+  @override
+  State<HospitalResolutionForm> createState() => _HospitalResolutionFormState();
+}
+
+class _HospitalResolutionFormState extends State<HospitalResolutionForm> {
+  final exit = FormExitController();
+  final reason = TextEditingController();
+  String operation = newOperationId();
+  String? attempted, error;
+  int? minutes;
+  bool reviewed = false, busy = false;
+  bool get discharge => widget.action == HospitalResolutionAction.discharge;
+  bool get snooze => widget.action == HospitalResolutionAction.snooze;
+  String get title => discharge
+      ? 'Revisar alta hospitalaria'
+      : snooze
+      ? 'Posponer el aviso'
+      : 'No se aplicó';
+  @override
+  void dispose() {
+    exit.dispose();
+    reason.dispose();
+    super.dispose();
+  }
+
+  Future<void> save() async {
+    if (busy) return;
+    setState(() => busy = true);
+    try {
+      final text = hospitalText(reason.text, max: 500);
+      if (!reviewed) {
+        throw const FormatException(
+          'Revisa el paciente y la acción antes de confirmar.',
+        );
+      }
+      if (snooze && minutes == null) {
+        throw const FormatException('Elige cuánto posponer el aviso.');
+      }
+      if (discharge && widget.preview == null ||
+          !discharge && widget.task == null) {
+        throw const FormatException('Actualiza la hoja antes de continuar.');
+      }
+      final fp = jsonEncode([minutes, text]);
+      if (attempted != null && attempted != fp) operation = newOperationId();
+      attempted = fp;
+      final ok = await widget.save(minutes, text, operation);
+      if (!mounted) return;
+      if (ok) {
+        exit.close(context);
+        return;
+      }
+      setState(
+        () => error = discharge
+            ? 'No se guardó el alta. Actualiza la hoja y revisa otra vez las indicaciones pendientes.'
+            : 'No se guardó. Actualiza la hoja: la dosis o tus permisos pueden haber cambiado.',
+      );
+    } on FormatException catch (e) {
+      if (mounted) setState(() => error = e.message.toString());
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => UnsavedFormScope(
+    controller: exit,
+    dirty: reason.text.isNotEmpty || reviewed || minutes != null,
+    busy: busy,
+    child: Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          Text(
+            widget.stay.patientName,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          Text('Jaula: ${widget.stay.cageLabel}'),
+          if (widget.task != null) ...[
+            Text(widget.task!.label),
+            Text(widget.task!.instructions),
+            Text('Programada: ${widget.task!.dueAt.toLocal()}'),
+          ],
+          if (discharge) ...[
+            Text(
+              '${widget.preview?.pending.length ?? 0} indicaciones pendientes se cancelarán por alta.',
+            ),
+            const Text(
+              'Incluye las indicaciones futuras. Las aplicaciones registradas y los saldos se conservan.',
+            ),
+            for (final t in widget.preview?.pending ?? <Map<String, dynamic>>[])
+              ListTile(
+                title: Text(t['label'] as String),
+                subtitle: Text('${t['instructions']}\n${t['due_at']}'),
+              ),
+          ] else if (snooze) ...[
+            const Text(
+              'Solo cambia el aviso; la hora de la indicación se conserva.',
+            ),
+            DropdownButtonFormField<int>(
+              initialValue: minutes,
+              decoration: const InputDecoration(labelText: 'Posponer aviso'),
+              items: [5, 10, 15, 30]
+                  .map(
+                    (m) =>
+                        DropdownMenuItem(value: m, child: Text('$m minutos')),
+                  )
+                  .toList(),
+              onChanged: busy
+                  ? null
+                  : (v) => setState(() {
+                      minutes = v;
+                      reviewed = false;
+                    }),
+            ),
+          ] else
+            const Text(
+              'Solo esta dosis quedará como no aplicada. No descuenta producto ni modifica las dosis siguientes.',
+            ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: reason,
+            enabled: !busy,
+            maxLength: 500,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Motivo',
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (_) => setState(() => reviewed = false),
+          ),
+          CheckboxListTile(
+            title: Text(
+              discharge
+                  ? 'Revisé el paciente y todas las indicaciones pendientes.'
+                  : 'Revisé el paciente, la dosis y esta acción.',
+            ),
+            value: reviewed,
+            onChanged: busy
+                ? null
+                : (v) => setState(() => reviewed = v ?? false),
+          ),
+          if (error != null)
+            Text(
+              error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          FilledButton(
+            onPressed: busy ? null : save,
+            child: Text(
+              discharge
+                  ? 'Confirmar alta'
+                  : snooze
+                  ? 'Confirmar posposición'
+                  : 'Confirmar que no se aplicó',
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}

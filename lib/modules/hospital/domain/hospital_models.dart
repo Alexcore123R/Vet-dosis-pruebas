@@ -61,6 +61,10 @@ class HospitalTask {
     this.medicationRecordId,
     this.snoozeCount = 0,
     this.actions,
+    this.resolutionKind,
+    this.cancelledAt,
+    this.cancelledBy,
+    this.cancelReason,
   });
   final String id, stayId, kind, label, instructions;
   final Map<String, dynamic>? actions;
@@ -68,7 +72,8 @@ class HospitalTask {
   final int escalationMinutes, version, snoozeCount;
   final HospitalTaskState state;
   final DateTime? snoozedUntil, performedAt;
-  final String? performedBy;
+  final String? performedBy, resolutionKind, cancelledBy, cancelReason;
+  final DateTime? cancelledAt;
   final String? prescriptionItemId, clinicalCaseId, medicationRecordId;
   factory HospitalTask.read(Map<String, dynamic> m) => HospitalTask(
     id: m['id'] as String,
@@ -91,6 +96,12 @@ class HospitalTask {
     prescriptionItemId: m['prescription_item_id'] as String?,
     clinicalCaseId: m['clinical_case_id'] as String?,
     medicationRecordId: m['medication_record_id'] as String?,
+    resolutionKind: m['resolution_kind'] as String?,
+    cancelledBy: m['cancelled_by'] as String?,
+    cancelledAt: m['cancelled_at'] == null
+        ? null
+        : DateTime.parse(m['cancelled_at'] as String),
+    cancelReason: m['cancel_reason'] as String?,
     actions: m['actions'] is Map
         ? Map<String, dynamic>.from(m['actions'] as Map)
         : null,
@@ -120,13 +131,49 @@ class HospitalSnapshot {
     this.cageChanges = false,
     this.permissions,
     this.typedReviews = false,
+    this.reviewedDischarge = false,
+    this.medicationFollowup = false,
     this.reviewTypes = const [],
   });
-  final bool optionalCage, cageChanges, typedReviews;
+  final bool optionalCage,
+      cageChanges,
+      typedReviews,
+      reviewedDischarge,
+      medicationFollowup;
   final List<HospitalReviewType> reviewTypes;
   final Map<String, dynamic>? permissions;
   final List<HospitalStay> stays;
   final List<HospitalTask> tasks;
+}
+
+class HospitalDischargePreview {
+  const HospitalDischargePreview(
+    this.stayId,
+    this.version,
+    this.hash,
+    this.pending,
+  );
+  final String stayId, hash;
+  final int version;
+  final List<Map<String, dynamic>> pending;
+  factory HospitalDischargePreview.read(Map<String, dynamic> m) {
+    if (m['stay_id'] is! String ||
+        m['version'] is! int ||
+        (m['version'] as int) < 1 ||
+        m['pending_hash'] is! String ||
+        !RegExp(r'^[a-f0-9]{64}$').hasMatch(m['pending_hash'] as String) ||
+        m['pending'] is! List) {
+      throw const FormatException('No se pudo revisar el alta.');
+    }
+    return HospitalDischargePreview(
+      m['stay_id'] as String,
+      m['version'] as int,
+      m['pending_hash'] as String,
+      (m['pending'] as List)
+          .map((r) => Map<String, dynamic>.from(r as Map))
+          .toList(),
+    );
+  }
 }
 
 List<DateTime> validateSchedule(List<DateTime> times, {required DateTime now}) {

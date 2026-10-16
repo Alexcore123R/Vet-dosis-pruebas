@@ -542,6 +542,17 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
                 'p_case': model.caseId,
               }),
             );
+      if (correction == null &&
+          widget.initialTask != null &&
+          !(hospital['tasks'] as List).any(
+            (t) => t['id'] == widget.initialTask,
+          )) {
+        if (mounted)
+          message(
+            'La dosis cambió o ya fue resuelta. Actualiza la hoja antes de registrar una aplicación.',
+          );
+        return;
+      }
       if (!mounted) return;
       await entry(
         correction == null
@@ -649,6 +660,20 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
           final product = productRows.firstWhere(
             (p) => p['id'] == d['product'],
           );
+          final taskId = d['task'] as String? ?? '';
+          int? taskVersion;
+          if (taskId.isNotEmpty &&
+              model.operational?['task_versions'] == true) {
+            final task = (hospital['tasks'] as List)
+                .where((t) => t['id'] == taskId)
+                .firstOrNull;
+            if (task == null || task['version'] is! int) {
+              throw const FormatException(
+                'Actualiza la tarea antes de confirmar.',
+              );
+            }
+            taskVersion = task['version'] as int;
+          }
           await widget.repository.write('rx_medication_report', {
             'p_case': model.caseId,
             'p_data': {
@@ -663,6 +688,7 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
               'lot': d['lot'] ?? '',
               'prescription_id': d['prescription'] ?? '',
               'hospital_task_id': d['task'] ?? '',
+              'hospital_task_version': ?taskVersion,
               if (correction != null) 'replaces_id': correction['id'],
               if (correction != null) 'correction_reason': d['reason'],
             },

@@ -311,8 +311,74 @@ class _HospitalScreenState extends State<HospitalScreen> {
     if (yes == true && mounted) await model.perform(task);
   }
 
+  Future<void> medicationFollowup(
+    HospitalStay stay,
+    HospitalTask task,
+    HospitalResolutionAction action,
+  ) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => HospitalResolutionForm(
+          stay: stay,
+          task: task,
+          action: action,
+          save: (minutes, why, operation) => model.followup(
+            task,
+            action == HospitalResolutionAction.snooze ? 'snooze' : 'not_given',
+            minutes,
+            why,
+            operation,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> reviewDischarge(HospitalStay stay) async {
+    if (!model.snapshot.reviewedDischarge) {
+      final why = await reason(
+        'Registrar alta y cancelar todas las tareas pendientes',
+      );
+      if (why != null && mounted) await model.discharge(stay, why);
+      return;
+    }
+    final source = widget.repository;
+    if (source is! HospitalResolutionRepository) return;
+    try {
+      final preview = await (source as HospitalResolutionRepository)
+          .dischargePreview(widget.member.clinicId, stay);
+      if (!mounted) return;
+      if (preview.stayId != stay.id) {
+        throw const FormatException('Estancia distinta.');
+      }
+      await Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => HospitalResolutionForm(
+            stay: stay,
+            preview: preview,
+            action: HospitalResolutionAction.discharge,
+            save: (_, why, operation) =>
+                model.confirmDischarge(stay, preview, why, operation),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No se pudo revisar el alta. Actualiza y comprueba tus permisos.',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> snooze(HospitalTask task) async {
-    int minutes = 5;
+    int? minutes;
     final amount = await showDialog<int>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -320,6 +386,7 @@ class _HospitalScreenState extends State<HospitalScreen> {
           title: const Text('Posponer el aviso'),
           content: DropdownButton<int>(
             value: minutes,
+            hint: const Text('Elige el tiempo'),
             items: [5, 10, 15, 30]
                 .map(
                   (m) => DropdownMenuItem(value: m, child: Text('$m minutos')),
@@ -333,7 +400,9 @@ class _HospitalScreenState extends State<HospitalScreen> {
               child: const Text('Volver'),
             ),
             FilledButton(
-              onPressed: () => Navigator.pop(context, minutes),
+              onPressed: minutes == null
+                  ? null
+                  : () => Navigator.pop(context, minutes),
               child: const Text('Continuar'),
             ),
           ],
@@ -357,7 +426,12 @@ class _HospitalScreenState extends State<HospitalScreen> {
     final status = switch (urgency) {
       TaskUrgency.done =>
         task.kind == 'medicacion' ? 'Administrado ✓' : 'Revisado ✓',
-      TaskUrgency.cancelled => 'Cancelado',
+      TaskUrgency.cancelled =>
+        task.resolutionKind == 'not_given'
+            ? 'No se aplicó'
+            : task.resolutionKind == 'discharge'
+            ? 'Cancelada por alta'
+            : 'Cancelado',
       TaskUrgency.scheduled => 'Programado',
       TaskUrgency.snoozed => 'Aviso pospuesto',
       TaskUrgency.escalated => 'Retraso · revisión prioritaria',
@@ -389,6 +463,10 @@ class _HospitalScreenState extends State<HospitalScreen> {
               Text(
                 'Aviso pospuesto hasta ${task.snoozedUntil!.toLocal().toString().substring(11, 16)} · no registrado como administrado',
               ),
+            if (task.resolutionKind != null)
+              Text(
+                'Registró: ${task.cancelledBy == widget.member.userId ? 'Tú' : task.cancelledBy} · ${task.cancelledAt?.toLocal()}\nMotivo: ${task.cancelReason}',
+              ),
             if (task.state == HospitalTaskState.done)
               Text(
                 'Usuario que aplicó: ${task.performedBy}\n${task.medicationRecordId == null ? 'Hora del servidor' : 'Hora observada de aplicación'}: ${task.performedAt?.toLocal()}',
@@ -417,9 +495,31 @@ class _HospitalScreenState extends State<HospitalScreen> {
                             !model.canTask(task, 'snooze') ||
                             task.snoozeCount >= 3
                         ? null
-                        : () => snooze(task),
+                        : () =>
+                              task.kind == 'medicacion' &&
+                                  model.snapshot.medicationFollowup
+                              ? medicationFollowup(
+                                  stay,
+                                  task,
+                                  HospitalResolutionAction.snooze,
+                                )
+                              : snooze(task),
                     child: const Text('Posponer aviso'),
                   ),
+                  if (task.kind == 'medicacion' &&
+                      model.snapshot.medicationFollowup &&
+                      model.canTask(task, 'not_given') &&
+                      widget.repository is HospitalResolutionRepository)
+                    TextButton(
+                      onPressed: model.busy || !actionable
+                          ? null
+                          : () => medicationFollowup(
+                              stay,
+                              task,
+                              HospitalResolutionAction.notGiven,
+                            ),
+                      child: const Text('No se aplicó'),
+                    ),
                   if (model.canTask(task, 'cancel'))
                     TextButton(
                       onPressed: model.busy
@@ -667,14 +767,7 @@ class _HospitalScreenState extends State<HospitalScreen> {
                               TextButton(
                                 onPressed: model.busy
                                     ? null
-                                    : () async {
-                                        final why = await reason(
-                                          'Registrar alta y cancelar todas las tareas pendientes',
-                                        );
-                                        if (why != null && mounted) {
-                                          await model.discharge(stay, why);
-                                        }
-                                      },
+                                    : () => reviewDischarge(stay),
                                 child: const Text('Registrar alta'),
                               ),
                           ],

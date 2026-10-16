@@ -357,6 +357,12 @@ String rxError(Object error) {
   if (planMessage != null) return planMessage;
   final text = error.toString();
   for (final e in {
+    'task_version_conflict':
+        'La indicación cambió. Actualiza la hoja y revisa antes de confirmar.',
+    'task_closed_without_application':
+        'La dosis quedó sin aplicación o cancelada por alta. No se registró una toma.',
+    'hospital_task_version_required':
+        'Actualiza la tarea antes de confirmar la aplicación.',
     'task_already_confirmed':
         'La tarea ya fue confirmada. Actualiza la hoja; no se registró otra toma.',
     'explicit_permission_required':

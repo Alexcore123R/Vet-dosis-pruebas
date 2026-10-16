@@ -36,13 +36,21 @@ class HospitalViewModel extends ChangeNotifier {
   bool get canDischarge => explicitPermissions
       ? (snapshot.permissions?['hospital.discharge'] == true)
       : access.prescribe;
-  bool canTask(HospitalTask task, String action) => explicitPermissions
-      ? (snapshot.permissions != null &&
-            snapshot.tasks.contains(task) &&
-            task.actions?[action] == true)
-      : action == 'cancel'
-      ? access.prescribe
-      : access.clinical;
+  bool canTask(HospitalTask task, String action) {
+    if (!explicitPermissions) {
+      return action == 'cancel' ? access.prescribe : access.clinical;
+    }
+    if (snapshot.permissions == null) return false;
+    for (final current in snapshot.tasks) {
+      if (current.id == task.id &&
+          current.stayId == task.stayId &&
+          current.version == task.version) {
+        return current.actions?[action] == true;
+      }
+    }
+    return false;
+  }
+
   String? error, alarmError;
   Timer? _timer;
   void changed() {
@@ -119,16 +127,65 @@ class HospitalViewModel extends ChangeNotifier {
     try {
       await action();
       success = true;
-    } catch (_) {
+    } catch (e) {
       if (!disposed) {
         error =
-            'No se pudo registrar. El estado puede haber cambiado: actualiza y revisa antes de repetir la acción.';
+            e.toString().contains('discharge_preview_changed') ||
+                e.toString().contains('hospital_version_conflict')
+            ? 'La estancia o sus indicaciones cambiaron. Actualiza y revisa el alta de nuevo.'
+            : 'No se pudo registrar. El estado puede haber cambiado: actualiza y revisa antes de repetir la acción.';
       }
     }
     if (disposed) return false;
     busy = false;
     await refresh(retainError: true);
     return success;
+  }
+
+  Future<bool> followup(
+    HospitalTask task,
+    String action,
+    int? minutes,
+    String reason,
+    String operation,
+  ) {
+    final source = repository;
+    if (!snapshot.medicationFollowup || source is! HospitalResolutionRepository) {
+      return Future.value(false);
+    }
+    return mutate(
+      () => (source as HospitalResolutionRepository).followup(
+        member.clinicId,
+        task,
+        action,
+        minutes,
+        hospitalText(reason, max: 500),
+        operation,
+      ),
+      explicitAllowed: canTask(task, action),
+    );
+  }
+
+  Future<bool> confirmDischarge(
+    HospitalStay stay,
+    HospitalDischargePreview preview,
+    String reason,
+    String operation,
+  ) {
+    final source = repository;
+    if (!snapshot.reviewedDischarge || source is! HospitalResolutionRepository) {
+      return Future.value(false);
+    }
+    return mutate(
+      () => (source as HospitalResolutionRepository).confirmDischarge(
+        member.clinicId,
+        stay,
+        preview,
+        hospitalText(reason, max: 500),
+        operation,
+      ),
+      explicitAllowed: canDischarge,
+    );
   }
 
   Future<bool> perform(HospitalTask task) => mutate(

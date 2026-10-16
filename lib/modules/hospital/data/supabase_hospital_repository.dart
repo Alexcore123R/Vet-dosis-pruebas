@@ -6,7 +6,8 @@ class SupabaseHospitalRepository
     implements
         HospitalRepository,
         HospitalLocationRepository,
-        HospitalReviewRepository {
+        HospitalReviewRepository,
+        HospitalResolutionRepository {
   SupabaseHospitalRepository(this.client);
   final SupabaseClient client;
   @override
@@ -21,6 +22,10 @@ class SupabaseHospitalRepository
       (raw['tasks'] as List)
           .map((r) => HospitalTask.read(Map<String, dynamic>.from(r as Map)))
           .toList(),
+      reviewedDischarge:
+          (raw['capabilities'] as Map?)?['reviewed_discharge'] == true,
+      medicationFollowup:
+          (raw['capabilities'] as Map?)?['medication_followup'] == true,
       typedReviews: (raw['capabilities'] as Map?)?['typed_reviews'] == true,
       reviewTypes: ((raw['review_types'] as List?) ?? [])
           .map(
@@ -32,6 +37,66 @@ class SupabaseHospitalRepository
       permissions: raw['permissions'] is Map
           ? Map<String, dynamic>.from(raw['permissions'] as Map)
           : null,
+    );
+  }
+
+  @override
+  Future<void> followup(
+    String clinic,
+    HospitalTask task,
+    String action,
+    int? minutes,
+    String reason,
+    String operation,
+  ) async {
+    await client.rpc(
+      'hospital_medication_followup',
+      params: {
+        'p_clinic': clinic,
+        'p_task': task.id,
+        'p_version': task.version,
+        'p_action': action,
+        'p_minutes': minutes,
+        'p_reason': reason,
+        'p_operation': operation,
+      },
+    );
+  }
+
+  @override
+  Future<HospitalDischargePreview> dischargePreview(
+    String clinic,
+    HospitalStay stay,
+  ) async => HospitalDischargePreview.read(
+    Map<String, dynamic>.from(
+      await client.rpc(
+            'hospital_discharge_preview',
+            params: {'p_clinic': clinic, 'p_stay': stay.id},
+          )
+          as Map,
+    ),
+  );
+  @override
+  Future<void> confirmDischarge(
+    String clinic,
+    HospitalStay stay,
+    HospitalDischargePreview preview,
+    String reason,
+    String operation,
+  ) async {
+    if (preview.stayId != stay.id) {
+      throw const FormatException('Estancia distinta.');
+    }
+    await client.rpc(
+      'hospital_discharge_confirm',
+      params: {
+        'p_clinic': clinic,
+        'p_stay': stay.id,
+        'p_version': preview.version,
+        'p_pending_hash': preview.hash,
+        'p_reason': reason,
+        'p_operation': operation,
+      },
     );
   }
 

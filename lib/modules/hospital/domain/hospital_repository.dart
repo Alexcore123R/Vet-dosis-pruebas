@@ -52,3 +52,25 @@ abstract interface class HospitalReviewRepository {
     String operation,
   );
 }
+
+abstract interface class HospitalResolutionRepository {
+  Future<void> followup(
+    String clinic,
+    HospitalTask task,
+    String action,
+    int? minutes,
+    String reason,
+    String operation,
+  );
+  Future<HospitalDischargePreview> dischargePreview(
+    String clinic,
+    HospitalStay stay,
+  );
+  Future<void> confirmDischarge(
+    String clinic,
+    HospitalStay stay,
+    HospitalDischargePreview preview,
+    String reason,
+    String operation,
+  );
+}

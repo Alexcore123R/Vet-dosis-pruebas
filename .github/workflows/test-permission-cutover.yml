@@ -46,3 +46,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Probar aplicación, extracción, validación y concurrencia sin despliegue
         run: bash supabase/tests/run_permission_medication.sh
+  hospital-resolution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar alta revisada, dosis no aplicada y carreras con aplicaciones
+        run: bash supabase/tests/run_permission_hospital_resolution.sh
