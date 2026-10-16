@@ -70,4 +70,6 @@ Los accesos de Inventario/Caja/Escáner ya no se ocultan por el puesto de estili
 
 Flutter prueba capacidades separadas, puesto sin autoridad automática, pérdida/versión/mapa inválidos, limpieza tras fallo de corte, flujo de venta sin agregado antiguo y facultades distintas de referencias de pago. Resultado local: **312 pruebas Flutter satisfactorias**, análisis sin incidencias y harness PostgreSQL/concurrencia satisfactorio.
 
+GitHub confirmó **trece trabajos satisfactorios** sobre `54a1c9b`: [run 38964271549](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38964271549). Incluye `inventory-cash` y las doce regresiones anteriores. Es un workflow aislado, sin despliegue ni APK; las 312 pruebas Flutter corresponden a la ejecución local.
+
 No acredita Auth HTTP real, entrega de archivos en teléfono, integración de pasarela, permisos de respaldo/identidad de otros módulos ni aplicación remota. El editor de ajustes por lotes con borrador, resumen antes/después y confirmaciones especiales sigue como trabajo de producto independiente; este bloque no lo simula ni lo declara terminado. Continuar con reportes/formatos y el corte transversal, manteniendo beta cerrada.
