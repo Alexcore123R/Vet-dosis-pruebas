@@ -32,3 +32,7 @@ jobs:
           PRIVACY_ACTION: ${{ inputs.action }}
           PRIVACY_CONFIRMATION: ${{ inputs.confirmation }}
         run: python3 scripts/supabase/privacy_schema.py
+      - name: Comprobar denegación HTTP de accesos anónimos
+        env:
+          SUPABASE_TEST_PUBLISHABLE_KEY: ${{ vars.SUPABASE_TEST_PUBLISHABLE_KEY || secrets.SUPABASE_TEST_PUBLISHABLE_KEY }}
+        run: python3 scripts/supabase/probe_legal_anonymous.py
