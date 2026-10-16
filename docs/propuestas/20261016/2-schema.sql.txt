@@ -1,0 +1,194 @@
+-- =====================================================================
+-- App veterinaria - esquema base (Supabase / PostgreSQL)
+-- Principio: las reglas viven en tablas, no en el código.
+-- Fuente de verdad = rangos de profesores / práctica local.
+-- Convención de rangos: valor_min INCLUSIVO, valor_max EXCLUSIVO,
+-- salvo que max_inclusivo = true.
+-- =====================================================================
+
+create extension if not exists "pgcrypto";
+
+create type validacion_estado as enum ('confirmado', 'por_confirmar');
+create type grupo_especie     as enum ('pequenas_especies', 'produccion', 'exoticos');
+create type estado_rango      as enum ('optimo', 'normal', 'alerta', 'critico');
+
+-- ---------------------------------------------------------------------
+-- Catálogos
+-- ---------------------------------------------------------------------
+create table fuentes (
+  id          uuid primary key default gen_random_uuid(),
+  codigo      text unique not null,
+  titulo      text not null,
+  tipo        text not null check (tipo in ('profesor','apunte_clase','presentacion','actividad','norma','otro')),
+  profesor    text,
+  materia     text,
+  ciclo       text,
+  notas       text,
+  created_at  timestamptz not null default now()
+);
+
+create table especies (
+  id                uuid primary key default gen_random_uuid(),
+  codigo            text unique not null,
+  nombre_comun      text not null,
+  nombre_cientifico text,
+  grupo             grupo_especie not null
+);
+
+create table parametros (
+  id      uuid primary key default gen_random_uuid(),
+  codigo  text unique not null,
+  nombre  text not null,
+  unidad  text
+);
+
+-- ---------------------------------------------------------------------
+-- Rangos por parámetro (para mostrar estado: óptimo / normal / alerta / crítico)
+-- ---------------------------------------------------------------------
+create table rangos_parametro (
+  id             uuid primary key default gen_random_uuid(),
+  especie_id     uuid not null references especies(id) on delete cascade,
+  parametro_id   uuid not null references parametros(id),
+  etapa          text,                       -- null = aplica a todas
+  estado         estado_rango not null,
+  valor_min      numeric,                    -- null = sin límite inferior
+  valor_max      numeric,                    -- null = sin límite superior
+  max_inclusivo  boolean not null default false,
+  accion         text,
+  fuente_id      uuid references fuentes(id),
+  validacion     validacion_estado not null default 'por_confirmar',
+  check (valor_min is not null or valor_max is not null)
+);
+
+-- ---------------------------------------------------------------------
+-- Reglas que modifican la ración (o solo alertan)
+-- factor_racion: 1 = normal, 0.5 = mitad, 0 = no alimentar, null = solo alerta
+-- Si se cumplen varias reglas, se usa el factor MÁS BAJO y la severidad MÁS ALTA.
+-- ---------------------------------------------------------------------
+create table reglas_alerta (
+  id             uuid primary key default gen_random_uuid(),
+  especie_id     uuid not null references especies(id) on delete cascade,
+  parametro_id   uuid not null references parametros(id),
+  operador       text not null check (operador in ('<','<=','>','>=')),
+  umbral         numeric not null,
+  severidad      estado_rango not null,
+  factor_racion  numeric check (factor_racion between 0 and 1),
+  mensaje        text not null,
+  fuente_id      uuid references fuentes(id),
+  validacion     validacion_estado not null default 'por_confirmar'
+);
+
+-- ---------------------------------------------------------------------
+-- Tasas de alimentación por etapa (según peso del animal)
+-- ---------------------------------------------------------------------
+create table etapas_alimentacion (
+  id             uuid primary key default gen_random_uuid(),
+  especie_id     uuid not null references especies(id) on delete cascade,
+  etapa          text not null,
+  orden          int  not null,
+  peso_min_g     numeric,
+  peso_max_g     numeric,                    -- null = sin límite superior (ej. 500+ g)
+  temp_opt_min   numeric,
+  temp_opt_max   numeric,
+  pct_min        numeric,                    -- % de la biomasa por día
+  pct_max        numeric,
+  raciones_min   int,
+  raciones_max   int,
+  fuente_id      uuid references fuentes(id),
+  validacion     validacion_estado not null default 'por_confirmar',
+  notas          text
+);
+
+-- ---------------------------------------------------------------------
+-- Fórmulas (la app las evalúa con un parser seguro; nunca eval())
+-- Operadores: + - * / ^ ( ) y funciones pi, sqrt
+-- ---------------------------------------------------------------------
+create table formulas (
+  id                uuid primary key default gen_random_uuid(),
+  codigo            text unique not null,
+  modulo            text not null,           -- acuicultura, porcinos, silos, rastro, presupuesto
+  nombre            text not null,
+  expresion         text not null,
+  variables         jsonb not null,          -- [{"nombre":"...","unidad":"...","descripcion":"..."}]
+  unidad_resultado  text,
+  notas             text,
+  fuente_id         uuid references fuentes(id),
+  validacion        validacion_estado not null default 'por_confirmar'
+);
+
+-- ---------------------------------------------------------------------
+-- Heredabilidad (porcinos)
+-- ---------------------------------------------------------------------
+create table heredabilidades (
+  id          uuid primary key default gen_random_uuid(),
+  rasgo       text not null,
+  categoria   text not null check (categoria in ('baja','media','alta')),
+  h2_min      numeric not null,
+  h2_max      numeric not null,
+  fuente_id   uuid references fuentes(id),
+  validacion  validacion_estado not null default 'confirmado'
+);
+
+-- ---------------------------------------------------------------------
+-- Datos del usuario (con RLS)
+-- ---------------------------------------------------------------------
+create table lotes (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references auth.users(id) on delete cascade,
+  especie_id    uuid not null references especies(id),
+  nombre        text not null,
+  poblacion     int  not null check (poblacion > 0),
+  fecha_inicio  date,
+  activo        boolean not null default true,
+  created_at    timestamptz not null default now()
+);
+
+create table registros_lote (
+  id              uuid primary key default gen_random_uuid(),
+  lote_id         uuid not null references lotes(id) on delete cascade,
+  fecha           timestamptz not null default now(),
+  n_muestra       int,
+  peso_muestra_g  numeric,                   -- peso total de la muestra
+  peso_prom_g     numeric,                   -- calculado o capturado
+  temperatura_c   numeric,
+  oxigeno_mg_l    numeric,
+  ph              numeric,
+  nitrito_ppm     numeric,
+  nitrato_ppm     numeric,
+  amonio_ppm      numeric,
+  alimento_kg     numeric,
+  mortalidad      int default 0,
+  notas           text
+);
+
+-- ---------------------------------------------------------------------
+-- Seguridad (RLS)
+-- ---------------------------------------------------------------------
+alter table lotes          enable row level security;
+alter table registros_lote enable row level security;
+
+create policy lotes_propios on lotes
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy registros_propios on registros_lote
+  for all using (exists (select 1 from lotes l where l.id = lote_id and l.user_id = auth.uid()))
+  with check (exists (select 1 from lotes l where l.id = lote_id and l.user_id = auth.uid()));
+
+-- Tablas de referencia: lectura para usuarios autenticados, escritura solo service_role
+alter table fuentes             enable row level security;
+alter table especies            enable row level security;
+alter table parametros          enable row level security;
+alter table rangos_parametro    enable row level security;
+alter table reglas_alerta       enable row level security;
+alter table etapas_alimentacion enable row level security;
+alter table formulas            enable row level security;
+alter table heredabilidades     enable row level security;
+
+create policy lectura_fuentes    on fuentes             for select to authenticated using (true);
+create policy lectura_especies   on especies            for select to authenticated using (true);
+create policy lectura_parametros on parametros          for select to authenticated using (true);
+create policy lectura_rangos     on rangos_parametro    for select to authenticated using (true);
+create policy lectura_reglas     on reglas_alerta       for select to authenticated using (true);
+create policy lectura_etapas     on etapas_alimentacion for select to authenticated using (true);
+create policy lectura_formulas   on formulas            for select to authenticated using (true);
+create policy lectura_h2         on heredabilidades     for select to authenticated using (true);

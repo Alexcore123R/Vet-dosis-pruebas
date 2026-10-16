@@ -1,0 +1,150 @@
+-- =====================================================================
+-- Actualización: referencias externas de verificación (ejecutar DESPUÉS de seed.sql)
+-- Regla: los rangos de profesor/clase NO se sustituyen. La referencia externa
+-- solo corrobora o añade una nota (columna referencia_externa_id).
+-- =====================================================================
+
+alter table fuentes             add column if not exists url text;
+alter table rangos_parametro    add column if not exists referencia_externa_id uuid references fuentes(id);
+alter table reglas_alerta       add column if not exists referencia_externa_id uuid references fuentes(id);
+alter table etapas_alimentacion add column if not exists referencia_externa_id uuid references fuentes(id);
+alter table formulas            add column if not exists referencia_externa_id uuid references fuentes(id);
+
+-- ---------------------------------------------------------------------
+-- Fuentes externas
+-- ---------------------------------------------------------------------
+insert into fuentes (codigo, titulo, tipo, notas, url) values
+('ext-fao-tabla-28-tilapia', 'FAO (AFFRIS): Tabla 28, alimentación de tilapia en cultivo intensivo', 'otro',
+ 'Referencia externa. Tasas de alimentación (% del peso corporal) y frecuencia por talla.',
+ 'https://www.fao.org/fileadmin/user_upload/affris/docs/tilapiaT28.pdf'),
+('ext-fao-tabla-26-tilapia', 'FAO (AFFRIS): Tabla 26, guía simplificada de alimentación (Miao y Liang 2007; Orachunwong et al. 2001)', 'otro',
+ 'Referencia externa.', 'https://fao.org/fileadmin/user_upload/affris/img/Niletilapia_table/table_26.pdf'),
+('ext-emerson-1975-amoniaco', 'Emerson et al. (1975) Aqueous ammonia equilibrium calculations: effect of pH and temperature. J. Fish. Res. Board Can. 32:2379-2383', 'otro',
+ 'Referencia externa. Es la base de la tabla de UF/IFAS FA031. Válida de 0 a 50 °C.', 'https://doi.org/10.1139/f75-274'),
+('ext-uf-ifas-fa031', 'UF/IFAS Extension FA031: Ammonia in Aquatic Systems', 'otro',
+ 'Referencia externa. Fracción de NH3 según pH y temperatura.', 'https://journals.flvc.org/edis/article/view/118012'),
+('ext-lafeber-ajolote', 'Lafeber Vet: Care of the Axolotl', 'otro',
+ 'Referencia externa (hoja veterinaria): temperatura 15.6-17.8 °C, pH 7.4-7.6, amonio y nitrito 0, nitrato <10 ppm.',
+ 'https://lafeber.com/vet/wp-content/uploads/2021/04/Axolotl-Care-of-the-040821.pdf'),
+('ext-azeah-ajolote', 'Colorado Exotic Animal Hospital / AZEAH: Basic Care, Axolotl', 'otro',
+ 'Referencia externa (hospital de exóticos): pH preferido 7.4-7.6, aceptable 6.5-8.0; nitrato <5-10.',
+ 'https://coloradoexoticanimalhospital.com/node/374'),
+('ext-guias-cuidado-ajolote', 'Guías generales de cuidado de ajolote (varias)', 'otro',
+ 'Referencia externa de menor calidad (guías de aficionados). Usar solo como apoyo: evitar temperaturas sobre ~20 °C; nitrato <20 ppm.',
+ 'https://citc.otw.org.uk/report/uNSA68F7E8LP/keeping-axolotls.pdf'),
+('ext-nepjol-tilapia', 'NepJOL: tolerancia de la tilapia a parámetros del agua', 'otro',
+ 'Referencia externa: la alimentación se detiene alrededor de 16-17 °C; manejo difícil debajo de 20 °C.',
+ 'https://nepjol.info/index.php/ON/article/view/511/510'),
+('ext-springer-tilapia', 'Springer: capítulo sobre cultivo de tilapia', 'otro',
+ 'Referencia externa: actividad y alimentación se reducen bajo 20 °C y se detienen cerca de 16 °C; tolera O2 muy bajo por periodos cortos.',
+ 'https://link.springer.com/chapter/10.1007/978-1-4615-4909-3_12'),
+('ext-frontiers-tilapia-temperatura', 'Frontiers: matriz de decisión de temperatura para tilapia (material suplementario)', 'otro',
+ 'Referencia externa: sobre 32 °C baja la capacidad de digestión.',
+ 'https://www.frontiersin.org/api/v4/articles/677069/file/Data_Sheet_2.docx/677069_supplementary-materials_datasheets_2_docx/1'),
+('ext-valdes-2011-gallinas', 'Valdés Narváez et al. (2011) Calcio y fósforo disponible en gallinas Hy-Line 36. Rev Mex Cienc Pecu 2(1):69-83', 'otro',
+ 'Referencia externa para la tabla de aves (pendiente): 4.2 % de calcio en producción.', 'https://www.scielo.org.mx/pdf/rmcp/v2n1/v2n1a6.pdf'),
+('ext-ufpb-2017-gallinas', 'Melo (2017) Densidad nutricional en gallinas Hy-Line W-36 de 25 a 45 semanas (UFPB)', 'otro',
+ 'Referencia externa para la tabla de aves (pendiente): 16.3 % PC, 2,780 kcal/kg EM, 4.23 % Ca.', 'https://repositorio.ufpb.br/jspui/handle/123456789/1607');
+
+-- ---------------------------------------------------------------------
+-- Tilapia: etapas tempranas (pesos inferidos del encadenamiento con Desarrollo=20 g y FAO)
+-- Los % de la foto borrosa siguen por confirmar.
+-- ---------------------------------------------------------------------
+update etapas_alimentacion e
+set peso_min_g = v.pmin, peso_max_g = v.pmax,
+    referencia_externa_id = (select id from fuentes where codigo = 'ext-fao-tabla-28-tilapia'),
+    notas = 'Pesos propuestos con la referencia FAO (0-1, 1-5, 5-20 g); no leídos en la foto. FAO: 30-10 %, 10-6 % y 6-4 % en intensivo.'
+from (values
+  ('Etapa temprana 1 (por confirmar)', 0, 1),
+  ('Etapa temprana 2 (por confirmar)', 1, 5),
+  ('Etapa temprana 3 (por confirmar)', 5, 20)
+) as v(etapa, pmin, pmax)
+where e.etapa = v.etapa
+  and e.especie_id = (select id from especies where codigo = 'tilapia');
+
+-- Engorda II: la referencia FAO (>250 g: 2-1.5 %) es compatible con "1.5 %-2.?". Falta confirmar la décima.
+update etapas_alimentacion
+set pct_max = 2.0, raciones_min = 2, raciones_max = 3,
+    referencia_externa_id = (select id from fuentes where codigo = 'ext-fao-tabla-28-tilapia'),
+    notas = 'pct_max=2.0 y 2-3 raciones propuestos por consistencia con FAO (>250 g: 2-1.5 %). Confirmar con la tabla original.'
+where etapa = 'Engorda II'
+  and especie_id = (select id from especies where codigo = 'tilapia');
+
+-- Desarrollo y Engorda I: la tabla de clase es algo más alta que la FAO. Se conserva la de clase.
+update etapas_alimentacion
+set referencia_externa_id = (select id from fuentes where codigo = 'ext-fao-tabla-28-tilapia'),
+    notas = 'FAO intensivo 20-100 g: 4-3 %. La tabla de clase (4-5 %) es más alta; se conserva la de clase.'
+where etapa = 'Desarrollo' and especie_id = (select id from especies where codigo = 'tilapia');
+
+update etapas_alimentacion
+set referencia_externa_id = (select id from fuentes where codigo = 'ext-fao-tabla-28-tilapia'),
+    notas = 'FAO intensivo 100-250 g: 3-2 %. La tabla de clase (2.5-3.5 %) es parecida; se conserva la de clase.'
+where etapa = 'Engorda I' and especie_id = (select id from especies where codigo = 'tilapia');
+
+-- ---------------------------------------------------------------------
+-- Amoniaco: se reemplaza la tabla pendiente por la ecuación de Emerson et al. (1975)
+-- pKa = 0.09018 + 2729.92 / T(K);  fracción NH3 = 1 / (10^(pKa - pH) + 1)
+-- Dos documentos imprimen 2727.92 y 2729.92; la diferencia es menor al 1 % en el resultado.
+-- Casos de prueba: TAN 1, pH 8.5, 29 °C -> ~0.19 ; TAN 1, pH 7.0, 25 °C -> ~0.0057
+-- ---------------------------------------------------------------------
+update formulas
+set expresion = 'tan / (10 ^ (0.09018 + 2729.92 / (273.15 + temp_c) - ph) + 1)',
+    variables = '[{"nombre":"tan","unidad":"mg N/L"},{"nombre":"temp_c","unidad":"°C","descripcion":"válido de 0 a 50 °C"},{"nombre":"ph"}]'::jsonb,
+    unidad_resultado = 'mg NH3-N/L',
+    validacion = 'confirmado',
+    referencia_externa_id = (select id from fuentes where codigo = 'ext-emerson-1975-amoniaco'),
+    notas = 'Ecuación de Emerson et al. (1975), base de la tabla UF/IFAS. Casos de prueba: (1, 8.5, 29) ~ 0.19; (1, 7.0, 25) ~ 0.0057. Después convertir a NH3 con acui_nh3 (x 17/14).'
+where codigo = 'acui_nh3n';
+
+-- ---------------------------------------------------------------------
+-- Tilapia: reglas informativas de referencia externa (solo alertan, no cambian la ración)
+-- ---------------------------------------------------------------------
+insert into reglas_alerta (especie_id, parametro_id, operador, umbral, severidad, factor_racion, mensaje, fuente_id, validacion, referencia_externa_id)
+select e.id, p.id, v.op, v.umbral, 'alerta'::estado_rango, null, v.msg, f.id, 'por_confirmar'::validacion_estado, f.id
+from (values
+  ('<', 17, 'Referencia externa: alrededor de 16-17 °C la tilapia deja de comer de forma natural', 'ext-nepjol-tilapia'),
+  ('>', 32, 'Referencia externa: sobre 32 °C baja la capacidad de digestión; vigilar O2 y valorar suspender la toma de la tarde', 'ext-frontiers-tilapia-temperatura')
+) as v(op, umbral, msg, fuente)
+join especies e on e.codigo = 'tilapia'
+join parametros p on p.codigo = 'temperatura_agua'
+join fuentes f on f.codigo = v.fuente;
+
+-- Nota: tilapia tolera O2 muy bajo por periodos cortos (referencia externa). Los umbrales de 3.0 y 2.0 mg/L
+-- de clase son umbrales de manejo conservador, no límites letales. Se mantienen tal cual.
+update reglas_alerta
+set referencia_externa_id = (select id from fuentes where codigo = 'ext-springer-tilapia')
+where parametro_id = (select id from parametros where codigo = 'oxigeno_disuelto')
+  and especie_id = (select id from especies where codigo = 'tilapia');
+
+-- ---------------------------------------------------------------------
+-- Ajolote: los rangos de clase quedan corroborados por hojas veterinarias
+-- ---------------------------------------------------------------------
+update rangos_parametro
+set validacion = 'confirmado',
+    referencia_externa_id = (select id from fuentes where codigo = 'ext-lafeber-ajolote')
+where especie_id = (select id from especies where codigo = 'ajolote');
+
+update rangos_parametro
+set accion = 'Menor a 20 ppm (clase). Fuentes veterinarias recomiendan menos de 10 ppm'
+where especie_id = (select id from especies where codigo = 'ajolote')
+  and parametro_id = (select id from parametros where codigo = 'nitrato');
+
+insert into rangos_parametro (especie_id, parametro_id, estado, valor_min, valor_max, max_inclusivo, accion, fuente_id, validacion, referencia_externa_id)
+select e.id, p.id, v.estado::estado_rango, v.vmin, v.vmax, true, v.accion, f.id, 'por_confirmar'::validacion_estado, f.id
+from (values
+  ('ph', 'normal', 6.5, 7.4, 'Aceptable; evitar cambios bruscos de pH', 'ext-azeah-ajolote'),
+  ('ph', 'normal', 7.6, 8.0, 'Aceptable; evitar cambios bruscos de pH', 'ext-azeah-ajolote'),
+  ('temperatura_agua', 'alerta', 20, null, 'Estrés y mayor riesgo de enfermedad con agua tibia', 'ext-guias-cuidado-ajolote')
+) as v(param, estado, vmin, vmax, accion, fuente)
+join especies e on e.codigo = 'ajolote'
+join parametros p on p.codigo = v.param
+join fuentes f on f.codigo = v.fuente;
+
+-- =====================================================================
+-- PENDIENTES SIN CONFIRMAR (no insertar datos hasta tenerlos)
+-- - Tabla de aves por etapa: la guía Hy-Line W-36 no abrió (404). Estudios en Hy-Line 36 usan ~4.2-4.5 % de calcio
+--   en producción (ext-valdes-2011-gallinas, ext-ufpb-2017-gallinas); el "1" de calcio de los apuntes no cuadra
+--   para la fila de producción. Revisar la foto original.
+-- - Índice Cleveland (cerdos): sin fuente encontrada. Pedir la diapositiva original.
+-- - Dosis de fármacos: sin cargar.
+-- =====================================================================

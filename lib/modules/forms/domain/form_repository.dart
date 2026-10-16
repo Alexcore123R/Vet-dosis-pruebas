@@ -54,3 +54,7 @@ abstract interface class FormRepository {
   Future<ReviewedPdf> pdf(String id);
   Future<FormDocument> finalize(String id, int revision, String pdfHash);
 }
+
+abstract interface class FormTemplatePermissionRepository {
+  Future<Map<String, dynamic>?> templatePermissions(String clinicId);
+}

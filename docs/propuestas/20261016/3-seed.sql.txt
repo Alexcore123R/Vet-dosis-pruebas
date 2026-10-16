@@ -1,0 +1,208 @@
+-- =====================================================================
+-- Datos semilla (ejecutar DESPUÉS de schema.sql)
+-- 'por_confirmar' = dato ilegible, inferido o pendiente de validar con el profesor.
+-- NO inventar valores: si falta un dato se deja null y por_confirmar.
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- Fuentes
+-- ---------------------------------------------------------------------
+insert into fuentes (codigo, titulo, tipo, profesor, materia, ciclo, notas) values
+('apuntes-acuicultura-tilapia', 'Apuntes de clase: alimentación y manejo de tilapia', 'apunte_clase', null, 'Producción de Vertebrados No Convencionales', '2026-B', 'Profesor por confirmar. Incluye reglas de O2, temperatura y pH.'),
+('tabla-tasas-alimentacion-tilapia', 'Tabla: Tasas de alimentación según peso (etapas finales)', 'presentacion', null, 'Producción de Vertebrados No Convencionales', '2026-B', 'Foto de pantalla. La fila de Engorda II está tapada.'),
+('tabla-tasas-alimentacion-tempranas', 'Tabla de tasas de alimentación (etapas tempranas)', 'presentacion', null, 'Producción de Vertebrados No Convencionales', '2026-B', 'Foto borrosa: valores por confirmar.'),
+('tarea-diseno-calidad-agua-tilapia', 'Tarea: Diseño de instalaciones y calidad del agua en tilapia', 'actividad', 'Seth Díaz Esquivel', 'Producción de Vertebrados No Convencionales', '2026-B', 'Incluye conversión NH3-N a NH3 y rangos de O2.'),
+('apuntes-ajolote', 'Apuntes de clase: manejo zootécnico del ajolote', 'apunte_clase', null, 'Exóticos', '2026-B', 'Profesor por confirmar. Foto girada.'),
+('ppt-cruzas-razas-cerdos', 'Presentación: Genética, razas y cruzamientos (cerdos)', 'presentacion', 'MPP Ivón Yanine Chávez Mora', 'Producción de cerdos', null, null),
+('actividad-tipos-silo', 'Actividad N.4: Tipos de silo', 'actividad', null, 'Producción de bovinos', null, 'La densidad en la hoja aparece como kg/m2; lo correcto es kg/m3.'),
+('doc-valor-nutritivo-ensilajes', 'Características de silos y valor nutritivo de los ensilajes', 'apunte_clase', null, 'Producción de bovinos', null, 'Densidad por % de materia seca (Wilkinson, 1986).'),
+('lista-verificacion-nom-194', 'Lista de verificación sanitaria NOM-194-SSA1-2004', 'norma', null, 'Rastros', null, null),
+('formato-presupuesto-proyecto', 'Formato de presupuesto proyecto final Administración', 'actividad', null, 'Administración', null, null);
+
+-- ---------------------------------------------------------------------
+-- Especies
+-- ---------------------------------------------------------------------
+insert into especies (codigo, nombre_comun, nombre_cientifico, grupo) values
+('tilapia', 'Tilapia', 'Oreochromis niloticus', 'produccion'),
+('cerdo',   'Cerdo',   'Sus scrofa domesticus', 'produccion'),
+('bovino',  'Bovino',  'Bos taurus / Bos indicus', 'produccion'),
+('ajolote', 'Ajolote', 'Ambystoma mexicanum', 'exoticos');
+
+-- ---------------------------------------------------------------------
+-- Parámetros
+-- ---------------------------------------------------------------------
+insert into parametros (codigo, nombre, unidad) values
+('temperatura_agua', 'Temperatura del agua', '°C'),
+('oxigeno_disuelto', 'Oxígeno disuelto', 'mg/L'),
+('ph',               'pH', null),
+('nitrito',          'Nitrito', 'ppm'),
+('nitrato',          'Nitrato', 'ppm'),
+('amonio',           'Amonio', 'ppm');
+
+-- ---------------------------------------------------------------------
+-- Tilapia: rangos
+-- ---------------------------------------------------------------------
+insert into rangos_parametro (especie_id, parametro_id, estado, valor_min, valor_max, accion, fuente_id, validacion)
+select e.id, p.id, v.estado::estado_rango, v.vmin, v.vmax, v.accion, f.id, v.val::validacion_estado
+from (values
+  -- temperatura
+  ('temperatura_agua','optimo', 25, 28,   'Consumo normal al 100 %', 'tabla-tasas-alimentacion-tilapia','confirmado'),
+  ('temperatura_agua','normal', 28, 30,   'Consumo normal; vigilar O2', 'apuntes-acuicultura-tilapia','confirmado'),
+  ('temperatura_agua','alerta', 15, 25,   'Metabolismo se reduce; por debajo de 22 °C se detiene', 'apuntes-acuicultura-tilapia','por_confirmar'),
+  ('temperatura_agua','critico', null, 15,'Suspender alimentación por completo', 'apuntes-acuicultura-tilapia','confirmado'),
+  -- oxigeno
+  ('oxigeno_disuelto','optimo', 5, null,  null, 'tarea-diseno-calidad-agua-tilapia','por_confirmar'),
+  ('oxigeno_disuelto','normal', 3, 5,     'Margen reducido', 'tarea-diseno-calidad-agua-tilapia','por_confirmar'),
+  ('oxigeno_disuelto','alerta', 2, 3,     'Reducir la ración a la mitad de inmediato', 'apuntes-acuicultura-tilapia','confirmado'),
+  ('oxigeno_disuelto','critico', null, 2, 'No alimentar bajo ninguna circunstancia; riesgo de mortalidad masiva', 'apuntes-acuicultura-tilapia','confirmado'),
+  -- pH
+  ('ph','optimo', 6.5, 8.5, 'Ideal', 'apuntes-acuicultura-tilapia','confirmado'),
+  ('ph','alerta', null, 6.5, 'Variaciones extremas estresan al pez y cortan el apetito', 'apuntes-acuicultura-tilapia','confirmado')
+) as v(param, estado, vmin, vmax, accion, fuente, val)
+join especies e on e.codigo = 'tilapia'
+join parametros p on p.codigo = v.param
+join fuentes f on f.codigo = v.fuente;
+
+-- pH alto (> 8.5) como alerta, con max inclusivo falso (sin límite superior)
+insert into rangos_parametro (especie_id, parametro_id, estado, valor_min, valor_max, accion, fuente_id, validacion)
+select e.id, p.id, 'alerta', 8.5, null, 'Variaciones extremas estresan al pez y cortan el apetito', f.id, 'confirmado'
+from especies e, parametros p, fuentes f
+where e.codigo='tilapia' and p.codigo='ph' and f.codigo='apuntes-acuicultura-tilapia';
+
+-- ---------------------------------------------------------------------
+-- Tilapia: reglas de alerta (afectan la ración)
+-- ---------------------------------------------------------------------
+insert into reglas_alerta (especie_id, parametro_id, operador, umbral, severidad, factor_racion, mensaje, fuente_id, validacion)
+select e.id, p.id, v.op, v.umbral, v.sev::estado_rango, v.factor, v.msg, f.id, 'confirmado'
+from (values
+  ('temperatura_agua','<', 15, 'critico', 0.0, 'Agua crítica: suspender la alimentación por completo'),
+  ('oxigeno_disuelto','<', 3.0,'alerta',  0.5, 'O2 bajo 3.0 mg/L: reducir la ración a la mitad de inmediato'),
+  ('oxigeno_disuelto','<', 2.0,'critico', 0.0, 'O2 bajo 2.0 mg/L: no alimentar; riesgo de mortalidad masiva'),
+  ('ph','<', 6.5, 'alerta', null, 'pH fuera de 6.5 a 8.5: estrés y pérdida de apetito'),
+  ('ph','>', 8.5, 'alerta', null, 'pH fuera de 6.5 a 8.5: estrés y pérdida de apetito')
+) as v(param, op, umbral, sev, factor, msg)
+join especies e on e.codigo='tilapia'
+join parametros p on p.codigo=v.param
+join fuentes f on f.codigo='apuntes-acuicultura-tilapia';
+
+-- ---------------------------------------------------------------------
+-- Tilapia: etapas de alimentación
+-- ---------------------------------------------------------------------
+insert into etapas_alimentacion
+ (especie_id, etapa, orden, peso_min_g, peso_max_g, temp_opt_min, temp_opt_max, pct_min, pct_max, raciones_min, raciones_max, fuente_id, validacion, notas)
+select e.id, v.etapa, v.orden, v.pmin, v.pmax, v.tmin, v.tmax, v.pctmin, v.pctmax, v.rmin, v.rmax, f.id, v.val::validacion_estado, v.notas
+from (values
+  ('Etapa temprana 1 (por confirmar)', 1, null::numeric, null::numeric, 28::numeric, 30::numeric, 15::numeric, 20::numeric, 6, 8, 'tabla-tasas-alimentacion-tempranas','por_confirmar','Foto borrosa. Peso ilegible.'),
+  ('Etapa temprana 2 (por confirmar)', 2, null, null, 26, 28, 10, 12, null, null, 'tabla-tasas-alimentacion-tempranas','por_confirmar','Peso y frecuencia ilegibles.'),
+  ('Etapa temprana 3 (por confirmar)', 3, null, null, 26, 28, 5, 8, null, null, 'tabla-tasas-alimentacion-tempranas','por_confirmar','Peso ilegible (se lee algo como 5-20 g).'),
+  ('Desarrollo', 4, 20, 100, 25, 28, 4, 5, 3, 3, 'tabla-tasas-alimentacion-tilapia','confirmado', null),
+  ('Engorda I',  5, 100, 300, 25, 28, 2.5, 3.5, 2, 3, 'tabla-tasas-alimentacion-tilapia','confirmado', null),
+  ('Engorda II', 6, 300, null, 24, 28, 1.5, null, null, null, 'tabla-tasas-alimentacion-tilapia','por_confirmar','Falta el % máximo y la frecuencia (tapados en la foto). 500+ g.')
+) as v(etapa, orden, pmin, pmax, tmin, tmax, pctmin, pctmax, rmin, rmax, fuente, val, notas)
+join especies e on e.codigo='tilapia'
+join fuentes f on f.codigo = v.fuente;
+
+-- ---------------------------------------------------------------------
+-- Ajolote: rangos del agua
+-- ---------------------------------------------------------------------
+insert into rangos_parametro (especie_id, parametro_id, estado, valor_min, valor_max, max_inclusivo, accion, fuente_id, validacion)
+select e.id, p.id, v.estado::estado_rango, v.vmin, v.vmax, v.incl, v.accion, f.id, 'por_confirmar'
+from (values
+  ('temperatura_agua','optimo', 16, 18, false, 'Temperatura del ajolotario'),
+  ('ph','optimo', 7.4, 7.6, true, null),
+  ('nitrito','optimo', 0, 0, true, 'Debe ser 0 ppm'),
+  ('amonio','optimo', 0, 0, true, 'Debe ser 0 ppm'),
+  ('nitrato','optimo', null, 20, false, 'Menor a 20 ppm')
+) as v(param, estado, vmin, vmax, incl, accion)
+join especies e on e.codigo='ajolote'
+join parametros p on p.codigo=v.param
+join fuentes f on f.codigo='apuntes-ajolote';
+
+-- ---------------------------------------------------------------------
+-- Heredabilidad (porcinos)
+-- ---------------------------------------------------------------------
+insert into heredabilidades (rasgo, categoria, h2_min, h2_max, fuente_id)
+select v.rasgo, v.cat, v.hmin, v.hmax, f.id
+from (values
+  ('Número de lechones nacidos','baja',0.1,0.2),
+  ('Peso de la camada al nacimiento','baja',0.1,0.2),
+  ('Número de lechones a los 21 días','baja',0.1,0.15),
+  ('Número de lechones destetados','baja',0.1,0.15),
+  ('GPD entre 20 y 90 kg','media',0.25,0.3),
+  ('GPD entre 56 y 112 días','media',0.25,0.5),
+  ('Índice de consumo','media',0.2,0.3),
+  ('Longitud','alta',0.6,0.7),
+  ('Número de vértebras','alta',0.7,0.7),
+  ('Espesor del tocino','alta',0.4,0.6),
+  ('Espesor del pecho','alta',0.4,0.6),
+  ('Forma del jamón','alta',0.4,0.5)
+) as v(rasgo, cat, hmin, hmax)
+join fuentes f on f.codigo='ppt-cruzas-razas-cerdos';
+
+-- ---------------------------------------------------------------------
+-- Fórmulas
+-- ---------------------------------------------------------------------
+insert into formulas (codigo, modulo, nombre, expresion, variables, unidad_resultado, notas, fuente_id, validacion)
+select v.codigo, v.modulo, v.nombre, v.expr, v.vars::jsonb, v.unidad, v.notas, f.id, v.val::validacion_estado
+from (values
+  -- Acuicultura
+  ('acui_peso_promedio','acuicultura','Peso promedio de la muestra','peso_total_muestra / n_peces',
+   '[{"nombre":"peso_total_muestra","unidad":"g"},{"nombre":"n_peces","unidad":"peces"}]','g','Muestra de ~10 peces.','apuntes-acuicultura-tilapia','confirmado'),
+  ('acui_biomasa_kg','acuicultura','Biomasa total','poblacion * peso_prom_g / 1000',
+   '[{"nombre":"poblacion","unidad":"organismos"},{"nombre":"peso_prom_g","unidad":"g"}]','kg',null,'apuntes-acuicultura-tilapia','confirmado'),
+  ('acui_alimento_diario_kg','acuicultura','Alimento diario','biomasa_kg * pct_alimento / 100',
+   '[{"nombre":"biomasa_kg","unidad":"kg"},{"nombre":"pct_alimento","unidad":"%","descripcion":"Se toma de etapas_alimentacion según el peso promedio; multiplicar por factor_racion de las alertas."}]','kg/día',null,'apuntes-acuicultura-tilapia','confirmado'),
+  ('acui_racion_kg','acuicultura','Ración por toma','alimento_diario_kg / n_raciones',
+   '[{"nombre":"alimento_diario_kg","unidad":"kg"},{"nombre":"n_raciones","unidad":"raciones/día"}]','kg/ración',null,'apuntes-acuicultura-tilapia','confirmado'),
+  ('acui_nh3n','acuicultura','NH3-N a partir de TAN','tan * fraccion_nh3',
+   '[{"nombre":"tan","unidad":"mg N/L"},{"nombre":"fraccion_nh3","unidad":"proporción","descripcion":"Depende de pH y temperatura; falta la tabla (UF/IFAS)."}]','mg NH3-N/L','Requiere tabla de fracción por pH y temperatura. Ej.: pH 8.5 y 29 °C ≈ 0.19.','tarea-diseno-calidad-agua-tilapia','por_confirmar'),
+  ('acui_nh3','acuicultura','NH3 desde NH3-N','nh3_n * 17 / 14',
+   '[{"nombre":"nh3_n","unidad":"mg NH3-N/L"}]','mg NH3/L','Meta conservadora de la tarea: NH3-N < 0.02 mg/L.','tarea-diseno-calidad-agua-tilapia','confirmado'),
+  -- Porcinos
+  ('porc_indice_materno','porcinos','Índice materno','100 + 6.1 * (lnv - lnv_prom) + 1 * (w21 - w21_prom)',
+   '[{"nombre":"lnv","unidad":"lechones"},{"nombre":"lnv_prom","unidad":"lechones"},{"nombre":"w21","unidad":"kg"},{"nombre":"w21_prom","unidad":"kg"}]','puntos','w21 = peso de la camada a 21 días. Ajustar por días con la tabla de ajuste (21 d = 1.0, 28 d = 0.83).','ppt-cruzas-razas-cerdos','confirmado'),
+  ('porc_indice_iowa','porcinos','Índice Iowa','270 + 222 * gdp - 60 * grasa_dorsal - 35 * ic',
+   '[{"nombre":"gdp","unidad":"kg/día"},{"nombre":"grasa_dorsal","unidad":"mm"},{"nombre":"ic","unidad":"kg/kg"}]','puntos',null,'ppt-cruzas-razas-cerdos','confirmado'),
+  ('porc_indice_cleveland','porcinos','Índice Cleveland','100 + 286.6 * gp_prom - 39.4',
+   '[{"nombre":"gp_prom","unidad":"kg"}]','puntos','La diapositiva es ambigua; confirmar la expresión.','ppt-cruzas-razas-cerdos','por_confirmar'),
+  ('porc_ds','porcinos','Diferencial de selección','((xms - xmh) + (xhs - xhh)) / 2',
+   '[{"nombre":"xms","descripcion":"media de machos seleccionados"},{"nombre":"xmh","descripcion":"media de machos del hato"},{"nombre":"xhs","descripcion":"media de hembras seleccionadas"},{"nombre":"xhh","descripcion":"media de hembras del hato"}]',null,null,'ppt-cruzas-razas-cerdos','confirmado'),
+  ('porc_rs','porcinos','Respuesta a la selección','h2 * ds',
+   '[{"nombre":"h2","descripcion":"heredabilidad"},{"nombre":"ds","descripcion":"diferencial de selección"}]',null,null,'ppt-cruzas-razas-cerdos','confirmado'),
+  ('porc_gdp','porcinos','Ganancia diaria de peso','(peso_final_prom - peso_inicial_prom) / dias_prueba',
+   '[{"nombre":"peso_final_prom","unidad":"kg"},{"nombre":"peso_inicial_prom","unidad":"kg"},{"nombre":"dias_prueba","unidad":"días"}]','kg/día',null,'ppt-cruzas-razas-cerdos','confirmado'),
+  ('porc_conversion','porcinos','Conversión alimenticia','consumo_prom_dia / gdp',
+   '[{"nombre":"consumo_prom_dia","unidad":"kg/día"},{"nombre":"gdp","unidad":"kg/día"}]','kg/kg',null,'ppt-cruzas-razas-cerdos','confirmado'),
+  ('porc_costo_kg_carne','porcinos','Costo por kg de carne producido','costo_kg_alimento * conversion',
+   '[{"nombre":"costo_kg_alimento","unidad":"$/kg"},{"nombre":"conversion","unidad":"kg/kg"}]','$/kg',null,'ppt-cruzas-razas-cerdos','confirmado'),
+  ('porc_peso_prom_lechon','porcinos','Peso promedio del lechón','peso_camada / n_lechones',
+   '[{"nombre":"peso_camada","unidad":"kg"},{"nombre":"n_lechones","unidad":"lechones"}]','kg',null,'ppt-cruzas-razas-cerdos','confirmado'),
+  -- Silos
+  ('silo_trapezoidal','silos','Volumen silo trapezoidal','(B + b) / 2 * h * L',
+   '[{"nombre":"B","unidad":"m"},{"nombre":"b","unidad":"m"},{"nombre":"h","unidad":"m"},{"nombre":"L","unidad":"m"}]','m3',null,'actividad-tipos-silo','confirmado'),
+  ('silo_media_esfera','silos','Volumen silo media esfera','2 / 3 * pi * r ^ 3',
+   '[{"nombre":"r","unidad":"m"}]','m3',null,'actividad-tipos-silo','confirmado'),
+  ('silo_cilindrico','silos','Volumen silo bolsa (cilíndrico)','pi * r ^ 2 * h',
+   '[{"nombre":"r","unidad":"m"},{"nombre":"h","unidad":"m","descripcion":"largo"}]','m3',null,'actividad-tipos-silo','confirmado'),
+  ('silo_trinchera','silos','Volumen silo trinchera','(ancho_sup + ancho_inf) / 2 * alto * largo',
+   '[{"nombre":"ancho_sup","unidad":"m"},{"nombre":"ancho_inf","unidad":"m"},{"nombre":"alto","unidad":"m"},{"nombre":"largo","unidad":"m"}]','m3',null,'actividad-tipos-silo','confirmado'),
+  ('silo_peso_total','silos','Peso total del ensilaje','volumen * densidad',
+   '[{"nombre":"volumen","unidad":"m3"},{"nombre":"densidad","unidad":"kg/m3"}]','kg','Usar kg/m3 (la hoja decía kg/m2).','actividad-tipos-silo','confirmado'),
+  ('silo_hectareas','silos','Hectáreas necesarias','peso_total / rendimiento_kg_ha',
+   '[{"nombre":"peso_total","unidad":"kg"},{"nombre":"rendimiento_kg_ha","unidad":"kg/ha","descripcion":"50000 en la actividad"}]','ha',null,'actividad-tipos-silo','confirmado'),
+  ('silo_vacas','silos','Vacas alimentadas','peso_total / (consumo_kg_vaca_dia * dias)',
+   '[{"nombre":"peso_total","unidad":"kg"},{"nombre":"consumo_kg_vaca_dia","unidad":"kg","descripcion":"16 en la actividad"},{"nombre":"dias","unidad":"días","descripcion":"360 en la actividad"}]','vacas',null,'actividad-tipos-silo','confirmado'),
+  ('ens_densidad','silos','Densidad del ensilaje según % MS','6500 / ms_pct + 400',
+   '[{"nombre":"ms_pct","unidad":"%"}]','kg/m3','Ej.: 35 % MS = 586 kg/m3.','doc-valor-nutritivo-ensilajes','confirmado'),
+  -- Rastro
+  ('nom194_calificacion','rastro','Calificación NOM-194 (porcentaje)','puntos_obtenidos / (2 * n_preguntas_aplicadas) * 100',
+   '[{"nombre":"puntos_obtenidos","descripcion":"suma de 0/1/2"},{"nombre":"n_preguntas_aplicadas","descripcion":"sin contar las NA"}]','%','Ej.: 167 / 244 = 68.44 %. Aplica igual por sección.','lista-verificacion-nom-194','confirmado'),
+  -- Presupuesto
+  ('pres_inversion_total','presupuesto','Total inversión inicial','terreno + maquinaria + mobiliario + vehiculos + capital_trabajo',
+   '[{"nombre":"terreno"},{"nombre":"maquinaria"},{"nombre":"mobiliario"},{"nombre":"vehiculos"},{"nombre":"capital_trabajo"}]','$',null,'formato-presupuesto-proyecto','confirmado'),
+  ('pres_ingresos','presupuesto','Ingresos estimados','precio_unitario * cantidad_vendida',
+   '[{"nombre":"precio_unitario","unidad":"$"},{"nombre":"cantidad_vendida"}]','$',null,'formato-presupuesto-proyecto','confirmado'),
+  ('pres_utilidad_neta','presupuesto','Utilidad neta','ingresos - costos_variables - costos_fijos',
+   '[{"nombre":"ingresos","unidad":"$"},{"nombre":"costos_variables","unidad":"$"},{"nombre":"costos_fijos","unidad":"$"}]','$',null,'formato-presupuesto-proyecto','confirmado')
+) as v(codigo, modulo, nombre, expr, vars, unidad, notas, fuente, val)
+join fuentes f on f.codigo = v.fuente;

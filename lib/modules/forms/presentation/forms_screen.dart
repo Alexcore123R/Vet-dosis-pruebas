@@ -90,6 +90,7 @@ class _FormsScreenState extends State<FormsScreen> {
           clinicId: widget.member.clinicId,
           original: version,
           restore: base,
+          canApprove: model.canApproveTemplates,
         ),
       ),
     );
@@ -227,7 +228,7 @@ class _FormsScreenState extends State<FormsScreen> {
             'Plantillas de referencia. El contenido final es responsabilidad de la clínica. La aprobación de una plantilla no significa que un tutor haya firmado un documento.',
           ),
         ),
-        if (widget.member.role == ClinicRole.admin)
+        if (!model.templateKnown && widget.member.role == ClinicRole.admin)
           const Text(
             'El administrador edita plantillas y consulta documentos. Para emitir clínicamente como administrador también necesita habilitación profesional vigente del servidor.',
           ),
@@ -236,7 +237,7 @@ class _FormsScreenState extends State<FormsScreen> {
           icon: const Icon(Icons.refresh),
           label: const Text('Actualizar'),
         ),
-        if (widget.member.role == ClinicRole.admin)
+        if (model.canBrand)
           TextButton(
             onPressed: model.busy ? null : branding,
             child: const Text('Membrete y logo de la clínica'),
@@ -283,8 +284,9 @@ class _FormsScreenState extends State<FormsScreen> {
                   Wrap(
                     spacing: 8,
                     children: [
-                      if (model.access.editTemplates &&
-                          (version.clinicId == null ||
+                      if (model.canEditTemplates &&
+                          (model.templateKnown ||
+                              version.clinicId == null ||
                               widget.member.role == ClinicRole.admin ||
                               version.responsibleId == widget.member.userId))
                         TextButton(
@@ -295,10 +297,11 @@ class _FormsScreenState extends State<FormsScreen> {
                                 : 'Editar en nueva versión',
                           ),
                         ),
-                      if (model.access.editTemplates &&
+                      if (model.canEditTemplates &&
                           version.clinicId != null &&
                           version.baseVersionId != null &&
-                          (widget.member.role == ClinicRole.admin ||
+                          (model.templateKnown ||
+                              widget.member.role == ClinicRole.admin ||
                               version.responsibleId == widget.member.userId))
                         TextButton(
                           onPressed: model.busy
@@ -306,7 +309,8 @@ class _FormsScreenState extends State<FormsScreen> {
                               : () => editor(version, restore: true),
                           child: const Text('Restaurar base en versión nueva'),
                         ),
-                      if ((model.access.finalize || professionalAdmin) &&
+                      if (model.documentsAvailable &&
+                          (model.access.finalize || professionalAdmin) &&
                           version.clinicId != null &&
                           version.approved)
                         FilledButton(

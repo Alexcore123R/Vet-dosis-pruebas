@@ -73,3 +73,7 @@ El [candidato 13H2](../permisos-etapa2b9-recetas.md) conecta firma de consulta c
 ## Avance 2B-13, 16-oct-2026
 
 [13J1](../permisos-etapa2b13-reportes.md) prepara el corte del libro de controlados con permisos separados de preparación/emisión, MVZ habilitado y firma propia, registro/revisión del PDF y exportación con acceso actual. Rechaza formato oficial; no completa el Anexo 5 ni reportes generales. No aplicado a Supabase. Formatos/consentimientos y dependencias transversales siguen pendientes; no abrir beta.
+
+## Avance 2B-14, 16-oct-2026
+
+[13J2](../permisos-etapa2b14-plantillas.md) prepara consulta/edición/aprobación de plantillas y membrete por persona. La aprobación profesional no convierte fuentes en verificadas ni firma documentos. Flutter reconoce el alcance solo de plantillas y no consulta/emite documentos por esa capacidad. Preparación/firmas/autoridad/artefactos de documentos y demás dependencias siguen pendientes; no desplegar aisladamente ni abrir beta. Las recomendaciones y SQL nuevos están archivados para después de estas rondas, sin ejecución.

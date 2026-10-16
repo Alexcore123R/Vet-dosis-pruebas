@@ -130,3 +130,10 @@ jobs:
         run: npm ci --prefix supabase
       - name: Probar corte, PDF, emisión, revocación y aislamiento de reportes
         run: bash supabase/tests/run_permission_reports.sh
+  form-templates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar permisos de plantillas, aprobación, membrete y concurrencia
+        run: bash supabase/tests/run_permission_form_templates.sh

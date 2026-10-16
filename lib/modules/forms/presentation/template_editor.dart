@@ -14,7 +14,9 @@ class TemplateEditor extends StatefulWidget {
     required this.clinicId,
     required this.original,
     this.restore,
+    this.canApprove = true,
   });
+  final bool canApprove;
   final FormRepository repository;
   final String clinicId;
   final FormTemplateVersion original;
@@ -102,6 +104,9 @@ class _TemplateEditorState extends State<TemplateEditor> {
     try {
       if (previewFingerprint != fingerprint || reason.text.trim().isEmpty) {
         throw const FormatException('Revisa el PDF y escribe un motivo.');
+      }
+      if (approved && !widget.canApprove) {
+        throw StateError('template_approval_required');
       }
       final current = '$fingerprint:$approved:${reason.text.trim()}';
       if (operationFingerprint != null && operationFingerprint != current) {
@@ -322,7 +327,7 @@ class _TemplateEditorState extends State<TemplateEditor> {
             ),
             CheckboxListTile(
               value: approved,
-              onChanged: busy
+              onChanged: busy || !widget.canApprove
                   ? null
                   : (v) => setState(() => approved = v ?? false),
               title: const Text(

@@ -7,12 +7,12 @@ bool navigationAllowed(String page, ClinicMembership? member) {
   return switch (page) {
     'Cálculo rápido' ||
     'Cálculos clínicos' => [ClinicRole.admin, ClinicRole.mvz].contains(role),
-    'Hospitalización' || 'Receta' || 'Formatos' => [
+    'Hospitalización' || 'Receta' => [
       ClinicRole.admin,
       ClinicRole.mvz,
       ClinicRole.auxiliar,
     ].contains(role),
-    'Inventario' || 'Caja' || 'Escanear producto' => true,
+    'Inventario' || 'Caja' || 'Escanear producto' || 'Formatos' => true,
     'Estadísticas' ||
     'Respaldo' ||
     'Estadísticas y respaldo' => role == ClinicRole.admin,

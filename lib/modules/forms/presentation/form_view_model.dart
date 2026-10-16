@@ -8,6 +8,21 @@ class FormViewModel extends ChangeNotifier {
   final FormRepository repository;
   final ClinicMembership member;
   FormsAccess get access => FormsAccess(member.role);
+  bool templateKnown = false;
+  Map<String, dynamic>? templatePermissions;
+  bool capability(String key) =>
+      !busy && error == null && templatePermissions?[key] == true;
+  bool get canEditTemplates => templateKnown
+      ? capability('can_edit')
+      : access.editTemplates && error == null;
+  bool get canApproveTemplates => templateKnown
+      ? capability('can_approve')
+      : access.editTemplates && error == null;
+  bool get canBrand => templateKnown
+      ? capability('can_brand')
+      : member.role == ClinicRole.admin && error == null;
+  // Template governance does not confer authority over patient documents.
+  bool get documentsAvailable => !templateKnown;
   List<FormTemplateVersion> templates = [];
   List<FormDocument> documents = [];
   bool busy = false, closed = false;
@@ -18,16 +33,51 @@ class FormViewModel extends ChangeNotifier {
     error = null;
     notifyListeners();
     try {
-      if (!access.clinical) throw StateError('Acceso clínico requerido.');
-      final data = await Future.wait([
-        repository.templates(member.clinicId),
-        repository.documents(member.clinicId),
-      ]);
+      final source = repository;
+      final contract = source is FormTemplatePermissionRepository
+          ? await (source as FormTemplatePermissionRepository)
+                .templatePermissions(member.clinicId)
+          : null;
+      if (contract != null) {
+        templateKnown = true;
+        if (contract['schema_version'] != 1 ||
+            contract['mode'] != 'templates_only' ||
+            [
+              'can_read',
+              'can_edit',
+              'can_approve',
+              'can_brand',
+            ].any((k) => contract[k] is! bool)) {
+          throw StateError('unknown_template_permission_contract');
+        }
+        if ((contract['can_read'] != true &&
+                [
+                  'can_edit',
+                  'can_approve',
+                  'can_brand',
+                ].any((k) => contract[k] == true)) ||
+            (contract['can_approve'] == true && contract['can_edit'] != true)) {
+          throw StateError('inconsistent_template_permission_contract');
+        }
+      } else if (templateKnown) {
+        throw StateError('template_permission_contract_lost');
+      }
+      if (contract == null && !access.clinical) {
+        throw StateError('Acceso clínico requerido.');
+      }
+      final templateRows = contract != null && contract['can_read'] != true
+          ? <FormTemplateVersion>[]
+          : await repository.templates(member.clinicId);
+      final documentRows = contract != null
+          ? <FormDocument>[]
+          : await repository.documents(member.clinicId);
       if (closed) return;
-      templates = data[0] as List<FormTemplateVersion>;
-      documents = data[1] as List<FormDocument>;
+      templatePermissions = contract;
+      templates = templateRows;
+      documents = documentRows;
     } catch (_) {
       if (closed) return;
+      templatePermissions = null;
       templates = [];
       documents = [];
       error =
@@ -43,6 +93,7 @@ class FormViewModel extends ChangeNotifier {
   @override
   void dispose() {
     closed = true;
+    templatePermissions = null;
     templates = [];
     documents = [];
     super.dispose();

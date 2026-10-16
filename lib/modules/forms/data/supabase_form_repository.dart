@@ -4,9 +4,22 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../domain/form_models.dart';
 import '../domain/form_repository.dart';
 
-class SupabaseFormRepository implements FormRepository {
+class SupabaseFormRepository
+    implements FormRepository, FormTemplatePermissionRepository {
   SupabaseFormRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<Map<String, dynamic>?> templatePermissions(String clinicId) async {
+    try {
+      return Map<String, dynamic>.from(
+        await rpc('form_template_permissions', {'p_clinic': clinicId}) as Map,
+      );
+    } on PostgrestException catch (e) {
+      if (e.code == 'PGRST202' || e.code == '42883') return null;
+      rethrow;
+    }
+  }
+
   @override
   Future<FormDocument> useProfile(
     String id,
