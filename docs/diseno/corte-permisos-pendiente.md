@@ -33,3 +33,7 @@ Se preparó y probó localmente el candidato de alta administrativa y lectura di
 ## Avance 2B-2, 16-oct-2026
 
 Candidato local de agenda y `ops_dashboard`: [detalle y límites](../permisos-etapa2b2.md). Se separaron `appointment.read`, `appointment.manage` y `patient.read`, sin desplegar. Los otros agregados operativos quedan vacíos en el candidato hasta mapear sus permisos. No acredita la migración de `att_dashboard`, estadísticas, hospitalización ni todas las áreas del dashboard.
+
+## Avance 2B-3, 16-oct-2026
+
+Candidato de expediente/actuaciones y propuesta de relación explícita de alcance a tipo de procedimiento: [esquema, restricción conservadora y límites](../permisos-etapa2b3.md). No desplegado. La autorización clínica histórica se conserva sin convertirse al nuevo modelo. La captura libre y la integración de UI/formularios/medicación siguen pendientes; no marcar terminado el corte clínico.

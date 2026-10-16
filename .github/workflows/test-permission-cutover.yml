@@ -18,3 +18,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Probar agenda, agregados y concurrencia con dependencias reales
         run: bash supabase/tests/run_permission_agenda.sh
+  clinical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar expediente, actuaciones y revocación profesional en aislamiento
+        run: bash supabase/tests/run_permission_clinical.sh
