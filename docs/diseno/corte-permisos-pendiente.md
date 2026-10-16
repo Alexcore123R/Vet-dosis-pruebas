@@ -69,3 +69,7 @@ El [candidato 13H2](../permisos-etapa2b9-recetas.md) conecta firma de consulta c
 ## Avance 2B-12, 16-oct-2026
 
 [13I2](../permisos-etapa2b12-inventario-caja.md) prepara permisos por persona para catálogo, entradas, ajustes, pedidos, fotos, frascos, cobros, cortes y referencias externas. Sustituye las dependencias por puesto de las rutas finales M8/M9 y referencias, protege lectura/exportación contable y conserva 13I1 para dispensación. SQL/Flutter locales, sin aplicar a Supabase ni abrir beta. Respaldos/agregados/identidad de otros módulos, reportes/formatos, Auth/Storage/Edge reales y el editor por lotes de producto siguen pendientes del cierre correspondiente.
+
+## Avance 2B-13, 16-oct-2026
+
+[13J1](../permisos-etapa2b13-reportes.md) prepara el corte del libro de controlados con permisos separados de preparación/emisión, MVZ habilitado y firma propia, registro/revisión del PDF y exportación con acceso actual. Rechaza formato oficial; no completa el Anexo 5 ni reportes generales. No aplicado a Supabase. Formatos/consentimientos y dependencias transversales siguen pendientes; no abrir beta.

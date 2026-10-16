@@ -924,6 +924,7 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
                 : 'Revisé el PDF completo y confirmo sus datos, la firma utilizada y mi responsabilidad al emitirlo.',
             confirm:
                 record['state'] == 'issued' ||
+                    (kind == 'report' && !model.canIssueReport) ||
                     (kind == 'prescription' &&
                         model.prescriptionKnown &&
                         !model.prescriptionAction(record, 'issue'))
@@ -1304,11 +1305,12 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
         type: 'instant',
         required: true,
       ),
-      const RxField(
-        'official',
-        'Solicitar formato oficial (requiere fuente verificada)',
-        type: 'checkbox',
-      ),
+      if (!model.reportKnown)
+        const RxField(
+          'official',
+          'Solicitar formato oficial (requiere fuente verificada)',
+          type: 'checkbox',
+        ),
     ],
     (d, op) async {
       await widget.repository.write('rx_report_create', {
@@ -1324,7 +1326,13 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
     try {
       await FilePicker.saveFile(
         fileName: 'VetDosis-control-${r['id']}.csv',
-        bytes: Uint8List.fromList(utf8.encode(reportCsv(r))),
+        bytes: Uint8List.fromList(
+          utf8.encode(
+            reportCsv(
+              model.reportKnown ? await model.reportExport(r['id']) : r,
+            ),
+          ),
+        ),
         type: FileType.custom,
         allowedExtensions: ['csv'],
       );
@@ -1678,9 +1686,9 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
             ),
         ],
         if (section == 'Reportes') ...[
-          if (model.prescriptionKnown)
+          if (model.prescriptionKnown && !model.reportKnown)
             const Text('Reportes no disponibles en este flujo.'),
-          if (model.professional && !model.prescriptionKnown)
+          if (model.canPrepareReport)
             FilledButton(
               onPressed: model.busy ? null : report,
               child: const Text('Crear corte del periodo'),
@@ -1720,7 +1728,13 @@ class _PrescribingScreenState extends State<PrescribingScreen> {
                             title:
                                 'Registro de control · basado en Anexo 5, no oficial · Exportación de consulta',
                             fileName: 'control-${r["id"]}',
-                            rows: () async => csvRows(reportCsv(r)),
+                            rows: () async => csvRows(
+                              reportCsv(
+                                model.reportKnown
+                                    ? await model.reportExport(r['id'])
+                                    : r,
+                              ),
+                            ),
                           ),
                       ],
                     ),

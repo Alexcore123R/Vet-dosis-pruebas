@@ -33,6 +33,42 @@ class PrescribingViewModel extends ChangeNotifier {
     return null;
   }
 
+  bool reportKnown = false;
+  Map<String, dynamic>? reportPermissions;
+  bool get canPrepareReport =>
+      !busy &&
+      error == null &&
+      (reportKnown
+          ? (reportPermissions?['can_prepare'] == true)
+          : !prescriptionKnown && professional);
+  bool get canIssueReport =>
+      !busy &&
+      error == null &&
+      (reportKnown
+          ? (reportPermissions?['can_issue'] == true)
+          : !prescriptionKnown && professional);
+
+  Future<Map<String, dynamic>> reportExport(String id) async {
+    try {
+      final generation = _generation;
+      final row = Map<String, dynamic>.from(
+        await repository.read('rx_report_export', {'p_id': id}) as Map,
+      );
+      if (_disposed ||
+          generation != _generation ||
+          row['id'] != id ||
+          row['state'] != 'issued') {
+        throw StateError('issued_report_access_required');
+      }
+      return row;
+    } catch (_) {
+      reports = [];
+      reportPermissions = null;
+      if (!_disposed) notifyListeners();
+      rethrow;
+    }
+  }
+
   bool operationalKnown = false;
   bool prescriptionKnown = false;
   bool standingKnown = false;
@@ -214,8 +250,25 @@ class PrescribingViewModel extends ChangeNotifier {
           permissionRows != null && permissionRows['vial.read'] != true
           ? []
           : await repository.read('rx_vials', {'p_clinic': member.clinicId});
-      final reportRows =
-          rxPermissions != null || member.role == ClinicRole.auxiliar
+      final reportSource = repository;
+      final reportContract = reportSource is ReportPermissionRepository
+          ? await (reportSource as ReportPermissionRepository)
+                .reportPermissions(member.clinicId)
+          : null;
+      if (reportContract != null) {
+        reportKnown = true;
+        if (reportContract['schema_version'] != 1 ||
+            reportContract['mode'] != 'controlled_reference' ||
+            reportContract['can_prepare'] is! bool ||
+            reportContract['can_issue'] is! bool) {
+          throw StateError('unknown_report_permission_contract');
+        }
+      } else if (reportKnown) {
+        throw StateError('report_permission_contract_lost');
+      }
+      final reportRows = reportContract != null
+          ? await repository.read('rx_reports', {'p_clinic': member.clinicId})
+          : rxPermissions != null || member.role == ClinicRole.auxiliar
           ? []
           : await repository.read('rx_reports', {'p_clinic': member.clinicId});
       final records = valid == null
@@ -234,6 +287,7 @@ class PrescribingViewModel extends ChangeNotifier {
       cases = caseRows;
       prescriptions = _maps(rx);
       vials = _maps(vialRows);
+      reportPermissions = reportContract;
       reports = _maps(reportRows);
       caseId = valid;
       medications = _maps(records);
@@ -265,6 +319,7 @@ class PrescribingViewModel extends ChangeNotifier {
     prescriptions = [];
     vials = [];
     reports = [];
+    reportPermissions = null;
     medications = [];
     cases = [];
     caseId = null;

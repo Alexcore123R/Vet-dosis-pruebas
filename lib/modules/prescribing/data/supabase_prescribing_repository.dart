@@ -8,7 +8,8 @@ class SupabasePrescribingRepository
     implements
         PrescribingRepository,
         MedicationPermissionRepository,
-        PrescriptionPermissionRepository {
+        PrescriptionPermissionRepository,
+        ReportPermissionRepository {
   SupabasePrescribingRepository(this.client);
   final SupabaseClient client;
   static const reads = {
@@ -19,6 +20,7 @@ class SupabasePrescribingRepository
     'rx_vials',
     'rx_medications',
     'rx_reports',
+    'rx_report_export',
     'rx_hospital',
     'rx_consultations',
     'rx_standing_workspace',
@@ -50,6 +52,19 @@ class SupabasePrescribingRepository
     'rx_schedule',
     'rx_schedule_typed',
   };
+  @override
+  Future<Map<String, dynamic>?> reportPermissions(String clinic) async {
+    try {
+      return Map<String, dynamic>.from(
+        await client.rpc('rx_report_permissions', params: {'p_clinic': clinic})
+            as Map,
+      );
+    } on PostgrestException catch (e) {
+      if (e.code == 'PGRST202' || e.code == '42883') return null;
+      rethrow;
+    }
+  }
+
   @override
   Future<Map<String, dynamic>?> prescriptionPermissions(String clinic) async {
     try {

@@ -26,7 +26,7 @@ String reportCsv(Map<String, dynamic> report) {
       'VetDosis Pro',
       report['official'] == true
           ? 'Formato verificado'
-          : 'REFERENCIA · NO OFICIAL',
+          : 'Basado en Anexo 5, NO OFICIAL',
       report['complete'] == true ? 'Completo al corte' : 'INCOMPLETO',
     ],
     [
