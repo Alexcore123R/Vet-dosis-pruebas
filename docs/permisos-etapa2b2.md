@@ -42,4 +42,4 @@ Cubre: rol admin sin concesión; gestión sin lectura; lectura sin gestión aunq
 
 Pruebas Flutter: lector con rol admin no agenda/modifica ni abre expediente; sección no disponible no muestra acciones antiguas; error o respuesta sin mapa de permisos tras recibirlo limpia datos sin recuperar privilegios. Incluye regresión de captura y dashboard.
 
-Resultado local SQL y concurrencia: satisfactorio. Registrar comprobación completa de Flutter y GitHub al terminar. No equivale a pruebas contra el Supabase remoto.
+Resultado local SQL y concurrencia: satisfactorio. `flutter analyze --no-pub` sin observaciones y 264 pruebas Flutter satisfactorias, incluidas las tres nuevas de permisos de agenda. Comprobación GitHub satisfactoria: [ejecución 38866677730](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38866677730), commit `6459663`; ambos trabajos de pacientes y agenda correctos. No equivale a pruebas contra el Supabase remoto y no despliega migraciones.
