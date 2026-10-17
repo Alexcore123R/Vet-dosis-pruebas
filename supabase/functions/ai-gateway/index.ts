@@ -97,6 +97,9 @@ Deno.serve(async (req) => {
         p_connection: input.connection,
       });
       if (error || !key) return reply({ error: "key_access_denied" }, 403);
+      if (key.scope === "clinic" && !await betaAccess(user, true, key.clinic_id)) {
+        return reply({ error: "beta_write_denied" }, 403);
+      }
       const plaintext = await openCredential(
         key,
         aes,
@@ -120,6 +123,9 @@ Deno.serve(async (req) => {
           ? "ai_daily_limit"
           : "chat_prepare_denied",
       }, 403);
+    }
+    if (!await betaAccess(user, true, r.clinic_id)) {
+      return reply({ error: "beta_write_denied" }, 403);
     }
     if (r.state === "done") return reply({ request: r.id, state: "done" });
     if (r.state !== "queued") {
@@ -169,6 +175,16 @@ Deno.serve(async (req) => {
     });
     if (!response.ok) throw new Error("provider_request_failed");
     const output = providerText(k.provider, await response.json());
+    if (!await betaAccess(user, true, r.clinic_id)) {
+      await server.rpc("ai_finish_server", {
+        p_id: r.id,
+        p_user: actor,
+        p_body: "",
+        p_success: false,
+      });
+      claimed = null;
+      return reply({ error: "beta_write_denied" }, 403);
+    }
     const { error: finishError } = await server.rpc("ai_finish_server", {
       p_id: r.id,
       p_user: actor,
