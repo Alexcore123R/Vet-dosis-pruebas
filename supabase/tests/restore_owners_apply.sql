@@ -19,7 +19,7 @@ select public.permission_grant(:'clinic','00000000-0000-0000-0000-000000000197',
 reset role;
 
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000197',false);set role authenticated;
-select public.restore_preview_stage(:'clinic','vetdosis-operational-backup',1,repeat('1',64),'2026-01-02T00:00:00Z','{"vet_owners":2}'::jsonb) as stage \gset;
+select public.restore_preview_stage(:'clinic','vetdosis-operational-backup',1,repeat('1',64),'2026-01-02T00:00:00Z','{"vet_owners":2}'::jsonb) as stage \gset
 select public.restore_preview_conflicts(
  :'clinic',(:'stage'::jsonb->>'stage_id')::uuid,repeat('1',64),repeat('2',64),
  jsonb_build_object('vet_owners',jsonb_build_array(:'existing_owner','00000000-0000-0000-0000-000000000501'))
@@ -34,9 +34,9 @@ select public.restore_prepare_owners(
   jsonb_build_object('id',:'existing_owner','clinic_id',:'clinic','name','Must stay unchanged'),
   jsonb_build_object('id','00000000-0000-0000-0000-000000000501','clinic_id',:'clinic','name','Restored synthetic owner','source_created_at','2025-02-03T04:05:06Z')
  )
-) as prepared \gset;
-select public.restore_preview_preflight(:'clinic',(:'stage'::jsonb->>'stage_id')::uuid,repeat('1',64),repeat('2',64),repeat('3',64)) as preflight \gset;
-select public.restore_apply_owners(:'clinic',(:'stage'::jsonb->>'stage_id')::uuid,(:'preflight'::jsonb->>'preflight_id')::uuid,:'prepared'::jsonb->>'payload_sha256') as applied \gset;
+) as prepared \gset
+select public.restore_preview_preflight(:'clinic',(:'stage'::jsonb->>'stage_id')::uuid,repeat('1',64),repeat('2',64),repeat('3',64)) as preflight \gset
+select public.restore_apply_owners(:'clinic',(:'stage'::jsonb->>'stage_id')::uuid,(:'preflight'::jsonb->>'preflight_id')::uuid,:'prepared'::jsonb->>'payload_sha256') as applied \gset
 
 select pg_temp.assert_true((:'applied'::jsonb->>'imports_applied')::boolean,'owner restore not applied');
 select pg_temp.assert_true((:'applied'::jsonb->>'created')::int=1,'wrong owner create count');
@@ -45,7 +45,7 @@ select pg_temp.assert_true((select name from public.vet_owners where id=:'existi
 select pg_temp.assert_true(exists(select 1 from public.vet_owners where id='00000000-0000-0000-0000-000000000501' and created_by='00000000-0000-0000-0000-000000000197'),'new owner missing or wrong attribution');
 
 -- Successful retry is idempotent.
-select public.restore_apply_owners(:'clinic',(:'stage'::jsonb->>'stage_id')::uuid,(:'preflight'::jsonb->>'preflight_id')::uuid,:'prepared'::jsonb->>'payload_sha256') as retry \gset;
+select public.restore_apply_owners(:'clinic',(:'stage'::jsonb->>'stage_id')::uuid,(:'preflight'::jsonb->>'preflight_id')::uuid,:'prepared'::jsonb->>'payload_sha256') as retry \gset
 select pg_temp.assert_true(:'retry'::jsonb=:'applied'::jsonb,'idempotent retry changed result');
 
 -- Payload IDs cannot diverge from the verified manifest.
