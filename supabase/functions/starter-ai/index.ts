@@ -125,6 +125,16 @@ Deno.serve(async (req) => {
     });
     if (!response.ok) throw new Error("provider_failed");
     const answer = providerText(runtime.provider, await response.json());
+    if (!await betaAccess(user, true, input.clinic)) {
+      await server.rpc("starter_ai_finish_server", {
+        p_id: r.id,
+        p_user: actor,
+        p_body: "",
+        p_success: false,
+      });
+      claimed = null;
+      return reply({ error: "beta_write_denied" }, 403);
+    }
     const { error: finishError } = await server.rpc(
       "starter_ai_finish_server",
       { p_id: r.id, p_user: actor, p_body: answer, p_success: true },
