@@ -151,7 +151,7 @@ void main() {
             '{"format":"vetdosis-operational-backup","version":1,"clinic_id":"clinic","tables":{"vet_owners":[{"id":"00000000-0000-0000-0000-000000000200","clinic_id":"clinic","name":"Tutor"}],"vet_patients":[{"id":"00000000-0000-0000-0000-000000000201","clinic_id":"clinic","owner_id":"00000000-0000-0000-0000-000000000200","name":"Prueba"}]}}';
       final archive = await BackupArchive.create(repo, 'clinic');
       final report = BackupRecoveryReport.inspect(archive, 'clinic');
-      expect(report.records, 1);
+      expect(report.records, 2);
       expect(report.clinicBackup, true);
       expect(report.archiveSha256, hasLength(64));
       expect(report.conflictManifestSha256, hasLength(64));
@@ -170,6 +170,12 @@ void main() {
         ],
       );
       expect(report.dependencyManifestSha256, hasLength(64));
+      expect(report.restoreOwners, hasLength(1));
+      expect(
+        report.restoreOwners.single['id'],
+        '00000000-0000-0000-0000-000000000200',
+      );
+      expect(report.restoreOwners.single['name'], 'Tutor');
       expect(jsonDecode(report.toJson())['restored'], false);
       expect(
         () => BackupRecoveryReport.inspect(archive, 'other'),
