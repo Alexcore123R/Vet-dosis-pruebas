@@ -148,7 +148,7 @@ void main() {
     () async {
       final repo = FakeBackup()
         ..rawSnapshot =
-            '{"format":"vetdosis-operational-backup","version":1,"clinic_id":"clinic","tables":{"vet_patients":[{"id":"00000000-0000-0000-0000-000000000201","clinic_id":"clinic","name":"Prueba"}]}}';
+            '{"format":"vetdosis-operational-backup","version":1,"clinic_id":"clinic","tables":{"vet_owners":[{"id":"00000000-0000-0000-0000-000000000200","clinic_id":"clinic","name":"Tutor"}],"vet_patients":[{"id":"00000000-0000-0000-0000-000000000201","clinic_id":"clinic","owner_id":"00000000-0000-0000-0000-000000000200","name":"Prueba"}]}}';
       final archive = await BackupArchive.create(repo, 'clinic');
       final report = BackupRecoveryReport.inspect(archive, 'clinic');
       expect(report.records, 1);
@@ -159,6 +159,17 @@ void main() {
         report.conflictManifest['vet_patients'],
         ['00000000-0000-0000-0000-000000000201'],
       );
+      expect(
+        report.dependencyManifest['vet_patients']![
+            '00000000-0000-0000-0000-000000000201'],
+        [
+          {
+            'table': 'vet_owners',
+            'id': '00000000-0000-0000-0000-000000000200',
+          },
+        ],
+      );
+      expect(report.dependencyManifestSha256, hasLength(64));
       expect(jsonDecode(report.toJson())['restored'], false);
       expect(
         () => BackupRecoveryReport.inspect(archive, 'other'),
