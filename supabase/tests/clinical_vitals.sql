@@ -111,7 +111,7 @@ select pg_temp.expect_error(
   )::text,
   repeat('b',48)
  ),
- 'procedure_authorization_required'
+ 'clinical_access_denied'
 );
 reset role;
 
