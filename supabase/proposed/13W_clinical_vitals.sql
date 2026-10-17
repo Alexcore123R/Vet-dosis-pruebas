@@ -17,6 +17,7 @@ create table public.clinical_vital_sets (
  bp_diastolic numeric(24,9),
  mucosa_color text check(mucosa_color in ('rosadas','palidas','cianoticas','ictericas','congestivas')),
  mucosa_humidity text check(mucosa_humidity in ('humedas','pegajosas','secas')),
+ reference_snapshot jsonb not null default '[]'::jsonb check(jsonb_typeof(reference_snapshot)='array'),
  notes text not null default '' check(length(notes)<=4000),
  created_at timestamptz not null default clock_timestamp(),
  foreign key(clinic_id,case_id) references public.clinical_cases(clinic_id,id),
@@ -70,14 +71,14 @@ declare
  field text;
  n numeric;
  fc_n numeric;fr_n numeric;temp_n numeric;tllc_n numeric;sbp_n numeric;dbp_n numeric;
- color text;humidity text;note text;
+ color text;humidity text;note text;refs jsonb;
 begin
  select * into c from public.clinical_cases where id=p_case for update;
  if not found then raise exception 'clinical_access_denied';end if;
  if jsonb_typeof(p_data) is distinct from 'object' or
     exists(select 1 from jsonb_object_keys(p_data) k where k not in (
      'observed_at','performed_by','fc','fr','temperature','tllc',
-     'bp_systolic','bp_diastolic','mucosa_color','mucosa_humidity','notes'
+     'bp_systolic','bp_diastolic','mucosa_color','mucosa_humidity','reference_snapshot','notes'
     )) then
   raise exception 'invalid_vital_set';
  end if;
@@ -111,6 +112,179 @@ begin
  if color is not null and color not in ('rosadas','palidas','cianoticas','ictericas','congestivas') then raise exception 'invalid_vital_set';end if;
  humidity=nullif(p_data->>'mucosa_humidity','');
  if humidity is not null and humidity not in ('humedas','pegajosas','secas') then raise exception 'invalid_vital_set';end if;
+ if p_data ? 'reference_snapshot' then
+  refs=p_data->'reference_snapshot';
+  if jsonb_typeof(refs)<>'array' or jsonb_array_length(refs)>6 or exists(
+   select 1 from jsonb_array_elements(refs) r
+   where jsonb_typeof(r)<>'object'
+      or exists(select 1 from jsonb_object_keys(r) k where k not in (
+       'catalog_version','reference_id','species','parameter','unit','min','max',
+       'source','reviewed_at','state'
+      ))
+      or not (r ?& array[
+       'catalog_version','reference_id','species','parameter','unit','min','max',
+       'source','reviewed_at','state'
+      ])
+      or r->>'state' not in ('below','within','above')
+      or r->>'parameter' not in ('fc','fr','temperature','tllc','bp_systolic','bp_diastolic')
+      or r->>'min' !~ '^[0-9]{1,12}([.][0-9]{1,9})? note=coalesce(p_data->>'notes','');
+ if length(note)>4000 then raise exception 'invalid_vital_set';end if;
+ if fc_n is null and fr_n is null and temp_n is null and tllc_n is null and sbp_n is null and color is null and humidity is null and btrim(note)='' then
+  raise exception 'empty_vital_set';
+ end if;
+
+ fp=jsonb_build_object('kind','clinical_vitals','case',p_case,'data',p_data);
+ existing_id=private.vet_receipt(c.clinic_id,p_operation,fp);
+ if existing_id is not null then
+  select * into v from public.clinical_vital_sets where id=existing_id and clinic_id=c.clinic_id and case_id=c.id;
+  if not found then raise exception 'clinical_vital_receipt_invalid';end if;
+  return private.clinical_vital_json(v);
+ end if;
+
+ insert into public.clinical_vital_sets(
+  clinic_id,case_id,observed_at,performed_by,recorded_by,
+  fc,fr,temperature,tllc,bp_systolic,bp_diastolic,mucosa_color,mucosa_humidity,reference_snapshot,notes
+ ) values(
+  c.clinic_id,c.id,observed,performer,auth.uid(),
+  fc_n,fr_n,temp_n,tllc_n,sbp_n,dbp_n,color,humidity,refs,note
+ ) returning * into v;
+
+ insert into private.vet_operation_receipts
+ values(auth.uid(),c.clinic_id,p_operation,fp,v.id);
+ insert into public.audit_log(clinic_id,actor_id,action,entity_id,details)
+ values(c.clinic_id,auth.uid(),'clinical_vitals_recorded',v.id,
+  jsonb_build_object('case_id',c.id,'patient_id',c.patient_id,'performed_by',performer,'observed_at',observed));
+
+ return private.clinical_vital_json(v);
+end$$;
+
+create or replace function public.clinical_cases_list(p_clinic uuid,p_patient uuid default null)
+returns jsonb language plpgsql stable security definer set search_path='' as $$
+begin
+ if not private.form_document_reader(p_clinic) then raise exception 'clinical_access_denied';end if;
+ return coalesce((
+  select jsonb_agg(
+   to_jsonb(c)||jsonb_build_object(
+    'patient_name',p.name,'patient_species',p.species,'patient_breed',p.breed,
+    'patient_sex',p.sex,'patient_birth_date',p.birth_date
+   ) order by c.created_at desc
+  )
+  from public.clinical_cases c
+  join public.vet_patients p on p.id=c.patient_id and p.clinic_id=c.clinic_id
+  where c.clinic_id=p_clinic and (p_patient is null or c.patient_id=p_patient)
+   and private.clinical_readable(c)
+ ),'[]'::jsonb);
+end$$;
+
+create or replace function public.clinical_case_snapshot(p_case uuid)
+returns jsonb language plpgsql stable security definer set search_path='' as $$
+declare c public.clinical_cases;p public.vet_patients;
+begin
+ select * into c from public.clinical_cases where id=p_case;
+ if not found or not private.clinical_readable(c) then raise exception 'clinical_access_denied';end if;
+ select * into p from public.vet_patients where id=c.patient_id and clinic_id=c.clinic_id;
+ return jsonb_build_object(
+  'case',to_jsonb(c)||jsonb_build_object(
+   'patient_name',p.name,'patient_species',p.species,'patient_breed',p.breed,
+   'patient_sex',p.sex,'patient_birth_date',p.birth_date
+  ),
+  'staff',coalesce((select jsonb_agg(to_jsonb(s)) from public.case_staff_assignments s where case_id=c.id),'[]'),
+  'observations',coalesce((select jsonb_agg(to_jsonb(o)||jsonb_build_object('value',o.value::text) order by o.observed_at,o.created_at) from public.clinical_observations o where case_id=c.id),'[]'),
+  'vitals',coalesce((select jsonb_agg(private.clinical_vital_json(v) order by v.observed_at,v.created_at) from public.clinical_vital_sets v where v.case_id=c.id),'[]'),
+  'acts',coalesce((select jsonb_agg(to_jsonb(a) order by a.observed_at,a.created_at) from public.clinical_procedure_acts a where case_id=c.id),'[]'),
+  'authorizations',coalesce((select jsonb_agg(to_jsonb(a)||jsonb_build_object('revoked',(select to_jsonb(r) from public.person_procedure_revocations r where r.authorization_id=a.id))) from public.person_procedure_authorizations a where case_id=c.id),'[]')
+ );
+end$$;
+
+revoke all on function public.clinical_vitals_add(uuid,jsonb,text) from public,anon;
+grant execute on function public.clinical_vitals_add(uuid,jsonb,text) to authenticated;
+notify pgrst,'reload schema';
+commit;
+
+      or r->>'max' !~ '^[0-9]{1,12}([.][0-9]{1,9})? note=coalesce(p_data->>'notes','');
+ if length(note)>4000 then raise exception 'invalid_vital_set';end if;
+ if fc_n is null and fr_n is null and temp_n is null and tllc_n is null and sbp_n is null and color is null and humidity is null and btrim(note)='' then
+  raise exception 'empty_vital_set';
+ end if;
+
+ fp=jsonb_build_object('kind','clinical_vitals','case',p_case,'data',p_data);
+ existing_id=private.vet_receipt(c.clinic_id,p_operation,fp);
+ if existing_id is not null then
+  select * into v from public.clinical_vital_sets where id=existing_id and clinic_id=c.clinic_id and case_id=c.id;
+  if not found then raise exception 'clinical_vital_receipt_invalid';end if;
+  return private.clinical_vital_json(v);
+ end if;
+
+ insert into public.clinical_vital_sets(
+  clinic_id,case_id,observed_at,performed_by,recorded_by,
+  fc,fr,temperature,tllc,bp_systolic,bp_diastolic,mucosa_color,mucosa_humidity,notes
+ ) values(
+  c.clinic_id,c.id,observed,performer,auth.uid(),
+  fc_n,fr_n,temp_n,tllc_n,sbp_n,dbp_n,color,humidity,note
+ ) returning * into v;
+
+ insert into private.vet_operation_receipts
+ values(auth.uid(),c.clinic_id,p_operation,fp,v.id);
+ insert into public.audit_log(clinic_id,actor_id,action,entity_id,details)
+ values(c.clinic_id,auth.uid(),'clinical_vitals_recorded',v.id,
+  jsonb_build_object('case_id',c.id,'patient_id',c.patient_id,'performed_by',performer,'observed_at',observed));
+
+ return private.clinical_vital_json(v);
+end$$;
+
+create or replace function public.clinical_cases_list(p_clinic uuid,p_patient uuid default null)
+returns jsonb language plpgsql stable security definer set search_path='' as $$
+begin
+ if not private.form_document_reader(p_clinic) then raise exception 'clinical_access_denied';end if;
+ return coalesce((
+  select jsonb_agg(
+   to_jsonb(c)||jsonb_build_object(
+    'patient_name',p.name,'patient_species',p.species,'patient_breed',p.breed,
+    'patient_sex',p.sex,'patient_birth_date',p.birth_date
+   ) order by c.created_at desc
+  )
+  from public.clinical_cases c
+  join public.vet_patients p on p.id=c.patient_id and p.clinic_id=c.clinic_id
+  where c.clinic_id=p_clinic and (p_patient is null or c.patient_id=p_patient)
+   and private.clinical_readable(c)
+ ),'[]'::jsonb);
+end$$;
+
+create or replace function public.clinical_case_snapshot(p_case uuid)
+returns jsonb language plpgsql stable security definer set search_path='' as $$
+declare c public.clinical_cases;p public.vet_patients;
+begin
+ select * into c from public.clinical_cases where id=p_case;
+ if not found or not private.clinical_readable(c) then raise exception 'clinical_access_denied';end if;
+ select * into p from public.vet_patients where id=c.patient_id and clinic_id=c.clinic_id;
+ return jsonb_build_object(
+  'case',to_jsonb(c)||jsonb_build_object(
+   'patient_name',p.name,'patient_species',p.species,'patient_breed',p.breed,
+   'patient_sex',p.sex,'patient_birth_date',p.birth_date
+  ),
+  'staff',coalesce((select jsonb_agg(to_jsonb(s)) from public.case_staff_assignments s where case_id=c.id),'[]'),
+  'observations',coalesce((select jsonb_agg(to_jsonb(o)||jsonb_build_object('value',o.value::text) order by o.observed_at,o.created_at) from public.clinical_observations o where case_id=c.id),'[]'),
+  'vitals',coalesce((select jsonb_agg(private.clinical_vital_json(v) order by v.observed_at,v.created_at) from public.clinical_vital_sets v where v.case_id=c.id),'[]'),
+  'acts',coalesce((select jsonb_agg(to_jsonb(a) order by a.observed_at,a.created_at) from public.clinical_procedure_acts a where case_id=c.id),'[]'),
+  'authorizations',coalesce((select jsonb_agg(to_jsonb(a)||jsonb_build_object('revoked',(select to_jsonb(r) from public.person_procedure_revocations r where r.authorization_id=a.id))) from public.person_procedure_authorizations a where case_id=c.id),'[]')
+ );
+end$$;
+
+revoke all on function public.clinical_vitals_add(uuid,jsonb,text) from public,anon;
+grant execute on function public.clinical_vitals_add(uuid,jsonb,text) to authenticated;
+notify pgrst,'reload schema';
+commit;
+
+      or (r->>'min')::numeric>(r->>'max')::numeric
+      or length(r->>'source')=0
+      or length(r->>'catalog_version')=0
+      or length(r->>'reference_id')=0
+  ) then
+   raise exception 'invalid_vital_reference_snapshot';
+  end if;
+ else
+  refs='[]'::jsonb;
+ end if;
  if p_data ? 'notes' and jsonb_typeof(p_data->'notes')<>'string' then raise exception 'invalid_vital_set';end if;
  note=coalesce(p_data->>'notes','');
  if length(note)>4000 then raise exception 'invalid_vital_set';end if;
