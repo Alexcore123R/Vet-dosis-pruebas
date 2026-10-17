@@ -30,6 +30,7 @@ begin
   where clinic_id=p_clinic and stage_id=p_stage and expires_at>clock_timestamp()
   for update;
  if not found then raise exception 'restore_stage_not_found';end if;
+ if s.owner_applied_at is not null then raise exception 'restore_owner_already_applied';end if;
  if s.archive_sha256<>p_archive_sha256 then raise exception 'restore_archive_changed';end if;
  if s.conflict_manifest is null or s.decision_plan is null then raise exception 'restore_decision_preview_required';end if;
  if not (s.conflict_manifest ? 'vet_owners') then raise exception 'restore_owner_scope_absent';end if;
