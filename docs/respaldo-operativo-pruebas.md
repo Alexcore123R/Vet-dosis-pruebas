@@ -61,3 +61,12 @@ La prueba aislada con datos ficticios sí restaura un archivo cifrado en otra ba
 y verifica datos con NULL, importe decimal, función SQL, RLS y política. Rechaza
 contraseña incorrecta, corrupción y exportación vacía. Esa prueba no acredita
 todavía la restauración de la copia real.
+
+## Evidencia del 17 de octubre de 2026
+
+- 55 pruebas Python administrativas aprobadas localmente.
+- [Prueba cifrada 39069134852](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39069134852)
+  aprobada en GitHub, incluida restauración sintética y rechazos de corrupción/clave incorrecta.
+- [Comprobación de configuración 39069134970](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39069134970)
+  terminó sin crear respaldo: ambos secretos están ausentes. `backup_created=false`.
+  No se ha conectado pg_dump al proyecto real ni se ha generado una copia recuperable de él.
