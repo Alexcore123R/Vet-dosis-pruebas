@@ -16,7 +16,8 @@ where private.permission_effective(:'clinic','00000000-0000-0000-0000-0000000001
 insert into private.member_permission_grants(clinic_id,user_id,member_since,code,granted_by,valid_until,reason)
 select :'clinic','00000000-0000-0000-0000-000000000111',:'member_since','patient.write',
  '00000000-0000-0000-0000-000000000111',clock_timestamp()+interval '1 day','Synthetic Storage photo write'
-where private.permission_effective(:'clinic','00000000-0000-0000-0000-000000000111','patient.write') is null;
+where private.permission_effective(:'clinic','00000000-0000-0000-0000-000000000111','patient.write') is null
+returning id as patient_write_grant \gset
 
 insert into private.member_permission_grants(clinic_id,user_id,member_since,code,granted_by,valid_until,reason)
 select :'clinic','00000000-0000-0000-0000-000000000111',:'member_since','clinical.read',
@@ -27,7 +28,9 @@ insert into private.member_permission_grants(clinic_id,user_id,member_since,code
 values(
  :'clinic','00000000-0000-0000-0000-000000000111',:'member_since','clinical.attach',
  '00000000-0000-0000-0000-000000000111',clock_timestamp()+interval '1 day','Synthetic Storage attachment write'
-);
+) returning id as attach_grant \gset
+
+select id as other_clinic from public.clinics where name='Synthetic clinical permission B' \gset
 
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000111',false);
 set role authenticated;
@@ -43,6 +46,14 @@ select pg_temp.assert_true(
 select pg_temp.assert_true(
  not private.storage_patient_photo_allowed(:'clinic'::text||'/'||:'patient'::text||'/avatar.png',true),
  'patient photo path must use the fixed photo slot'
+);
+select pg_temp.assert_true(
+ not private.storage_patient_photo_allowed(:'other_clinic'::text||'/'||:'patient'::text||'/photo.png',false),
+ 'foreign clinic prefix must not expose a patient photo'
+);
+select pg_temp.assert_true(
+ not private.storage_patient_photo_allowed(:'clinic'::text||'/'||:'patient'::text||'/extra/photo.png',true),
+ 'patient photo path must reject additional segments'
 );
 
 insert into storage.objects(bucket_id,name,metadata)
@@ -68,6 +79,14 @@ select pg_temp.expect_error(
   :'clinic'::text||'/'||:'case_id'::text||'/not-a-uuid.pdf'
  ),
  'row-level security'
+);
+select pg_temp.assert_true(
+ not private.storage_clinical_attachment_allowed(:'other_clinic'::text||'/'||:'case_id'::text||'/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.pdf',false),
+ 'foreign clinic prefix must not expose a clinical attachment'
+);
+select pg_temp.assert_true(
+ not private.storage_clinical_attachment_allowed(:'clinic'::text||'/'||:'case_id'::text||'/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.pdf.exe',true),
+ 'clinical attachment path must reject a disguised extension'
 );
 reset role;
 
@@ -96,6 +115,30 @@ select pg_temp.expect_error(
  ),
  'row-level security'
 );
+reset role;
+
+-- Revocation is checked again on every write; a prior role or successful upload is not authority.
+insert into private.permission_revocations(grant_id,revoked_by,reason) values
+ (:'patient_write_grant','00000000-0000-0000-0000-000000000111','Synthetic immediate Storage revocation'),
+ (:'attach_grant','00000000-0000-0000-0000-000000000111','Synthetic immediate Storage revocation');
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000111',false);
+set role authenticated;
+select pg_temp.assert_true(
+ not private.storage_patient_photo_allowed(:'clinic'::text||'/'||:'patient'::text||'/photo.jpg',true),
+ 'revoked patient.write still permits upload'
+);
+select pg_temp.assert_true(
+ not private.storage_clinical_attachment_allowed(:'clinic'::text||'/'||:'case_id'::text||'/cccccccc-cccc-4ccc-8ccc-cccccccccccc.pdf',true),
+ 'revoked clinical.attach still permits upload'
+);
+reset role;
+
+set role anon;
+select pg_temp.expect_error(
+ $q$select private.storage_patient_photo_allowed('00000000-0000-0000-0000-000000000000/00000000-0000-0000-0000-000000000000/photo.png',false)$q$,
+ 'permission denied'
+);
+select pg_temp.expect_error($q$select * from storage.objects$q$,'permission denied');
 reset role;
 
 select pg_temp.assert_true(

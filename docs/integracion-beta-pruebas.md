@@ -65,3 +65,24 @@ migración con CREATE TABLE para intentar repararlo.
 
 La apertura de beta se evalúa después de registrar resultados, fallos y límites
 del APK concreto. Esta preparación no abre automáticamente acceso.
+
+## Inspección real del 17 de octubre de 2026
+
+[Ejecución 39029114022](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39029114022)
+aprobada, sobre el commit de integración `e31dad7`. Las 36 pruebas Python de
+herramientas administrativas pasaron antes de consultar el catálogo remoto.
+
+- Identidad, membresías y las bases de política beta/permisos están presentes.
+- Admisiones y enforcement beta están en false; permisos mantiene
+  enforcement_enabled=false y migration_reviewed=false.
+- El hook REST apunta a `public.beta_request_guard`.
+- Diez funciones clave del candidato están ausentes. `clinic_statistics` existe,
+  pero su cuerpo difiere del candidato. No se presume que esto describa todos los
+  objetos de cada migración.
+- No existen las tablas de constantes estructuradas ni staging de restauración.
+- Solo se hicieron SELECT de catálogo y políticas; no se cambiaron datos,
+  permisos, admisiones o definiciones.
+
+El bloque 13X de Storage clínico, publicado en paralelo desde otra conversación,
+se conservó al integrar Git. Está fuera del manifiesto inicial hasta completar su
+revisión y sus pruebas; no se incorpora silenciosamente a este alcance.
