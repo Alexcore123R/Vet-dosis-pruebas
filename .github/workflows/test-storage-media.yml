@@ -1,0 +1,28 @@
+name: Validar Storage clínico privado
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/proposed/10_identity.sql'
+      - 'supabase/proposed/13X_storage_media.sql'
+      - 'supabase/tests/storage_fixture.sql'
+      - 'supabase/tests/storage_media.sql'
+      - 'supabase/tests/run_storage_media.sh'
+      - 'supabase/functions/forms-pdf/**'
+      - 'supabase/functions/ai-gateway/**'
+      - 'supabase/functions/starter-ai/**'
+      - '.github/workflows/test-storage-media.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-storage-media:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar políticas privadas de fotos y adjuntos
+        run: bash supabase/tests/run_storage_media.sh
