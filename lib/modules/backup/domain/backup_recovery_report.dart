@@ -21,6 +21,7 @@ class BackupRecoveryReport {
     this.dependencyManifest,
     this.dependencyManifestSha256,
     this.restoreOwners,
+    this.restorePatients,
   );
 
   final String clinic, serverAt, format, archiveSha256, conflictManifestSha256;
@@ -31,6 +32,7 @@ class BackupRecoveryReport {
   final Map<String, List<String>> conflictManifest;
   final RestoreDependencyManifest dependencyManifest;
   final List<Map<String, dynamic>> restoreOwners;
+  final List<Map<String, dynamic>> restorePatients;
 
   bool get clinicBackup => format == 'vetdosis-operational-backup';
   int get records => tables.values.fold(0, (sum, count) => sum + count);
@@ -62,6 +64,7 @@ class BackupRecoveryReport {
     final manifest = <String, List<String>>{};
     final dependencies = <String, Map<String, List<Map<String, String>>>>{};
     final ownersForRestore = <Map<String, dynamic>>[];
+    final patientsForRestore = <Map<String, dynamic>>[];
     const conflictTables = {
       'vet_owners',
       'vet_patients',
@@ -180,13 +183,96 @@ class BackupRecoveryReport {
             'source_created_at': ?sourceCreatedAt,
           });
         }
+        if (name == 'vet_patients') {
+          if (row['clinic_id'] != expectedClinic) {
+            throw const FormatException(
+              'Un paciente del respaldo no declara la clínica esperada.',
+            );
+          }
+          final id = requiredUuid(row['id'], name, 'id');
+          String requiredText(String field, int max) {
+            final value = row[field];
+            if (value is! String ||
+                value.trim().isEmpty ||
+                value.trim().length > max) {
+              throw FormatException('Campo inválido en vet_patients.$field.');
+            }
+            return value.trim();
+          }
+
+          final breed = row['breed'];
+          if (breed != null && (breed is! String || breed.length > 120)) {
+            throw const FormatException(
+              'Campo inválido en vet_patients.breed.',
+            );
+          }
+          final sex = row['sex'];
+          if (sex is! String ||
+              !{'hembra', 'macho', 'sin especificar'}.contains(sex)) {
+            throw const FormatException('Sexo inválido en vet_patients.');
+          }
+          String? birthDate;
+          if (row['birth_date'] != null && row['birth_date'] != '') {
+            final rawBirthDate = row['birth_date'];
+            if (rawBirthDate is! String ||
+                !RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(rawBirthDate) ||
+                DateTime.tryParse(rawBirthDate) == null) {
+              throw const FormatException(
+                'Fecha de nacimiento inválida en vet_patients.',
+              );
+            }
+            birthDate = rawBirthDate;
+          }
+          String? ownerId;
+          if (row['owner_id'] != null) {
+            ownerId = requiredUuid(row['owner_id'], name, 'owner_id');
+          }
+          String? sourceCreatedBy;
+          if (row['created_by'] != null) {
+            sourceCreatedBy = requiredUuid(
+              row['created_by'],
+              name,
+              'created_by',
+            );
+          }
+          String? sourceCreatedAt;
+          if (row['created_at'] != null) {
+            final rawCreatedAt = row['created_at'];
+            if (rawCreatedAt is! String ||
+                DateTime.tryParse(rawCreatedAt) == null) {
+              throw const FormatException(
+                'Fecha de creación inválida en vet_patients.',
+              );
+            }
+            sourceCreatedAt = rawCreatedAt;
+          }
+          patientsForRestore.add({
+            'id': id,
+            'clinic_id': expectedClinic,
+            'name': requiredText('name', 120),
+            'species': requiredText('species', 120),
+            'breed': breed ?? '',
+            'sex': sex,
+            'birth_date': ?birthDate,
+            'owner_id': ?ownerId,
+            'source_created_by': ?sourceCreatedBy,
+            'source_created_at': ?sourceCreatedAt,
+          });
+        }
         if (!conflictTables.contains(name)) continue;
 
         final id = requiredUuid(row['id'], name, 'id');
         final rowDependencies = <Map<String, String>>[];
         switch (name) {
           case 'vet_patients':
-            dependency(rowDependencies, 'vet_owners', row['owner_id'], name, 'owner_id');
+            dependency(
+              rowDependencies,
+              'vet_owners',
+              row['owner_id'],
+              name,
+              'owner_id',
+              optional: true,
+            );
             break;
           case 'form_templates':
             dependency(rowDependencies, 'clinic_members', row['responsible_id'], name, 'responsible_id', optional: true);
@@ -300,7 +386,10 @@ class BackupRecoveryReport {
       sha256.convert(utf8.encode(canonicalManifest)).toString(),
       dependencies,
       sha256.convert(utf8.encode(canonicalDependencies)).toString(),
-      ownersForRestore..sort((a, b) => (a['id'] as String).compareTo(b['id'] as String)),
+      ownersForRestore
+        ..sort((a, b) => (a['id'] as String).compareTo(b['id'] as String)),
+      patientsForRestore
+        ..sort((a, b) => (a['id'] as String).compareTo(b['id'] as String)),
     );
   }
 
@@ -318,6 +407,7 @@ class BackupRecoveryReport {
     ),
     'tables': tables,
     'restore_owner_candidates': restoreOwners.length,
+    'restore_patient_candidates': restorePatients.length,
     'excluded': excluded,
     'restored': false,
     'scope':
