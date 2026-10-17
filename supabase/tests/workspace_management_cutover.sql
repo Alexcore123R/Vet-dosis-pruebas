@@ -24,7 +24,7 @@ insert into public.clinic_members(clinic_id,user_id,role)
 values(:'clinic','00000000-0000-0000-0000-000000000190','admin'),
       (:'clinic','00000000-0000-0000-0000-000000000192','auxiliar'),
       (:'clinic','00000000-0000-0000-0000-000000000193','auxiliar'),
-      (:'clinic','00000000-0000-0000-0000-000000000194','auxiliar')
+      (:'clinic','00000000-0000-0000-0000-000000000194','admin')
 on conflict(clinic_id,user_id) do nothing;
 
 -- Visual admin is not workspace-management authority.
@@ -51,7 +51,7 @@ select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000192'
 select pg_temp.assert_true(public.workspace_management_status(:'clinic'),'capability-only manager not projected');
 select pg_temp.expect_error(format($q$select public.create_clinic_invitation(%L,'synthetic-admin-invite@example.test','admin')$q$,:'clinic'),'admin_required');
 select pg_temp.expect_error(format($q$select public.set_clinic_member_role(%L,'00000000-0000-0000-0000-000000000193','admin')$q$,:'clinic'),'admin_required');
-select pg_temp.expect_error(format($q$select public.remove_clinic_member(%L,'00000000-0000-0000-0000-000000000150')$q$,:'clinic'),'admin_required');
+select pg_temp.expect_error(format($q$select public.remove_clinic_member(%L,'00000000-0000-0000-0000-000000000194')$q$,:'clinic'),'admin_required');
 select pg_temp.assert_true(length(public.create_clinic_invitation(:'clinic','synthetic-aux-invite@example.test','auxiliar'))>0,'workspace manager cannot create non-admin invitation');
 select public.set_clinic_member_role(:'clinic','00000000-0000-0000-0000-000000000193','recepcion');
 select public.remove_clinic_member(:'clinic','00000000-0000-0000-0000-000000000193');
@@ -60,8 +60,8 @@ reset role;
 -- A real permission administrator retains authority over admin invitations and admin membership.
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000150',false);set role authenticated;
 select pg_temp.assert_true(length(public.create_clinic_invitation(:'clinic','synthetic-real-admin-invite@example.test','admin'))>0,'permission admin cannot create admin invitation');
-select public.set_clinic_member_role(:'clinic','00000000-0000-0000-0000-000000000194','admin');
-select pg_temp.assert_true((select role from public.clinic_members where clinic_id=:'clinic' and user_id='00000000-0000-0000-0000-000000000194')='admin','permission admin cannot promote admin');
+select public.set_clinic_member_role(:'clinic','00000000-0000-0000-0000-000000000192','admin');
+select pg_temp.assert_true((select role from public.clinic_members where clinic_id=:'clinic' and user_id='00000000-0000-0000-0000-000000000192')='admin','permission admin cannot promote admin');
 select public.remove_clinic_member(:'clinic','00000000-0000-0000-0000-000000000194');
 select pg_temp.assert_true(not exists(select 1 from public.clinic_members where clinic_id=:'clinic' and user_id='00000000-0000-0000-0000-000000000194'),'permission admin cannot remove admin');
 reset role;
