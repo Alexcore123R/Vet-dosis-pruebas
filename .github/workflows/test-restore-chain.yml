@@ -1,0 +1,46 @@
+name: Validar cadena de restauración
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/proposed/13Q_restore_preview_staging.sql'
+      - 'supabase/proposed/13R_restore_conflict_preview.sql'
+      - 'supabase/proposed/13S_restore_decision_preview.sql'
+      - 'supabase/proposed/13T_restore_application_preflight.sql'
+      - 'supabase/proposed/13U_restore_owners_apply.sql'
+      - 'supabase/tests/restore_*.sql'
+      - 'supabase/tests/run_restore_preview_staging.sh'
+      - 'lib/modules/backup/**'
+      - 'test/backup_protection_test.dart'
+      - 'test/remaining_test.dart'
+      - '.github/workflows/test-restore-chain.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-restore-chain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar staging, conflictos, decisiones, preflight y restauración limitada
+        run: bash supabase/tests/run_restore_preview_staging.sh
+
+  flutter-backup-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Instalar dependencias
+        run: flutter pub get
+      - name: Analizar módulos de respaldo
+        run: flutter analyze lib/modules/backup test/backup_protection_test.dart test/remaining_test.dart
+      - name: Probar contrato y UI de respaldo
+        run: flutter test test/backup_protection_test.dart test/remaining_test.dart
