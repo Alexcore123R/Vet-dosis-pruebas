@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-container_name="vetdosis-workspace-manage-$"
+container_name="vetdosis-restore-preflight-$"
 work_dir=$(mktemp -d)
 docker run -d --name "$container_name" --network none -e POSTGRES_HOST_AUTH_METHOD=trust postgres:17-alpine >/dev/null
 trap 'docker rm -f "$container_name" >/dev/null; rm -rf "$work_dir"' EXIT
