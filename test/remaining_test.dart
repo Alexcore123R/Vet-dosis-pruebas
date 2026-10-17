@@ -100,6 +100,52 @@ class FakeBackup implements BackupRepository {
   }
 
   @override
+  Future<Map<String, dynamic>> previewRestorePlan(
+    String clinic, {
+    required String stageId,
+    required String archiveSha256,
+    required String conflictManifestSha256,
+    required String dependencyManifestSha256,
+    required Map<String, Map<String, List<Map<String, String>>>> dependencies,
+  }) async {
+    var create = 0;
+    for (final rows in dependencies.values) {
+      create += rows.length;
+    }
+    return {
+      'schema_version': 1,
+      'mode': 'restore_decision_preview',
+      'archive_sha256': archiveSha256,
+      'conflict_manifest_sha256': conflictManifestSha256,
+      'dependency_manifest_sha256': dependencyManifestSha256,
+      'create_candidate': create,
+      'keep_existing': 0,
+      'blocked_missing_dependency': 0,
+      'manual_review': 0,
+      'tables': {
+        for (final entry in dependencies.entries)
+          entry.key: {
+            'incoming': entry.value.length,
+            'create_candidate': entry.value.length,
+            'keep_existing': 0,
+            'blocked_missing_dependency': 0,
+            'manual_review': 0,
+            'samples': const {},
+          },
+      },
+      'policy': const {
+        'existing': 'keep_current',
+        'new': 'candidate_only',
+        'missing_dependency': 'block',
+        'staff_reference': 'manual_review',
+        'overwrite': false,
+        'merge': false,
+      },
+      'imports_applied': false,
+    };
+  }
+
+  @override
   Future<void> discardRestorePreview(String clinic, String stageId) async {}
 }
 
