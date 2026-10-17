@@ -4,6 +4,9 @@ Fecha: 2026-10-17. Responsable de integración: Sol 6.1.
 
 ## Validación posterior por integración
 
+- Incorporado `73b2fd4`: el gateway compara `key_version` tras consultar modelos. El RPC `ai_key_get_server` incluye ese campo mediante `to_jsonb(k)`. Las 11 pruebas Node de proveedores/cifrado/facturación pasan. Estas pruebas no simulan aún la carrera de rotación en el gateway.
+- Condición pendiente del issue #1: el esquema da a `key_version` un valor inicial de 1; los caminos actuales de guardado crean una conexión nueva y no muestran renovación del mismo ID ni incremento de versión. La comparación es compatible con el contrato, pero no demuestra protección frente a una actualización de credencial que conserve la versión. Requiere prueba de rotación concurrente y garantía de incremento antes de cerrar ese caso. No se desplegó.
+
 - Cambios integrados hasta `e0c0d0c`. Flutter analyze de `app.dart`, módulo IA y pruebas pasó en [39059203487](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39059203487).
 - Pasaron las pruebas de configuración separada, revocación con actualización de lista, chat, planes, revisión de plataforma y navegación. El simulador de planes declara ahora `can_manage` explícitamente; no se modificaron permisos de producción.
 - La sección siguiente conserva el estado del traspaso original. La validación automatizada de Flutter queda cubierta por esta ronda; siguen pendientes compilación Android, revisión visual en dispositivo, pruebas remotas y el issue #1 de rotación de credenciales. No hubo despliegue en Supabase ni apertura de beta.
