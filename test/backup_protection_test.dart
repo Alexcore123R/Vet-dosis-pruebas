@@ -30,6 +30,19 @@ class CountingBackup extends FakeBackup {
 }
 
 void main() {
+  test('restore preview close wording distinguishes applied imports', () {
+    expect(restorePreviewCloseLabel(false), 'Descartar vista previa');
+    expect(
+      restorePreviewCloseMessage(false),
+      'Vista previa descartada. No se modificó ningún registro.',
+    );
+    expect(restorePreviewCloseLabel(true), 'Cerrar vista previa');
+    expect(
+      restorePreviewCloseMessage(true),
+      contains('no los revierte'),
+    );
+  });
+
   test('backup access contract validates both scopes', () {
     final access = BackupAccess.read({
       'schema_version': 1,
