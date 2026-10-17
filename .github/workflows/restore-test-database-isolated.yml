@@ -1,0 +1,51 @@
+name: Restaurar respaldo real (solo aislado)
+on:
+  workflow_dispatch:
+    inputs:
+      backup_run_id:
+        description: Ejecución que creó el respaldo cifrado
+        type: string
+        default: '39073667621'
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  isolated-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar protecciones de entrada y revisión
+        run: python3 -m unittest discover -s scripts/supabase -p 'test_*.py'
+      - name: Descargar solo el artefacto cifrado existente
+        uses: actions/download-artifact@v4
+        with:
+          name: vetdosis-encrypted-database-backup
+          run-id: ${{ inputs.backup_run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/encrypted-source
+      - name: Inventario agregado de Storage (solo lectura)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: python3 scripts/supabase/integration_storage_inventory.py --output storage-binary-inventory.json
+      - name: Preparar PostgreSQL compatible
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          docker pull supabase/postgres:17.11.0.004
+      - name: Restaurar sin red y ensayar candidatos con rollback
+        env:
+          SUPABASE_TEST_BACKUP_PASSPHRASE: ${{ secrets.SUPABASE_TEST_BACKUP_PASSPHRASE }}
+        run: python3 scripts/supabase/restore_database_backup_isolated.py --artifact-dir "$RUNNER_TEMP/encrypted-source" --output isolated-restore-report.json --trial-migrations
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: isolated-restore-evidence
+          path: |
+            isolated-restore-report.json
+            storage-binary-inventory.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Eliminar entrada cifrada temporal
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/encrypted-source"
