@@ -4,6 +4,15 @@ create function pg_temp.expect_error(sql text,expected text) returns void langua
 
 select id as clinic from public.clinics where name='Synthetic medication permissions' \gset
 
+set role service_role;
+select public.plan_grant_server(
+ :'clinic','clinic','gift',
+ clock_timestamp()-interval '1 hour',
+ clock_timestamp()+interval '1 day',
+ 'synthetic:workspace-management:'||:'clinic'
+);
+reset role;
+
 insert into auth.users(id,email,email_confirmed_at)
 values('00000000-0000-0000-0000-000000000190','synthetic-workspace-manager@example.test',now()),
       ('00000000-0000-0000-0000-000000000191','synthetic-personal-manager@example.test',now())
