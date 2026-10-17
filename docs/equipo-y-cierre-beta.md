@@ -41,3 +41,22 @@ Monitor de constantes y restauración: PostgreSQL/Flutter aprobados.
 Corte de permisos: 24/24 trabajos aprobados en ejecución 39027345542.
 Los candidatos recientes no fueron desplegados ni incluidos en un APK durante
 la revisión de workflows.
+
+## Primera entrega de Storage/Edge y revisión transversal
+
+5.6 sol auditó los tres buckets y las entradas Edge del repositorio. Su primera
+corrección valida MIME y tamaño del archivo de soporte contra la reserva antes
+de marcarlo listo. La revisión de integración conservó los reintentos idempotentes
+y acotó la conversión de tamaño con CASE. Pruebas incluyen MIME/tamaño distintos,
+metadata no numérica y segundo finish del mismo archivo.
+
+Pruebas locales informadas por 5.6: harness `ai_plans` con soporte, renderer PDF
+15/15 y helpers IA/credenciales/facturación 11/11. La integración ejecutó además
+`run_terms_acceptances.sh`: términos, privacidad, plataforma profesional/MFA y
+carreras de publicación aprobados. Estas pruebas no reemplazan Auth/Storage/Edge
+del proyecto remoto.
+
+Offline: `main.dart` construye SyncEngine con una lista vacía de adaptadores.
+Existe caché de membresías y motor de cola; todavía no hay registro clínico de
+aplicaciones offline conectado. Ese trabajo requiere implementación específica
+y pruebas, y no se considera listo para la beta por tener un motor genérico.

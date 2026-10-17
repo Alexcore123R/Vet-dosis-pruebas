@@ -12,16 +12,41 @@ insert into public.support_attachments(ticket_id,name,path,mime,size,ready,creat
 values(:'ticket','stale.txt','00000000-0000-0000-0000-000000000081/'||:'ticket'||'/stale.txt','text/plain',10,false,clock_timestamp()-interval '2 hours');
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000081',true);
-do $begin
+do $$begin
  if public.support_create(current_setting('test.support_clinic')::uuid,'error','Fallo ficticio','Descripción ficticia sin datos reales',repeat('a',24))<>current_setting('test.support_ticket')::uuid then raise exception 'not_idempotent';end if;
  begin perform public.support_reply_server(current_setting('test.support_ticket')::uuid,'Respuesta','resolved','reply');raise exception 'client_replied';exception when insufficient_privilege then null;end;
 end $$;
 select public.support_attachment_reserve(:'ticket','prueba.txt','text/plain',20,repeat('b',24),'txt') as path \gset
-do $begin
+reset role;
+do $$begin
  if exists(select 1 from public.support_attachments where ticket_id=current_setting('test.support_ticket')::uuid and path like '%/stale.txt') then raise exception 'stale_attachment_reservation_not_cleaned';end if;
-end $;
-insert into storage.objects(bucket_id,name)values('support-files',:'path');
+end $$;
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000081',true);
+insert into storage.objects(bucket_id,name,metadata)values('support-files',:'path',jsonb_build_object('mimetype','text/plain','size',20));
 select public.support_attachment_finish(:'ticket',:'path');
+select public.support_attachment_finish(:'ticket',:'path');
+select public.support_attachment_reserve(:'ticket','tamaño falso.txt','text/plain',30,repeat('d',24),'txt') as mismatched_path \gset
+select set_config('test.mismatched_path',:'mismatched_path',true);
+insert into storage.objects(bucket_id,name,metadata)values('support-files',:'mismatched_path',jsonb_build_object('mimetype','text/plain','size',29));
+do $$begin
+ begin perform public.support_attachment_finish(current_setting('test.support_ticket')::uuid,current_setting('test.mismatched_path'));raise exception 'mismatched_upload_accepted';
+ exception when raise_exception then if sqlerrm<>'support_attachment_denied' then raise;end if;end;
+end $$;
+select public.support_attachment_reserve(:'ticket','mime falso.txt','text/plain',31,repeat('e',24),'txt') as wrong_mime_path \gset
+select set_config('test.wrong_mime_path',:'wrong_mime_path',true);
+insert into storage.objects(bucket_id,name,metadata)values('support-files',:'wrong_mime_path',jsonb_build_object('mimetype','application/pdf','size',31));
+do $$begin
+ begin perform public.support_attachment_finish(current_setting('test.support_ticket')::uuid,current_setting('test.wrong_mime_path'));raise exception 'wrong_mime_accepted';
+ exception when raise_exception then if sqlerrm<>'support_attachment_denied' then raise;end if;end;
+end $$;
+select public.support_attachment_reserve(:'ticket','tamaño inválido.txt','text/plain',32,repeat('f',24),'txt') as invalid_size_path \gset
+select set_config('test.invalid_size_path',:'invalid_size_path',true);
+insert into storage.objects(bucket_id,name,metadata)values('support-files',:'invalid_size_path',jsonb_build_object('mimetype','text/plain','size','no-numérico'));
+do $$begin
+ begin perform public.support_attachment_finish(current_setting('test.support_ticket')::uuid,current_setting('test.invalid_size_path'));raise exception 'invalid_size_accepted';
+ exception when raise_exception then if sqlerrm<>'support_attachment_denied' then raise;end if;end;
+end $$;
 reset role;
 insert into public.clinic_members(clinic_id,user_id,role)values(:'clinic','00000000-0000-0000-0000-000000000082','admin');
 set local role authenticated;
