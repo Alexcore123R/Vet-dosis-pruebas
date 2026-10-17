@@ -63,14 +63,25 @@ begin
   select coalesce(array_agg(distinct (x#>>'{}')::uuid),'{}'::uuid[]) into ids
    from jsonb_array_elements(v) x;
   incoming=coalesce(cardinality(ids),0);
-  execute format(
-   'select coalesce(array_agg(id order by id),''{}''::uuid[]) from public.%I where clinic_id=$1 and id=any($2)',
-   k
-  ) into existing using p_clinic,ids;
-  execute format(
-   'select coalesce(array_agg(id order by id),''{}''::uuid[]) from public.%I where id=any($1) and clinic_id is distinct from $2',
-   k
-  ) into foreign_ids using ids,p_clinic;
+  if k in ('form_templates','form_template_versions') then
+   execute format(
+    'select coalesce(array_agg(id order by id),''{}''::uuid[]) from public.%I where (clinic_id=$1 or clinic_id is null) and id=any($2)',
+    k
+   ) into existing using p_clinic,ids;
+   execute format(
+    'select coalesce(array_agg(id order by id),''{}''::uuid[]) from public.%I where id=any($1) and clinic_id is not null and clinic_id is distinct from $2',
+    k
+   ) into foreign_ids using ids,p_clinic;
+  else
+   execute format(
+    'select coalesce(array_agg(id order by id),''{}''::uuid[]) from public.%I where clinic_id=$1 and id=any($2)',
+    k
+   ) into existing using p_clinic,ids;
+   execute format(
+    'select coalesce(array_agg(id order by id),''{}''::uuid[]) from public.%I where id=any($1) and clinic_id is distinct from $2',
+    k
+   ) into foreign_ids using ids,p_clinic;
+  end if;
   total_incoming=total_incoming+incoming;
   total_existing=total_existing+coalesce(cardinality(existing),0);
   total_foreign=total_foreign+coalesce(cardinality(foreign_ids),0);
