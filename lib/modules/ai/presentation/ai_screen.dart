@@ -420,7 +420,7 @@ class _AiScreenState extends State<AiScreen> {
             if (k['can_manage'] == true)
               ListTile(
                 title: Text("${aiProviderLabels[k['provider']] ?? k['provider']} · ${aiScopeLabel(k['scope'])}"),
-                trailing: Wrap(
+                trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextButton(
