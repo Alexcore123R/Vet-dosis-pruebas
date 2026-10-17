@@ -14,6 +14,29 @@ def catalog_sql():
       'relations', (select jsonb_object_agg(name, jsonb_build_object(
         'present', to_regclass(name) is not null,
         'rls', (select relrowsecurity from pg_class where oid=to_regclass(name)),
+        'security', jsonb_build_object(
+          'force_rls',(select relforcerowsecurity from pg_class where oid=to_regclass(name)),
+          'table_grants',(select jsonb_object_agg(role_name, jsonb_build_object(
+            'select',has_table_privilege(role_name,to_regclass(name),'SELECT'),
+            'insert',has_table_privilege(role_name,to_regclass(name),'INSERT'),
+            'update',has_table_privilege(role_name,to_regclass(name),'UPDATE'),
+            'delete',has_table_privilege(role_name,to_regclass(name),'DELETE')))
+            from unnest(array['anon','authenticated','service_role']) role_name),
+          'constraints',(select coalesce(jsonb_object_agg(c.conname,jsonb_build_object(
+            'type',c.contype,'validated',c.convalidated,
+            'definition_sha256',encode(sha256(convert_to(pg_get_constraintdef(c.oid,true),'UTF8')),'hex'))),'{{}}')
+            from pg_constraint c where c.conrelid=to_regclass(name)),
+          'policies',(select coalesce(jsonb_object_agg(p.polname,jsonb_build_object(
+            'command',p.polcmd,'permissive',p.polpermissive,
+            'roles',(select jsonb_agg(case when role_id=0 then 'PUBLIC' else role_id::regrole::text end order by role_id::regrole::text)
+              from unnest(p.polroles) role_id),
+            'using_sha256',encode(sha256(convert_to(coalesce(pg_get_expr(p.polqual,p.polrelid),''),'UTF8')),'hex'),
+            'check_sha256',encode(sha256(convert_to(coalesce(pg_get_expr(p.polwithcheck,p.polrelid),''),'UTF8')),'hex'))),'{{}}')
+            from pg_policy p where p.polrelid=to_regclass(name)),
+          'triggers',(select coalesce(jsonb_object_agg(t.tgname,jsonb_build_object(
+            'enabled',t.tgenabled,
+            'definition_sha256',encode(sha256(convert_to(pg_get_triggerdef(t.oid,true),'UTF8')),'hex'))),'{{}}')
+            from pg_trigger t where t.tgrelid=to_regclass(name) and not t.tgisinternal)),
         'columns', (select coalesce(jsonb_object_agg(a.attname, jsonb_build_object(
           'type',format_type(a.atttypid,a.atttypmod), 'not_null',a.attnotnull)), '{{}}'::jsonb)
           from pg_attribute a where a.attrelid=to_regclass(name)
@@ -24,7 +47,18 @@ def catalog_sql():
         'body_sha256',(select encode(sha256(convert_to(p.prosrc,'UTF8')),'hex')
           from pg_proc p where p.oid=to_regprocedure(name)),
         'security_definer',(select p.prosecdef from pg_proc p where p.oid=to_regprocedure(name))))
-        from unnest(array[{functions}]) name)
+        from unnest(array[{functions}]) name),
+      'routines',(select coalesce(jsonb_object_agg(n.nspname||'.'||p.proname||'('||oidvectortypes(p.proargtypes)||')',
+        jsonb_build_object('body_sha256',encode(sha256(convert_to(p.prosrc,'UTF8')),'hex'),
+          'security_definer',p.prosecdef,'return_type',pg_get_function_result(p.oid),
+          'config_sha256',encode(sha256(convert_to(coalesce(p.proconfig::text,''),'UTF8')),'hex'),
+          'execute_anon',has_function_privilege('anon',p.oid,'EXECUTE'),
+          'execute_authenticated',has_function_privilege('authenticated',p.oid,'EXECUTE'),
+          'execute_service_role',has_function_privilege('service_role',p.oid,'EXECUTE'))),'{{}}')
+        from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+        where n.nspname in ('public','private') and p.prokind='f'
+          and not exists(select 1 from pg_depend d where d.classid='pg_proc'::regclass
+            and d.objid=p.oid and d.deptype='e'))
     ) as catalog"""
 
 
@@ -62,6 +96,12 @@ def compare(baseline, remote):
         if expected['rls'] != actual['rls']:
             differences.append({'object': name, 'kind': 'rls_differs',
                                 'expected': expected['rls'], 'actual': actual['rls']})
+        if 'security' in expected:
+            for category, expected_value in expected['security'].items():
+                actual_value = actual.get('security', {}).get(category)
+                if expected_value != actual_value:
+                    differences.append({'object': name, 'kind': category + '_differs',
+                                        'expected': expected_value, 'actual': actual_value})
         for column, definition in expected['columns'].items():
             if actual['columns'].get(column) != definition:
                 differences.append({'object': name + '.' + column, 'kind': 'column_differs',
@@ -74,11 +114,21 @@ def compare(baseline, remote):
         if expected != remote['functions'][name]:
             differences.append({'object': name, 'kind': 'function_metadata_differs',
                                 'expected': expected, 'actual': remote['functions'][name]})
+    if 'routines' in baseline:
+        if not isinstance(remote.get('routines'), dict):
+            raise ValueError('Missing routine security metadata.')
+        for name in sorted(baseline['routines'].keys() | remote['routines'].keys()):
+            if baseline['routines'].get(name) != remote['routines'].get(name):
+                differences.append({'object': name, 'kind': 'routine_security_differs',
+                                    'expected': baseline['routines'].get(name),
+                                    'actual': remote['routines'].get(name)})
     return {'project_ref': PROJECT, 'read_only': True, 'deploy_ready': False,
             'differences': differences, 'compared_relations': len(REQUIRED_RELATIONS),
             'compared_functions': len(REQUIRED_FUNCTIONS),
-            'scope': 'Catalog only: columns, types, nullability, RLS flags and selected function hashes. '
-                     'No row data, constraints, grants, policies, triggers or complete schema rehearsal.'}
+            'compared_baseline_routines': len(baseline.get('routines', {})),
+            'scope': 'Catalog only: columns, RLS, table privileges, constraint/policy/trigger hashes '
+                     'and routine hashes/security/execute privileges. No row data or full schema restore; '
+                     'indexes, column grants, role inheritance and Storage binaries not certified.'}
 
 
 def main():
@@ -97,7 +147,11 @@ def main():
         raise ValueError('Incomplete remote catalog response.')
     report = compare(json.loads(args.baseline.read_text()), rows[0]['catalog'])
     args.output.write_text(json.dumps(report, indent=2) + '\n')
-    print(json.dumps(report, indent=2))
+    print(json.dumps({**report, 'differences': report['differences'][:25],
+                      'difference_index': [{'object': d['object'], 'kind': d['kind']}
+                                           for d in report['differences']],
+                      'total_differences': len(report['differences']),
+                      'full_report_in_artifact': True}, indent=2))
 
 
 if __name__ == '__main__':

@@ -22,6 +22,10 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: python3 scripts/supabase/integration_dependencies.py --output integration-dependencies.json
+      - name: Consultar disponibilidad de respaldos sin descargar datos
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: python3 scripts/supabase/integration_backup_inventory.py --output integration-backup-inventory.json
       - name: Preparar catálogo de referencia en PostgreSQL aislado
         run: bash supabase/tests/run_integration_bundle.sh --catalog-baseline integration-baseline.json
       - name: Comparar columnas y funciones remotas sin leer expedientes
@@ -36,4 +40,5 @@ jobs:
             integration-dependencies.json
             integration-baseline.json
             integration-catalog-review.json
+            integration-backup-inventory.json
           retention-days: 7

@@ -46,6 +46,21 @@ class CatalogTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             compare(expected, remote)
 
+    def test_policy_grant_and_routine_drift_cannot_be_hidden_by_matching_columns(self):
+        expected = baseline()
+        name = REQUIRED_RELATIONS[0]
+        expected['relations'][name]['security'] = {
+            'table_grants': {'anon': {'select': False}}, 'policies': {'example': 'hash'}}
+        expected['routines'] = {'public.synthetic()': {'execute_anon': False}}
+        remote = copy.deepcopy(expected)
+        remote['relations'][name]['security']['table_grants']['anon']['select'] = True
+        remote['routines']['public.synthetic()']['execute_anon'] = True
+        kinds = [d['kind'] for d in compare(expected, remote)['differences']]
+        self.assertEqual(kinds, ['table_grants_differs', 'routine_security_differs'])
+        del remote['routines']
+        with self.assertRaises(ValueError):
+            compare(expected, remote)
+
 
 if __name__ == '__main__':
     unittest.main()
