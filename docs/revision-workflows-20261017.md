@@ -21,3 +21,17 @@ La revisión también corrigió autorización por sección en estadísticas, rec
 de NULL en restauración y aplicación restringida a destinos de prueba temporales.
 Las migraciones son candidatos: requieren aplicación coordinada y no se publican
 automáticamente en Supabase por ejecutar los tests.
+
+Validación del cambio `18f0c4f`:
+
+- [Monitor de constantes, PostgreSQL y Flutter: aprobado](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39027222586).
+- [Cadena de restauración, PostgreSQL y Flutter: aprobada](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39027222574).
+- Pruebas locales PostgreSQL de constantes, restauración y administración aprobadas.
+
+El arreglo del nombre Docker está en `2567453`; el corte completo se repite sobre
+ese commit, porque reintentar una ejecución del commit anterior conservaría el
+script defectuoso.
+
+[Corte completo sobre `2567453`: 24/24 trabajos aprobados](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39027345542),
+incluido `workspace-management`. Los fallos previos quedan conservados como
+historial, con ejecuciones correctas que verifican los arreglos.
