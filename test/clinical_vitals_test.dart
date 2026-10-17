@@ -159,6 +159,16 @@ void main() {
       ),
       isNull,
     );
+
+    final snapshot = catalog.snapshotFor(
+      species: 'canino',
+      values: {'fc': '85', 'fr': '22'},
+    );
+    expect(snapshot, hasLength(1));
+    expect(snapshot.single['catalog_version'], 'synthetic-2026-10');
+    expect(snapshot.single['reference_id'], 'canine-fc');
+    expect(snapshot.single['state'], 'within');
+    expect(snapshot.single['source'], 'Synthetic source for tests only');
   });
 
   test('vital reference catalog rejects inverted ranges and bad review dates', () {
