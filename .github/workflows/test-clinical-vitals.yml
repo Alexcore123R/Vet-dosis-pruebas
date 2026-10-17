@@ -1,0 +1,43 @@
+name: Validar monitor de constantes
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/proposed/13W_clinical_vitals.sql'
+      - 'supabase/tests/clinical_vitals.sql'
+      - 'supabase/tests/run_clinical_vitals.sh'
+      - 'lib/modules/forms/clinical/**'
+      - 'test/clinical_test.dart'
+      - 'test/clinical_screen_contract_test.dart'
+      - 'test/clinical_vitals_test.dart'
+      - '.github/workflows/test-clinical-vitals.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-clinical-vitals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar constantes estructuradas y autoridad clínica
+        run: bash supabase/tests/run_clinical_vitals.sh
+
+  flutter-clinical-vitals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Instalar dependencias
+        run: flutter pub get
+      - name: Analizar expediente y monitor
+        run: flutter analyze lib/modules/forms/clinical test/clinical_test.dart test/clinical_screen_contract_test.dart test/clinical_vitals_test.dart
+      - name: Probar monitor y contratos clínicos
+        run: flutter test test/clinical_test.dart test/clinical_screen_contract_test.dart test/clinical_vitals_test.dart
