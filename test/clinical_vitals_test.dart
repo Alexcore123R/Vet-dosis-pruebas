@@ -109,11 +109,22 @@ void main() {
     expect(find.text('Monitor de constantes'), findsOneWidget);
     expect(find.text('Max'), findsOneWidget);
     expect(find.textContaining('Canino · Golden Retriever · 28.5 kg'), findsOneWidget);
-    expect(
-      find.text('Interpretación automática todavía desactivada'),
-      findsOneWidget,
+    final interpretation = find.text(
+      'Interpretación automática todavía desactivada',
     );
+    await tester.scrollUntilVisible(
+      interpretation,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(interpretation, findsOneWidget);
     expect(find.text('ESTABLE / NORMAL'), findsNothing);
-    expect(find.text('Guardar constantes en historial clínico'), findsOneWidget);
+    final saveButton = find.text('Guardar constantes en historial clínico');
+    await tester.scrollUntilVisible(
+      saveButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(saveButton, findsOneWidget);
   });
 }
