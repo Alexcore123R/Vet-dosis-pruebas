@@ -11,6 +11,52 @@ import 'package:vetdosis_pro/modules/backup/domain/backup_repository.dart';
 import 'package:vetdosis_pro/modules/backup/presentation/backup_password_dialog.dart';
 import 'remaining_test.dart' show FakeBackup;
 
+class HydratingBackup extends FakeBackup {
+  HydratingBackup({this.applied = false});
+  final bool applied;
+  int previewReads = 0;
+
+  @override
+  Future<Map<String, dynamic>> workspace(String clinic) async => {
+    'schema_version': 1,
+    'mode': 'explicit_backup',
+    'workspace_kind': 'clinic',
+    'exports': {'clinic': true, 'personal': false},
+    'statistics': false,
+    'restore_preview': true,
+  };
+
+  @override
+  Future<Map<String, dynamic>> restorePreview(String clinic) async {
+    previewReads++;
+    return {
+      'schema_version': 1,
+      'mode': 'restore_preview',
+      'stage': {
+        'stage_id': '00000000-0000-0000-0000-000000000333',
+        'archive_sha256': 'a' * 64,
+        'expires_at': '2030-01-14T00:00:00Z',
+        'conflicts': null,
+        'decisions': null,
+        'preflight': null,
+        'owner_payload': applied
+            ? {
+                'payload_sha256': 'b' * 64,
+                'rows': 1,
+                'apply_report': {
+                  'mode': 'restore_apply_owners',
+                  'created': 1,
+                  'kept_existing': 0,
+                  'imports_applied': true,
+                },
+              }
+            : null,
+      },
+      'imports_applied': applied,
+    };
+  }
+}
+
 class CountingBackup extends FakeBackup {
   int reads = 0;
   bool allow = true;
@@ -30,6 +76,66 @@ class CountingBackup extends FakeBackup {
 }
 
 void main() {
+  test('persisted restore preview is normalized with owner apply state', () {
+    final state = readRestorePreviewState({
+      'schema_version': 1,
+      'mode': 'restore_preview',
+      'stage': {
+        'stage_id': '00000000-0000-0000-0000-000000000333',
+        'archive_sha256': 'a' * 64,
+        'decisions': {
+          'tables': {
+            'vet_owners': {
+              'create_candidate': 2,
+              'keep_existing': 1,
+            },
+          },
+        },
+        'owner_payload': {
+          'payload_sha256': 'b' * 64,
+          'rows': 3,
+          'apply_report': {
+            'created': 2,
+            'kept_existing': 1,
+            'imports_applied': true,
+          },
+        },
+      },
+      'imports_applied': true,
+    });
+    expect(state['stage'], isNotNull);
+    expect((state['owner_payload'] as Map)['create_candidate'], 2);
+    expect((state['owner_payload'] as Map)['keep_existing'], 1);
+    expect((state['owner_apply'] as Map)['created'], 2);
+    expect(state['imports_applied'], true);
+  });
+
+  testWidgets('active restore preview is rehydrated after reopening screen', (
+    tester,
+  ) async {
+    final repo = HydratingBackup(applied: true);
+    const admin = ClinicMembership(
+      clinicId: 'clinic',
+      clinicName: 'Prueba',
+      userId: 'user',
+      role: ClinicRole.admin,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: BackupScreen(repository: repo, member: admin),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(repo.previewReads, 1);
+    expect(find.text('Vista previa del servidor recuperada'), findsOneWidget);
+    expect(find.text('Cerrar vista previa'), findsOneWidget);
+    expect(find.textContaining('no revierte'), findsOneWidget);
+  });
+
   test('restore preview close wording distinguishes applied imports', () {
     expect(restorePreviewCloseLabel(false), 'Descartar vista previa');
     expect(
