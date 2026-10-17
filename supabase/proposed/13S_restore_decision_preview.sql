@@ -82,10 +82,17 @@ begin
    begin row_id=row_key::uuid;exception when others then raise exception 'restore_dependencies_invalid';end;
    if jsonb_typeof(deps)<>'array' or jsonb_array_length(deps)>16 then raise exception 'restore_dependencies_invalid';end if;
 
-   execute format('select exists(select 1 from public.%I where clinic_id=$1 and id=$2)',k)
-    into row_exists using p_clinic,row_id;
-   execute format('select exists(select 1 from public.%I where id=$1 and clinic_id is distinct from $2)',k)
-    into foreign_exists using row_id,p_clinic;
+   if k in ('form_templates','form_template_versions') then
+    execute format('select exists(select 1 from public.%I where (clinic_id=$1 or clinic_id is null) and id=$2)',k)
+     into row_exists using p_clinic,row_id;
+    execute format('select exists(select 1 from public.%I where id=$1 and clinic_id is not null and clinic_id is distinct from $2)',k)
+     into foreign_exists using row_id,p_clinic;
+   else
+    execute format('select exists(select 1 from public.%I where clinic_id=$1 and id=$2)',k)
+     into row_exists using p_clinic,row_id;
+    execute format('select exists(select 1 from public.%I where id=$1 and clinic_id is distinct from $2)',k)
+     into foreign_exists using row_id,p_clinic;
+   end if;
 
    if row_exists then
     target_status='keep_existing';reason='same_id_exists';
