@@ -105,7 +105,10 @@ select pg_temp.expect_error(
  format(
   $q$select public.clinical_vitals_add(%L::uuid,%L::jsonb,%L)$q$,
   :'case_id',
-  current_setting('test.vitals'),
+  (
+   current_setting('test.vitals')::jsonb ||
+   jsonb_build_object('performed_by',auth.uid())
+  )::text,
   repeat('b',48)
  ),
  'procedure_authorization_required'
