@@ -15,6 +15,13 @@ if [ "$ready" != true ];then echo 'PostgreSQL startup failed';exit 1;fi
 for sql_file in supabase/tests/bootstrap.sql supabase/tests/existing_fixture.sql supabase/adaptations/existing_clinics_m2.sql supabase/adaptations/existing_doses_m3.sql supabase/adaptations/existing_patients_m4.sql supabase/adaptations/existing_hospital_m5.sql supabase/adaptations/existing_forms_phase1.sql supabase/adaptations/existing_forms_phase2.sql supabase/adaptations/existing_prescribing_m6.sql supabase/adaptations/existing_inventory_m8.sql supabase/adaptations/existing_inventory_workflow_m8.sql supabase/adaptations/existing_operations_m9.sql supabase/adaptations/existing_attendance_m10.sql supabase/adaptations/existing_statistics_m11.sql supabase/adaptations/existing_payment_references.sql supabase/adaptations/existing_subscriptions_m13.sql supabase/adaptations/existing_ai_m12.sql supabase/tests/storage_fixture.sql supabase/adaptations/existing_inventory_photos_m8.sql supabase/adaptations/existing_plan_files_m13.sql supabase/adaptations/existing_ai_plan_export.sql supabase/adaptations/existing_support_m14.sql supabase/adaptations/existing_starter_ai_review.sql supabase/adaptations/existing_team_management.sql supabase/adaptations/existing_appointments_extension.sql supabase/adaptations/existing_membership_history.sql supabase/proposed/10_identity.sql supabase/proposed/09A_beta_foundation.sql supabase/proposed/09B_beta_gate.sql supabase/proposed/11A_permission_foundation.sql supabase/proposed/12A_terms_acceptances.sql supabase/proposed/12B_platform_professional_admin.sql supabase/proposed/12C_privacy_binding.sql;do
  docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 < "$sql_file" > "$work_dir/test.log" 2>&1 || { echo "FAILED: $sql_file";tail -c 6000 "$work_dir/test.log";exit 1; }
 done
+if [ "${1:-}" = '--catalog-baseline' ];then
+ if [ "$#" -ne 2 ];then echo 'Expected --catalog-baseline output.json';exit 1;fi
+ python3 scripts/supabase/integration_catalog.py --sql > "$work_dir/catalog.sql"
+ docker exec -i "$container_name" psql -U postgres -At -v ON_ERROR_STOP=1 < "$work_dir/catalog.sql" > "$2"
+ echo 'Isolated baseline catalog written; no remote connection.'
+ exit 0
+fi
 docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 <<'SQL'
 create function auth.jwt() returns jsonb language sql stable as $$select '{}'::jsonb$$;
 insert into auth.users(id,email,email_confirmed_at) values('90000000-0000-0000-0000-000000000900','integration-synthetic@example.test',now());

@@ -22,10 +22,18 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: python3 scripts/supabase/integration_dependencies.py --output integration-dependencies.json
+      - name: Preparar catálogo de referencia en PostgreSQL aislado
+        run: bash supabase/tests/run_integration_bundle.sh --catalog-baseline integration-baseline.json
+      - name: Comparar columnas y funciones remotas sin leer expedientes
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: python3 scripts/supabase/integration_catalog.py --baseline integration-baseline.json --output integration-catalog-review.json
       - uses: actions/upload-artifact@v4
         with:
           name: beta-integration-preflight
           path: |
             integration-preflight.json
             integration-dependencies.json
+            integration-baseline.json
+            integration-catalog-review.json
           retention-days: 7
