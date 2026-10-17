@@ -55,17 +55,21 @@ class _ModuleAccessBoundaryState extends State<ModuleAccessBoundary> {
       final next = ModuleAccess.read(
         await repository.workspace(member.clinicId),
       );
-      if (mounted && request == generation) setState(() {
+      if (mounted && request == generation) {
+        setState(() {
         access = next;
-        loading = false;
-      });
+          loading = false;
+        });
+      }
     } catch (_) {
       // Fail closed for reviewed modules. A stale contract is never retained.
-      if (mounted && request == generation) setState(() {
+      if (mounted && request == generation) {
+        setState(() {
         access = null;
         failed = true;
-        loading = false;
-      });
+          loading = false;
+        });
+      }
     }
   }
 
