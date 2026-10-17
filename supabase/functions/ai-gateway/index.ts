@@ -114,7 +114,12 @@ Deno.serve(async (req) => {
         p_user: actor,
         p_connection: input.connection,
       });
-      if (currentKeyError || !currentKey) return reply({ error: "key_access_denied" }, 403);
+      if (currentKeyError || !currentKey ||
+        currentKey.id !== key.id || currentKey.provider !== key.provider ||
+        currentKey.scope !== key.scope || currentKey.clinic_id !== key.clinic_id ||
+        currentKey.owner_id !== key.owner_id) {
+        return reply({ error: "key_access_changed" }, 403);
+      }
       return reply({ models });
     }
     if (input.action !== "send") return reply({ error: "invalid_action" }, 400);
