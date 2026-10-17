@@ -123,14 +123,23 @@ class _ClinicalVitalsScreenState extends State<ClinicalVitalsScreen> {
         ])
           key: controllers[key]!.text,
       };
-      final payload = validateVitalSet(
-        values: values,
-        performedBy: widget.member.userId,
-        observedAt: observedAt,
-        mucosaColor: mucosaColor,
-        mucosaHumidity: mucosaHumidity,
-        notes: controllers['notes']!.text,
+      final payload = Map<String, dynamic>.from(
+        validateVitalSet(
+          values: values,
+          performedBy: widget.member.userId,
+          observedAt: observedAt,
+          mucosaColor: mucosaColor,
+          mucosaHumidity: mucosaHumidity,
+          notes: controllers['notes']!.text,
+        ),
       );
+      final snapshots = widget.referenceCatalog?.snapshotFor(
+        species: widget.caseData.patientSpecies,
+        values: values,
+      );
+      if (snapshots != null && snapshots.isNotEmpty) {
+        payload['reference_snapshot'] = snapshots;
+      }
       await widget.repository.vitals(
         widget.caseData.id,
         payload,
