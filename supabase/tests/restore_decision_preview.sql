@@ -22,7 +22,7 @@ select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000195'
 select public.restore_preview_stage(
  :'clinic','vetdosis-operational-backup',1,repeat('1',64),
  clock_timestamp()-interval '1 hour',
- '{"vet_owners":1,"vet_patients":2,"lotes_inventario":1,"clinic_appointments":1}'::jsonb
+ '{"vet_owners":1,"vet_patients":3,"lotes_inventario":1,"clinic_appointments":1}'::jsonb
 ) as stage \gset
 
 select public.restore_preview_conflicts(
@@ -32,7 +32,7 @@ select public.restore_preview_conflicts(
  repeat('2',64),
  jsonb_build_object(
   'vet_owners',jsonb_build_array('00000000-0000-0000-0000-000000000301'),
-  'vet_patients',jsonb_build_array(:'existing_patient','00000000-0000-0000-0000-000000000302'),
+  'vet_patients',jsonb_build_array(:'existing_patient','00000000-0000-0000-0000-000000000302','00000000-0000-0000-0000-000000000352'),
   'lotes_inventario',jsonb_build_array('00000000-0000-0000-0000-000000000303'),
   'clinic_appointments',jsonb_build_array('00000000-0000-0000-0000-000000000304')
  )
@@ -50,7 +50,8 @@ select public.restore_preview_plan(
   ),
   'vet_patients',jsonb_build_object(
    :'existing_patient','[]'::jsonb,
-   '00000000-0000-0000-0000-000000000302',jsonb_build_array(jsonb_build_object('table','vet_owners','id','00000000-0000-0000-0000-000000000301'))
+   '00000000-0000-0000-0000-000000000302',jsonb_build_array(jsonb_build_object('table','vet_owners','id','00000000-0000-0000-0000-000000000301')),
+   '00000000-0000-0000-0000-000000000352','[]'::jsonb
   ),
   'lotes_inventario',jsonb_build_object(
    '00000000-0000-0000-0000-000000000303',jsonb_build_array(jsonb_build_object('table','inventario','id','00000000-0000-0000-0000-000000000399'))
@@ -68,10 +69,12 @@ select pg_temp.assert_true((:'plan'::jsonb->>'imports_applied')::boolean=false,'
 select pg_temp.assert_true((:'plan'::jsonb->>'create_candidate')::int=2,'create count mismatch');
 select pg_temp.assert_true((:'plan'::jsonb->>'keep_existing')::int=1,'keep count mismatch');
 select pg_temp.assert_true((:'plan'::jsonb->>'blocked_missing_dependency')::int=1,'blocked count mismatch');
+select pg_temp.assert_true((:'plan'::jsonb->>'blocked_foreign_identity')::int=1,'foreign identity block mismatch');
 select pg_temp.assert_true((:'plan'::jsonb->>'manual_review')::int=1,'manual count mismatch');
 select pg_temp.assert_true((:'plan'::jsonb->'policy'->>'overwrite')::boolean=false,'plan enabled overwrite');
 select pg_temp.assert_true((:'plan'::jsonb->'policy'->>'merge')::boolean=false,'plan enabled merge');
 select pg_temp.assert_true((:'plan'::jsonb->'tables'->'vet_patients'->>'keep_existing')::int=1,'existing patient not preserved');
+select pg_temp.assert_true((:'plan'::jsonb->'tables'->'vet_patients'->>'blocked_foreign_identity')::int=1,'foreign patient identity not blocked');
 select pg_temp.assert_true((:'plan'::jsonb->'tables'->'lotes_inventario'->>'blocked_missing_dependency')::int=1,'missing inventory parent not blocked');
 select pg_temp.assert_true((:'plan'::jsonb->'tables'->'clinic_appointments'->>'manual_review')::int=1,'missing staff reference not manual');
 
