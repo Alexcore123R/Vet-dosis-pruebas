@@ -152,6 +152,7 @@ class _ClinicalVitalsScreenState extends State<ClinicalVitalsScreen> {
     String label,
     String unit, {
     String? helper,
+    IconData? icon,
   }) =>
       TextField(
         controller: controllers[key],
@@ -161,9 +162,47 @@ class _ClinicalVitalsScreenState extends State<ClinicalVitalsScreen> {
           labelText: label,
           suffixText: unit,
           helperText: helper,
+          prefixIcon: icon == null ? null : Icon(icon),
         ),
         onChanged: (_) => setState(() {}),
       );
+
+  BoxDecoration softDecoration(BuildContext context, {bool accent = false}) {
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    return BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: accent
+            ? [
+                theme.colorScheme.primary.withValues(alpha: dark ? 0.28 : 0.18),
+                theme.colorScheme.secondary.withValues(alpha: dark ? 0.18 : 0.11),
+              ]
+            : dark
+            ? const [Color(0xFF182536), Color(0xFF101923)]
+            : const [Color(0xFFFFFFFF), Color(0xFFF1F6FA)],
+      ),
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(
+        color: dark
+            ? const Color(0xFF243547)
+            : const Color(0xFFE4EDF3),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: dark ? const Color(0x99000000) : const Color(0xFFD6E1E8),
+          offset: const Offset(7, 8),
+          blurRadius: 18,
+        ),
+        BoxShadow(
+          color: dark ? const Color(0x162DE6D1) : Colors.white,
+          offset: const Offset(-6, -6),
+          blurRadius: 15,
+        ),
+      ],
+    );
+  }
 
   Widget choiceGroup(
     String title,
@@ -195,73 +234,207 @@ class _ClinicalVitalsScreenState extends State<ClinicalVitalsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final species = speciesLabel(widget.caseData.patientSpecies);
     final date = observedAt.toLocal();
     final weight = widget.latestWeight?.trim();
+
+    Widget sectionTitle(IconData icon, String title, {String? subtitle}) => Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: softDecoration(context, accent: true),
+          child: Icon(icon, color: theme.colorScheme.primary),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: theme.textTheme.titleLarge),
+              if (subtitle != null)
+                Text(subtitle, style: theme.textTheme.bodySmall),
+            ],
+          ),
+        ),
+      ],
+    );
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Monitor de constantes')),
+      appBar: AppBar(
+        title: const Text('Monitor de constantes'),
+        centerTitle: false,
+      ),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
         children: [
-          Card(
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: softDecoration(context, accent: true),
+            child: Row(
+              children: [
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: theme.colorScheme.surface.withValues(alpha: 0.72),
+                    border: Border.all(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Icon(
+                    speciesIcon(widget.caseData.patientSpecies),
+                    size: 30,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.caseData.patientName,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        [
+                          species,
+                          if (widget.caseData.patientBreed.trim().isNotEmpty)
+                            widget.caseData.patientBreed.trim(),
+                          if (weight != null && weight.isNotEmpty) '$weight kg',
+                        ].join(' · '),
+                      ),
+                    ],
+                  ),
+                ),
+                Chip(
+                  avatar: Icon(
+                    speciesIcon(widget.caseData.patientSpecies),
+                    size: 16,
+                  ),
+                  label: Text(species),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          Container(
+            decoration: softDecoration(context),
             child: ListTile(
-              leading: CircleAvatar(
-                child: Icon(speciesIcon(widget.caseData.patientSpecies)),
+              leading: Icon(
+                Icons.schedule_outlined,
+                color: theme.colorScheme.primary,
               ),
-              title: Text(widget.caseData.patientName),
+              title: const Text('Hora observada'),
               subtitle: Text(
-                [
-                  species,
-                  if (widget.caseData.patientBreed.trim().isNotEmpty)
-                    widget.caseData.patientBreed.trim(),
-                  if (weight != null && weight.isNotEmpty) '$weight kg',
-                ].join(' · '),
+                '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} · '
+                '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}',
               ),
+              trailing: const Icon(Icons.edit_calendar_outlined),
+              onTap: busy ? null : chooseObservedAt,
             ),
           ),
-          const SizedBox(height: 12),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Hora observada'),
-            subtitle: Text(
-              '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} · '
-              '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}',
-            ),
-            trailing: const Icon(Icons.edit_calendar_outlined),
-            onTap: busy ? null : chooseObservedAt,
+          const SizedBox(height: 26),
+          sectionTitle(
+            Icons.monitor_heart_outlined,
+            'Constantes',
+            subtitle: 'Registro estructurado del examen físico',
           ),
-          const Divider(),
-          Text('Constantes', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 16),
+          numberField(
+            'fc',
+            'Frecuencia cardíaca',
+            'lpm',
+            icon: Icons.favorite_outline,
+          ),
           const SizedBox(height: 12),
-          numberField('fc', 'Frecuencia cardíaca', 'lpm'),
+          numberField(
+            'fr',
+            'Frecuencia respiratoria',
+            'rpm',
+            icon: Icons.air_outlined,
+          ),
           const SizedBox(height: 12),
-          numberField('fr', 'Frecuencia respiratoria', 'rpm'),
+          numberField(
+            'temperature',
+            'Temperatura',
+            '°C',
+            icon: Icons.thermostat_outlined,
+          ),
           const SizedBox(height: 12),
-          numberField('temperature', 'Temperatura', '°C'),
-          const SizedBox(height: 12),
-          numberField('tllc', 'Tiempo de llenado capilar', 's'),
-          const SizedBox(height: 20),
-          Text(
+          numberField(
+            'tllc',
+            'Tiempo de llenado capilar',
+            's',
+            icon: Icons.timer_outlined,
+          ),
+          const SizedBox(height: 28),
+          sectionTitle(
+            Icons.bloodtype_outlined,
             'Presión arterial',
-            style: Theme.of(context).textTheme.titleMedium,
+            subtitle: 'PAS y PAD se guardan como pareja',
+          ),
+          const SizedBox(height: 16),
+          numberField(
+            'bp_systolic',
+            'PAS',
+            'mmHg',
+            icon: Icons.arrow_upward_rounded,
           ),
           const SizedBox(height: 12),
-          numberField('bp_systolic', 'PAS', 'mmHg'),
-          const SizedBox(height: 12),
-          numberField('bp_diastolic', 'PAD', 'mmHg'),
-          const SizedBox(height: 12),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.calculate_outlined),
-              title: const Text('PAM calculada'),
-              subtitle: const Text('(PAS + 2 × PAD) / 3'),
-              trailing: Text(
-                pam == null ? '—' : '$pam mmHg',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+          numberField(
+            'bp_diastolic',
+            'PAD',
+            'mmHg',
+            icon: Icons.arrow_downward_rounded,
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: softDecoration(context, accent: true),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.calculate_outlined,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'PAM calculada',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      Text('(PAS + 2 × PAD) / 3'),
+                    ],
+                  ),
+                ),
+                Text(
+                  pam == null ? '—' : '$pam mmHg',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 28),
+          sectionTitle(
+            Icons.water_drop_outlined,
+            'Mucosas',
+            subtitle: 'Color y humedad se registran por separado',
+          ),
+          const SizedBox(height: 16),
           choiceGroup(
             'Color de mucosas',
             vitalMucosaColors,
@@ -275,7 +448,13 @@ class _ClinicalVitalsScreenState extends State<ClinicalVitalsScreen> {
             mucosaHumidity,
             (value) => setState(() => mucosaHumidity = value),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 28),
+          sectionTitle(
+            Icons.notes_outlined,
+            'Observaciones',
+            subtitle: 'Hallazgos adicionales del examen físico',
+          ),
+          const SizedBox(height: 16),
           TextField(
             controller: controllers['notes'],
             enabled: !busy,
@@ -284,37 +463,74 @@ class _ClinicalVitalsScreenState extends State<ClinicalVitalsScreen> {
             decoration: const InputDecoration(
               labelText: 'Observaciones del examen físico',
               alignLabelWithHint: true,
+              prefixIcon: Icon(Icons.edit_note_outlined),
             ),
           ),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text('Interpretación automática todavía desactivada'),
-              subtitle: Text(
-                'Se guardan hechos estructurados. $species aún no tiene rangos '
-                'de referencia verificados cargados en el catálogo, por lo que '
-                'VetDosis no clasificará estos valores como normales o anormales.',
-              ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: softDecoration(context),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.verified_user_outlined,
+                  color: theme.colorScheme.secondary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Interpretación automática todavía desactivada',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Se guardan hechos estructurados. $species aún no tiene rangos '
+                        'de referencia verificados cargados en el catálogo, por lo que '
+                        'VetDosis no clasificará estos valores como normales o anormales.',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
           if (error != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Text(
+                error!,
+                style: TextStyle(color: theme.colorScheme.onErrorContainer),
+              ),
             ),
           ],
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: busy ? null : save,
-            icon: const Icon(Icons.save_outlined),
-            label: Text(
-              busy ? 'Guardando…' : 'Guardar constantes en historial clínico',
+          const SizedBox(height: 18),
+          SizedBox(
+            height: 54,
+            child: FilledButton.icon(
+              onPressed: busy ? null : save,
+              style: FilledButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+              icon: const Icon(Icons.save_outlined),
+              label: Text(
+                busy ? 'Guardando…' : 'Guardar constantes en historial clínico',
+              ),
             ),
           ),
         ],
       ),
     );
   }
+
 }
