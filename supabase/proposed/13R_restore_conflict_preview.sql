@@ -31,7 +31,7 @@ begin
   if not private.restore_conflict_table_allowed(k) or jsonb_typeof(v)<>'array' then return false;end if;
   if jsonb_array_length(v)>10000 then return false;end if;
   for x in select value from jsonb_array_elements(v) loop
-   if jsonb_typeof(x)<>'string' or (x#>>'{}') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
+   if jsonb_typeof(x)<>'string' or (x#>>'{}') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then return false;end if;
    n=n+1;if n>25000 then return false;end if;
   end loop;
  end loop;
