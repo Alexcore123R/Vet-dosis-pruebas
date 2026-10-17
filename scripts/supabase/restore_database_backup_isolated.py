@@ -35,10 +35,17 @@ def archive_path(directory, manifest):
 def restore_error_classes(text):
     # Never print raw restore stderr: it can include SQL and application values.
     patterns = {'extension_unavailable': 'is not available',
-                'role_missing': 'does not exist', 'object_already_exists': 'already exists',
+                'dependent_object_missing': 'does not exist', 'object_already_exists': 'already exists',
                 'permission_denied': 'permission denied', 'unsupported_parameter': 'unrecognized configuration parameter',
                 'extension_version_missing': 'has no installation script', 'syntax_error': 'syntax error'}
     return sorted(name for name,fragment in patterns.items() if fragment in text.lower()) or ['unclassified_restore_failure']
+
+
+def missing_managed_role(text):
+    match=re.search(r'role "([^"]+)" does not exist',text)
+    if match and re.fullmatch(r'(?:supabase_[a-z_]+|pgsodium_[a-z_]+)',match[1]):
+        return match[1]
+    return None
 
 
 def run_restore(directory, passphrase, output, trial=False):
@@ -101,15 +108,26 @@ def run_restore(directory, passphrase, output, trial=False):
                                   input=setup.encode(),stdout=subprocess.DEVNULL,stderr=errors)
             if result.returncode:
                 report['failure_stage']='isolated_role_setup';return report
-            plaintext.seek(0)
-            errors.seek(0);errors.truncate()
-            result=subprocess.run(['docker','exec','-i',name,'pg_restore','-w','-h','127.0.0.1','-U',admin,'--no-owner',
-                                   '--exit-on-error','--dbname','restored_backup'],
-                                  stdin=plaintext,stdout=subprocess.DEVNULL,stderr=errors)
-            if result.returncode:
-                errors.seek(0)
-                report.update(failure_stage='archive_restore',error_classes=restore_error_classes(errors.read().decode(errors='replace')))
-                return report
+            for attempt in range(6):
+                plaintext.seek(0)
+                errors.seek(0);errors.truncate()
+                result=subprocess.run(['docker','exec','-i',name,'pg_restore','-w','-h','127.0.0.1','-U',admin,'--no-owner',
+                                       '--exit-on-error','--dbname','restored_backup'],
+                                      stdin=plaintext,stdout=subprocess.DEVNULL,stderr=errors)
+                if result.returncode==0: break
+                errors.seek(0);diagnostic=errors.read().decode(errors='replace')
+                missing=missing_managed_role(diagnostic)
+                if missing is None or attempt==5:
+                    report.update(failure_stage='archive_restore',error_classes=restore_error_classes(diagnostic))
+                    return report
+                # Only known managed-role identifiers, without passwords or login.
+                # Restart from a clean local DB; never continue a partial restore.
+                setup='create role "'+missing+'" nologin;\ndrop database restored_backup with (force);\ncreate database restored_backup template template0;\n'
+                retry=subprocess.run(['docker','exec','-i',name,'psql','-w','-h','127.0.0.1','-U',admin,'-d','postgres','-v','ON_ERROR_STOP=1'],
+                                     input=setup.encode(),stdout=subprocess.DEVNULL,stderr=errors)
+                if retry.returncode:
+                    report['failure_stage']='isolated_managed_role_setup';return report
+                report['additional_placeholder_roles']=report.get('additional_placeholder_roles',0)+1
             report['archive_restore_succeeded']=True
             report['network_mode']='none'
             counts_sql="""select json_build_object(

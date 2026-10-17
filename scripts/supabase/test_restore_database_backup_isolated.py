@@ -2,7 +2,7 @@ from pathlib import Path
 import unittest
 
 from identity_schema import PROJECT
-from restore_database_backup_isolated import archive_path, restore_error_classes
+from restore_database_backup_isolated import archive_path, missing_managed_role, restore_error_classes
 
 
 class RestoreBackupTests(unittest.TestCase):
@@ -24,8 +24,14 @@ class RestoreBackupTests(unittest.TestCase):
         with self.assertRaises(ValueError): archive_path(Path('/tmp'),manifest)
 
     def test_private_restore_diagnostics_are_replaced_by_fixed_categories(self):
-        self.assertEqual(restore_error_classes('ERROR: role "private name" does not exist'),['role_missing'])
+        self.assertEqual(restore_error_classes('ERROR: role "private name" does not exist'),['dependent_object_missing'])
         self.assertEqual(restore_error_classes('private clinical text'),['unclassified_restore_failure'])
+
+    def test_only_fixed_managed_role_identifier_shape_can_trigger_local_role_setup(self):
+        self.assertEqual(missing_managed_role('role "supabase_etl_admin" does not exist'),'supabase_etl_admin')
+        self.assertIsNone(missing_managed_role('relation "supabase_etl_admin" does not exist'))
+        self.assertIsNone(missing_managed_role('role "supabase_bad;select secret" does not exist'))
+        self.assertIsNone(missing_managed_role('role "private name" does not exist'))
 
 
 if __name__=='__main__':
