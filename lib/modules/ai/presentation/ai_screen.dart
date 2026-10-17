@@ -217,44 +217,40 @@ class _AiScreenState extends State<AiScreen> {
   }
 
   Future<void> rotateKey(String connectionId) async {
-    final controller = TextEditingController();
-    try {
-      final accepted = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Renovar API key'),
-          content: TextField(
-            controller: controller,
-            obscureText: true,
-            enableSuggestions: false,
-            autocorrect: false,
-            decoration: const InputDecoration(
-              labelText: 'Nueva API key',
-              helperText: 'La clave anterior dejará de utilizarse en nuevas solicitudes.',
-            ),
+    String newKey = '';
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Renovar API key'),
+        content: TextField(
+          obscureText: true,
+          enableSuggestions: false,
+          autocorrect: false,
+          onChanged: (value) => newKey = value,
+          decoration: const InputDecoration(
+            labelText: 'Nueva API key',
+            helperText: 'La clave anterior dejará de utilizarse en nuevas solicitudes.',
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Renovar'),
-            ),
-          ],
         ),
-      );
-      if (accepted != true) return;
-      await run(() async {
-        await widget.repository.rotateKey(connectionId, controller.text.trim());
-        controller.clear();
-        await vm.load();
-      });
-    } finally {
-      controller.clear();
-      controller.dispose();
-    }
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Renovar'),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true || !mounted) return;
+    await run(() async {
+      await widget.repository.rotateKey(connectionId, newKey.trim());
+      newKey = '';
+      await vm.load();
+    });
+    newKey = '';
   }
 
   Future<void> editPolicy() async {
