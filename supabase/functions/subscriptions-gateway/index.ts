@@ -49,6 +49,9 @@ Deno.serve(async (req) => {
       p_id: body.request,
     });
     if (error) return reply({ error: "pricing_or_request_denied" }, 403);
+    if (!await betaAccess(user, true, r.clinic_id)) {
+      return reply({ error: "beta_write_denied" }, 403);
+    }
     const response = await fetch(
       "https://api.stripe.com/v1/checkout/sessions",
       {
