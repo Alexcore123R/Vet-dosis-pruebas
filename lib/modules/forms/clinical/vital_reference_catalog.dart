@@ -124,6 +124,37 @@ class VitalReferenceCatalog {
     );
   }
 
+
+  List<Map<String, dynamic>> snapshotFor({
+    required String species,
+    required Map<String, String?> values,
+  }) {
+    final snapshots = <Map<String, dynamic>>[];
+    for (final entry in values.entries) {
+      final evaluation = evaluate(
+        species: species,
+        parameter: entry.key,
+        rawValue: entry.value,
+      );
+      if (evaluation == null) continue;
+      snapshots.add(
+        Map.unmodifiable({
+          'catalog_version': version,
+          'reference_id': evaluation.entry.id,
+          'species': speciesLabel(evaluation.entry.species),
+          'parameter': evaluation.entry.parameter,
+          'unit': evaluation.entry.unit,
+          'min': evaluation.entry.min.display(places: 9),
+          'max': evaluation.entry.max.display(places: 9),
+          'source': evaluation.entry.source,
+          'reviewed_at': evaluation.entry.reviewedAt.toIso8601String(),
+          'state': evaluation.state.name,
+        }),
+      );
+    }
+    return List.unmodifiable(snapshots);
+  }
+
   static VitalReferenceEntry _readEntry(Map<String, dynamic> raw) {
     final min = _quantity(raw, 'min');
     final max = _quantity(raw, 'max');
