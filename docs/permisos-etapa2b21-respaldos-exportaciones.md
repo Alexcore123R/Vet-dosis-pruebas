@@ -90,3 +90,23 @@ La simulación propaga dependencias principales: tutor → paciente; paciente/pl
 La comparación de IDs también distingue colisiones de otra clínica. Una identidad UUID existente fuera del espacio destino no se considera «nueva»: queda bloqueada antes de cualquier decisión de importación.
 
 El reporte mostrado en la app resume por tabla: candidatos a crear, registros actuales que se conservarían, bloqueos por dependencia, colisiones de otro espacio y revisiones manuales. Sigue devolviendo `imports_applied=false`.
+
+
+## Preflight de aplicación (13T)
+
+El candidato `13T_restore_application_preflight.sql` es el último seguro previo a una futura restauración. **No existe todavía una función de importación** y este preflight no inserta, actualiza, mezcla ni elimina filas operacionales.
+
+El preflight exige el mismo `stage_id` y los mismos hashes de archivo, manifiesto de conflictos y manifiesto de dependencias que fueron usados para construir el plan. Si cualquiera cambia, la revisión se rechaza.
+
+Además vuelve a consultar el estado actual del servidor para detectar deriva ocurrida después de la simulación:
+
+- un `create_candidate` que ahora ya existe queda bloqueado;
+- un UUID que apareció en otra clínica queda bloqueado;
+- un `keep_existing` que desapareció queda bloqueado;
+- referencias a personal, catálogos o entidades padre se vuelven a comprobar;
+- una dependencia entrante solo es válida si su decisión sigue siendo `create_candidate` o `keep_existing`;
+- estados de plan desconocidos fallan cerrados.
+
+El resultado es únicamente `applicable=true/false`, una lista de bloqueos y un identificador de preflight. Cuando es aplicable, la ventana informativa es de 15 minutos; una futura operación real deberá volver a validar el estado y no puede tratar esta ventana como autorización permanente.
+
+Cualquier `blocked_missing_dependency`, `blocked_foreign_identity`, `manual_review`, política de overwrite/merge o deriva detectada produce `applicable=false`. El reporte conserva `imports_applied=false`.
