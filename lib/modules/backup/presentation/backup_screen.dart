@@ -37,6 +37,7 @@ class _BackupScreenState extends State<BackupScreen> {
   BackupScope scope = BackupScope.clinic;
   BackupRecoveryReport? inspection;
   Map<String, dynamic>? restoreStage;
+  Map<String, dynamic>? restoreConflicts;
   String? result;
   @override
   void initState() {
@@ -228,6 +229,7 @@ class _BackupScreenState extends State<BackupScreen> {
       setState(() {
         inspection = report;
         restoreStage = null;
+        restoreConflicts = null;
         result =
             '${encrypted ? 'Contraseña y cifrado comprobados. ' : ''}Integridad verificada · ${report.records} registros. No se modificó la base de datos ni se acreditó el origen del archivo.';
       });
@@ -252,11 +254,41 @@ class _BackupScreenState extends State<BackupScreen> {
         staged['archive_sha256'] != report.archiveSha256) {
       throw const FormatException('El servidor no confirmó una vista previa segura.');
     }
+    final stageId = staged['stage_id'];
+    if (stageId is! String) {
+      throw const FormatException('El servidor no devolvió un identificador de vista previa.');
+    }
+    final conflicts = report.conflictManifest.isEmpty
+        ? <String, dynamic>{
+            'schema_version': 1,
+            'mode': 'restore_conflicts',
+            'archive_sha256': report.archiveSha256,
+            'manifest_sha256': report.conflictManifestSha256,
+            'incoming': 0,
+            'existing': 0,
+            'new': 0,
+            'tables': <String, dynamic>{},
+            'imports_applied': false,
+          }
+        : await widget.repository.previewRestoreConflicts(
+            widget.member.clinicId,
+            stageId: stageId,
+            archiveSha256: report.archiveSha256,
+            manifestSha256: report.conflictManifestSha256,
+            manifest: report.conflictManifest,
+          );
+    if (conflicts['mode'] != 'restore_conflicts' ||
+        conflicts['imports_applied'] != false ||
+        conflicts['archive_sha256'] != report.archiveSha256 ||
+        conflicts['manifest_sha256'] != report.conflictManifestSha256) {
+      throw const FormatException('La revisión de conflictos no coincide con el respaldo.');
+    }
     if (mounted) {
       setState(() {
         restoreStage = staged;
+        restoreConflicts = conflicts;
         result =
-            'Vista previa registrada en servidor. No se importó ningún registro. Esta preparación vence automáticamente.';
+            'Vista previa y conflictos revisados en servidor. No se importó ningún registro.';
       });
     }
   }
@@ -269,6 +301,7 @@ class _BackupScreenState extends State<BackupScreen> {
     if (mounted) {
       setState(() {
         restoreStage = null;
+        restoreConflicts = null;
         result = 'Vista previa descartada. No se modificó ningún registro.';
       });
     }
@@ -455,6 +488,32 @@ class _BackupScreenState extends State<BackupScreen> {
                   if (restoreStage != null) ...[
                     Text(
                       'Vista previa activa · vence ${restoreStage!['expires_at'] ?? 'según el servidor'}',
+                    ),
+                    if (restoreConflicts != null) ...[
+                      Text(
+                        'Identificadores revisados: ${restoreConflicts!['incoming'] ?? 0} · '
+                        'sin choque: ${restoreConflicts!['new'] ?? 0} · '
+                        'ya existentes: ${restoreConflicts!['existing'] ?? 0}',
+                      ),
+                      for (final entry
+                          in (Map<String, dynamic>.from(
+                            restoreConflicts!['tables'] as Map? ?? const {},
+                          ).entries.toList()
+                            ..sort((a, b) => a.key.compareTo(b.key))))
+                        ListTile(
+                          dense: true,
+                          title: Text(entry.key),
+                          subtitle: Text(
+                            'Nuevos: ${(entry.value as Map)['new']} · '
+                            'existentes: ${(entry.value as Map)['existing']}',
+                          ),
+                          trailing: Text(
+                            '${(entry.value as Map)['incoming']}',
+                          ),
+                        ),
+                    ],
+                    const Text(
+                      'Esta revisión compara identificadores de tablas principales. Aún no decide reemplazos, fusiones ni inserciones.',
                     ),
                     TextButton(
                       onPressed: working
