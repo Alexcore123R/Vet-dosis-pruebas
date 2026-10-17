@@ -71,7 +71,8 @@ begin
    'incoming',incoming,
    'existing',coalesce(cardinality(existing),0),
    'new',incoming-coalesce(cardinality(existing),0),
-   'conflict_ids',to_jsonb(coalesce(existing,'{}'::uuid[]))
+   'conflict_ids',to_jsonb(coalesce(existing[1:100],'{}'::uuid[])),
+   'conflicts_truncated',coalesce(cardinality(existing),0)>100
   ));
  end loop;
 
