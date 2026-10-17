@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:crypto/crypto.dart';
 import 'backup_archive.dart';
 
 /// A read-only recovery inspection, never an executable SQL/import instruction.
@@ -9,10 +10,15 @@ class BackupRecoveryReport {
     this.serverAt,
     this.tables,
     this.excluded,
+    this.format,
+    this.version,
+    this.archiveSha256,
   );
-  final String clinic, serverAt;
+  final String clinic, serverAt, format, archiveSha256;
+  final int version;
   final Map<String, int> tables;
   final List<String> excluded;
+  bool get clinicBackup => format == 'vetdosis-operational-backup';
   int get records => tables.values.fold(0, (sum, count) => sum + count);
   static BackupRecoveryReport inspect(
     Uint8List archive,
@@ -63,6 +69,9 @@ class BackupRecoveryReport {
       '${snapshot['server_at'] ?? 'Fecha no registrada'}',
       counts,
       raw is List ? raw.map((v) => v.toString()).toList() : [],
+      snapshot['format'] as String,
+      snapshot['version'] as int,
+      sha256.convert(archive).toString(),
     );
   }
 
@@ -72,6 +81,7 @@ class BackupRecoveryReport {
     'clinic_id': clinic,
     'server_at': serverAt,
     'record_count': records,
+    'archive_sha256': archiveSha256,
     'tables': tables,
     'excluded': excluded,
     'restored': false,
