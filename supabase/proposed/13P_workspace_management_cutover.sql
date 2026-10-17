@@ -14,13 +14,13 @@ $$;
 revoke all on function private.workspace_management_authorized(uuid,uuid) from public,anon,authenticated,service_role;
 
 create or replace function public.workspace_management_status(p_clinic uuid)
-returns boolean language plpgsql stable security definer set search_path='' as $
+returns boolean language plpgsql stable security definer set search_path='' as $$
 begin
  if auth.uid() is null or not exists(select 1 from public.clinic_members where clinic_id=p_clinic and user_id=auth.uid()) then
   raise exception 'current_member_required';
  end if;
  return private.workspace_management_authorized(p_clinic,auth.uid());
-end$;
+end$$;
 revoke all on function public.workspace_management_status(uuid) from public,anon;
 grant execute on function public.workspace_management_status(uuid) to authenticated;
 
@@ -43,7 +43,7 @@ $$;
 revoke all on function private.ai_key_allowed(uuid,uuid,boolean) from public,anon,authenticated,service_role;
 
 create or replace function public.ai_dashboard(p_clinic uuid) returns jsonb
-language plpgsql security definer set search_path='' as $
+language plpgsql security definer set search_path='' as $$
 begin
  if not private.has_clinic_role(p_clinic) then raise exception 'access_denied';end if;
  return jsonb_build_object(
@@ -53,7 +53,7 @@ begin
   'daily_used',coalesce((select attempts from private.ai_daily_usage where clinic_id=p_clinic and day=(clock_timestamp() at time zone 'UTC')::date),0),
   'daily_limit',(private.plan_for(p_clinic)).ai_daily
  );
-end$;
+end$$;
 
 create or replace function public.ai_key_store_server(
  p_user uuid,p_scope text,p_clinic uuid,p_provider text,p_cipher text,p_nonce text
