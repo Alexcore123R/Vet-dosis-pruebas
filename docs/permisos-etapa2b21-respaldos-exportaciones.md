@@ -50,3 +50,23 @@ Se añadió un candidato posterior, `13Q_restore_preview_staging.sql`, que **no 
 La pantalla de respaldo puede enviar esta previsualización al servidor solo después de que el archivo haya sido descifrado y verificado localmente. El hash enviado corresponde al archivo de respaldo ya verificado, de modo que una fase de aplicación futura deberá exigir exactamente el mismo contenido antes de considerar una importación.
 
 La restauración efectiva, resolución de conflictos, inserción de filas y recuperación de adjuntos siguen fuera de este candidato.
+
+
+## Previsualización de conflictos (13R)
+
+El candidato `13R_restore_conflict_preview.sql` continúa sin restaurar filas. Usa el respaldo ya verificado y el staging activo para comparar solamente identificadores UUID de un conjunto acotado de tablas operacionales principales.
+
+La app deriva localmente un manifiesto determinista de identificadores a partir del archivo verificado, calcula su SHA-256 y lo envía junto con el hash del respaldo y el `stage_id`. El servidor rechaza el análisis si cualquiera de esos vínculos no coincide con el staging vigente.
+
+El reporte separa por tabla:
+
+- identificadores entrantes;
+- identificadores que ya existen en la misma clínica;
+- identificadores nuevos;
+- una muestra acotada de hasta 100 IDs en conflicto, con indicador cuando hay más.
+
+El manifiesto acepta como máximo 25 000 identificadores y solo tablas en una allowlist explícita. No permite consultar nombres de tabla arbitrarios. La comparación está limitada a la clínica del staging y no modifica tablas operacionales.
+
+Por ahora la allowlist cubre: tutores, pacientes, casos clínicos, hospitalizaciones, documentos, recetas, frascos, inventario/lotes, citas, tareas y mensajes. Las demás tablas permanecen pendientes para una fase posterior de dependencias y orden de importación.
+
+La interfaz muestra conteos de «sin choque» y «ya existentes», pero todavía no ofrece políticas de reemplazo, mezcla ni inserción. `imports_applied` permanece en `false`.
