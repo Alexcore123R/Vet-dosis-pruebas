@@ -28,6 +28,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   );
   String period = 'monthly';
   bool saving = false;
+  bool get canManageWorkspace =>
+      canManageWorkspace || model.data['can_manage'] == true;
   @override
   void initState() {
     super.initState();
@@ -155,7 +157,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             'Consultas con clave propia por día: ${(model.data['effective'] as Map)['ai_daily']} · créditos de lealtad: ${model.data['reward_points']}',
           ),
         ],
-        if (widget.canManageWorkspace &&
+        if (canManageWorkspace &&
             widget.repository is PaymentHistoryRepository)
           PaymentHistoryPanel(
             repository: widget.repository as PaymentHistoryRepository,
@@ -191,7 +193,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         : 'Inventario, ventas y corte manual propios; sin equipo compartido.',
                   ),
                   if (p['code'] != 'free' &&
-                      widget.canManageWorkspace &&
+                      canManageWorkspace &&
                       ((model.data['workspace'] as Map?)?['kind'] ==
                               'personal') ==
                           (p['code'] == 'individual'))
@@ -206,7 +208,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ),
           ),
         if (model.data['reward_enabled'] == true &&
-            widget.canManageWorkspace)
+            canManageWorkspace)
           TextButton(
             onPressed: () => redeem(),
             child: const Text('Canjear puntos por beneficio temporal'),
