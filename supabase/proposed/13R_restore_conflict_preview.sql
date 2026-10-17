@@ -47,7 +47,7 @@ create function public.restore_preview_conflicts(
  p_manifest jsonb
 ) returns jsonb
 language plpgsql security definer set search_path='' as $$
-declare s private.backup_restore_staging;k text;v jsonb;ids uuid[];existing uuid[];incoming integer;report jsonb='{}';total_incoming integer=0;total_existing integer=0;
+declare s private.backup_restore_staging;k text;v jsonb;ids uuid[];existing uuid[];foreign_ids uuid[];incoming integer;report jsonb='{}';total_incoming integer=0;total_existing integer=0;total_foreign integer=0;
 begin
  perform public.beta_access_check(false,p_clinic);
  if not private.restore_preview_authorized(p_clinic,auth.uid()) then raise exception 'backup_restore_required';end if;
@@ -67,14 +67,22 @@ begin
    'select coalesce(array_agg(id order by id),''{}''::uuid[]) from public.%I where clinic_id=$1 and id=any($2)',
    k
   ) into existing using p_clinic,ids;
+  execute format(
+   'select coalesce(array_agg(id order by id),''{}''::uuid[]) from public.%I where id=any($1) and clinic_id is distinct from $2',
+   k
+  ) into foreign_ids using ids,p_clinic;
   total_incoming=total_incoming+incoming;
   total_existing=total_existing+coalesce(cardinality(existing),0);
+  total_foreign=total_foreign+coalesce(cardinality(foreign_ids),0);
   report=report||jsonb_build_object(k,jsonb_build_object(
    'incoming',incoming,
    'existing',coalesce(cardinality(existing),0),
-   'new',incoming-coalesce(cardinality(existing),0),
+   'foreign_conflict',coalesce(cardinality(foreign_ids),0),
+   'new',incoming-coalesce(cardinality(existing),0)-coalesce(cardinality(foreign_ids),0),
    'conflict_ids',to_jsonb(coalesce(existing[1:100],'{}'::uuid[])),
-   'conflicts_truncated',coalesce(cardinality(existing),0)>100
+   'foreign_conflict_ids',to_jsonb(coalesce(foreign_ids[1:100],'{}'::uuid[])),
+   'conflicts_truncated',coalesce(cardinality(existing),0)>100,
+   'foreign_conflicts_truncated',coalesce(cardinality(foreign_ids),0)>100
   ));
  end loop;
 
@@ -85,8 +93,8 @@ begin
       'schema_version',1,'mode','restore_conflicts',
       'archive_sha256',p_archive_sha256,
       'manifest_sha256',p_manifest_sha256,
-      'incoming',total_incoming,'existing',total_existing,
-      'new',total_incoming-total_existing,
+      'incoming',total_incoming,'existing',total_existing,'foreign_conflict',total_foreign,
+      'new',total_incoming-total_existing-total_foreign,
       'tables',report,'imports_applied',false,'checked_at',clock_timestamp()
      )
  where clinic_id=p_clinic and stage_id=p_stage
@@ -94,7 +102,7 @@ begin
 
  insert into public.audit_log(clinic_id,actor_id,action,entity_id,details)
  values(p_clinic,auth.uid(),'backup_restore_conflicts_previewed',p_stage::text,
-  jsonb_build_object('archive_sha256',p_archive_sha256,'manifest_sha256',p_manifest_sha256,'incoming',total_incoming,'existing',total_existing));
+  jsonb_build_object('archive_sha256',p_archive_sha256,'manifest_sha256',p_manifest_sha256,'incoming',total_incoming,'existing',total_existing,'foreign_conflict',total_foreign));
 
  return report;
 end$$;
