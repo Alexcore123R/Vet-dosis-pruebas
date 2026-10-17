@@ -13,6 +13,17 @@ returns boolean language sql stable security definer set search_path='' as $$
 $$;
 revoke all on function private.workspace_management_authorized(uuid,uuid) from public,anon,authenticated,service_role;
 
+create or replace function public.workspace_management_status(p_clinic uuid)
+returns boolean language plpgsql stable security definer set search_path='' as $
+begin
+ if auth.uid() is null or not exists(select 1 from public.clinic_members where clinic_id=p_clinic and user_id=auth.uid()) then
+  raise exception 'current_member_required';
+ end if;
+ return private.workspace_management_authorized(p_clinic,auth.uid());
+end$;
+revoke all on function public.workspace_management_status(uuid) from public,anon;
+grant execute on function public.workspace_management_status(uuid) to authenticated;
+
 create or replace function private.ai_key_allowed(p_connection uuid,p_user uuid,p_manage boolean default false)
 returns boolean language sql stable security definer set search_path='' as $$
  select exists(
