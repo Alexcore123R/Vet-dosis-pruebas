@@ -80,10 +80,13 @@ begin
  );
 end$$;
 
-revoke all on function private.storage_safe_uuid(text),
- private.storage_patient_photo_allowed(text,boolean),
+revoke all on function private.storage_safe_uuid(text) from public,anon,authenticated,service_role;
+revoke all on function private.storage_patient_photo_allowed(text,boolean),
  private.storage_clinical_attachment_allowed(text,boolean)
-from public,anon,authenticated,service_role;
+from public,anon,service_role;
+grant execute on function private.storage_patient_photo_allowed(text,boolean),
+ private.storage_clinical_attachment_allowed(text,boolean)
+to authenticated;
 
 create policy patient_photo_read on storage.objects
 for select to authenticated
