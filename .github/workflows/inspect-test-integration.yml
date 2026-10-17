@@ -18,8 +18,14 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: python3 scripts/supabase/integration_preflight.py --output integration-preflight.json
+      - name: Comprobar dependencias del paquete atómico sin aplicar
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: python3 scripts/supabase/integration_dependencies.py --output integration-dependencies.json
       - uses: actions/upload-artifact@v4
         with:
           name: beta-integration-preflight
-          path: integration-preflight.json
+          path: |
+            integration-preflight.json
+            integration-dependencies.json
           retention-days: 7

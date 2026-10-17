@@ -1,0 +1,36 @@
+name: Ensayar paquete de integración beta (aislado)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/supabase/integration_*.py'
+      - 'scripts/supabase/test_integration_*.py'
+      - 'supabase/proposed/13*.sql'
+      - 'supabase/tests/run_integration_bundle.sh'
+      - '.github/workflows/test-integration-bundle.yml'
+permissions:
+  contents: read
+jobs:
+  atomic-rollout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar generación y controles
+        run: python3 -m unittest discover -s scripts/supabase -p 'test_*.py'
+      - name: Ensayar rollback, aplicación atómica y rechazo de repetición
+        run: bash supabase/tests/run_integration_bundle.sh
+      - name: Preparar SQL y orden de archivos para revisión
+        run: |
+          python3 scripts/supabase/integration_bundle.py --output beta-integration-rehearse.sql
+          python3 scripts/supabase/integration_bundle.py --commit --output beta-integration-candidate.sql
+          python3 scripts/supabase/integration_preflight.py --local-plan --output beta-integration-manifest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: beta-integration-review-only
+          path: |
+            beta-integration-rehearse.sql
+            beta-integration-candidate.sql
+            beta-integration-manifest.json
+          retention-days: 7

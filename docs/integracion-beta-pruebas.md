@@ -23,6 +23,29 @@ El orden explícito de 23 candidatos esenciales está en
 `scripts/supabase/integration_preflight.py`. Incluye 13A–13P y 13W; excluye 13Q–13V
 de recuperación. No es un instalador y no ejecuta ningún candidato.
 
+## Paquete atómico preparado
+
+`integration_bundle.py` genera un archivo SQL para revisión. No se conecta al
+servidor. El modo predeterminado termina en ROLLBACK; `--commit` genera la variante
+de aplicación explícita. Ambos usan el mismo orden y cuerpos de las 23 migraciones.
+El workflow de ensayo solo los ejecuta contra PostgreSQL efímero con datos sintéticos.
+
+El paquete detiene la operación si faltan dependencias, si las políticas no están
+desactivadas o si detecta funciones nuevas/recibo de una aplicación anterior.
+Incluye timeout de bloqueos y de sentencias. Comprueba los hashes de funciones
+finales y los conteos de pacientes, tutores, medicación, concesiones y verificaciones.
+Guarda un recibo privado con los archivos y hashes al confirmar la transacción;
+no genera concesiones ni habilita profesionales o admisiones.
+
+Las pruebas comprueban un error deliberado a mitad del paquete, ensayo con rollback,
+instalación parcial, aplicación completa y rechazo de repetición. Esta evidencia
+no sustituye revisar el esquema y datos reales ni disponer de respaldo previo.
+El paquete no incorpora todavía la actualización de Edge Functions o la prueba
+de sesiones reales; no debe usarse como aprobación de apertura de beta.
+
+`integration_dependencies.py` consulta en el servidor la presencia de las mismas
+relaciones/funciones exigidas por el paquete. Publica faltantes sin ejecutar DDL.
+
 Antes de aplicarlos hay que comprobar las adaptaciones M2–M14, identidad 10,
 fundación beta 09A/09B, permisos 11A y consentimientos/plataforma/privacidad
 12A/12B/12C. La presencia de funciones con igual nombre no sustituye esa revisión.
