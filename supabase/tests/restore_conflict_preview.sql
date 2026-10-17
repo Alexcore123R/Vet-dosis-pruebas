@@ -5,6 +5,16 @@ create function pg_temp.expect_error(sql text,expected text) returns void langua
 select id as clinic from public.clinics where name='Synthetic medication permissions' \gset
 select count(*) as patients_before from public.vet_patients where clinic_id=:'clinic' \gset
 
+insert into public.clinics(id,name,created_by)
+values('00000000-0000-0000-0000-000000000350','Synthetic foreign restore clinic','00000000-0000-0000-0000-000000000150')
+on conflict(id) do nothing;
+insert into public.vet_owners(id,clinic_id,name,created_by)
+values('00000000-0000-0000-0000-000000000351','00000000-0000-0000-0000-000000000350','Foreign synthetic owner','00000000-0000-0000-0000-000000000150')
+on conflict(id) do nothing;
+insert into public.vet_patients(id,clinic_id,name,species,sex,owner_id,created_by)
+values('00000000-0000-0000-0000-000000000352','00000000-0000-0000-0000-000000000350','Foreign synthetic patient','canino','sin especificar','00000000-0000-0000-0000-000000000351','00000000-0000-0000-0000-000000000150')
+on conflict(id) do nothing;
+
 insert into auth.users(id,email,email_confirmed_at)
 values('00000000-0000-0000-0000-000000000194','synthetic-conflicts@example.test',now())
 on conflict(id) do nothing;
@@ -23,7 +33,7 @@ select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000194'
 select public.restore_preview_stage(
  :'clinic','vetdosis-operational-backup',1,repeat('c',64),
  clock_timestamp()-interval '1 hour',
- '{"vet_patients":2,"clinic_tasks":1}'::jsonb
+ '{"vet_patients":3,"clinic_tasks":1}'::jsonb
 ) as stage \gset
 
 select public.restore_preview_conflicts(
@@ -32,16 +42,18 @@ select public.restore_preview_conflicts(
  repeat('c',64),
  repeat('d',64),
  jsonb_build_object(
-   'vet_patients',jsonb_build_array(:'existing_patient','00000000-0000-0000-0000-000000000299'),
+   'vet_patients',jsonb_build_array(:'existing_patient','00000000-0000-0000-0000-000000000299','00000000-0000-0000-0000-000000000352'),
    'clinic_tasks',jsonb_build_array('00000000-0000-0000-0000-000000000298')
  )
 ) as conflicts \gset
 
 select pg_temp.assert_true((:'conflicts'::jsonb->>'imports_applied')::boolean=false,'conflict preview claimed imports');
-select pg_temp.assert_true((:'conflicts'::jsonb->>'incoming')::int=3,'incoming count mismatch');
+select pg_temp.assert_true((:'conflicts'::jsonb->>'incoming')::int=4,'incoming count mismatch');
 select pg_temp.assert_true((:'conflicts'::jsonb->>'existing')::int=1,'existing count mismatch');
+select pg_temp.assert_true((:'conflicts'::jsonb->>'foreign_conflict')::int=1,'foreign identity conflict missing');
 select pg_temp.assert_true((:'conflicts'::jsonb->>'new')::int=2,'new count mismatch');
 select pg_temp.assert_true((:'conflicts'::jsonb->'tables'->'vet_patients'->>'existing')::int=1,'patient conflict missing');
+select pg_temp.assert_true((:'conflicts'::jsonb->'tables'->'vet_patients'->>'foreign_conflict')::int=1,'cross-workspace patient collision missing');
 select pg_temp.assert_true(
  (public.restore_preview_get(:'clinic')->'stage'->'conflicts'->>'manifest_sha256')=repeat('d',64),
  'stored conflict report missing'
