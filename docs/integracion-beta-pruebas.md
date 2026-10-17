@@ -215,3 +215,38 @@ de los 23 candidatos con rollback sobre esa copia. Storage reportó 3 buckets y
 0 archivos. Véase `ensayo-restauracion-real.md` para los límites (datos clínicos
 consultados vacíos, roles/propietarios no reproducidos como identidades operativas,
 sin prueba HTTP/secretos/plataforma). No se aplicaron cambios al servidor activo.
+
+## Contrato inicial instalado — 17 octubre, 23:58 UTC
+
+Se superó el estado histórico de «sin aplicar» para el paquete inicial:
+
+- [39080817606](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39080817606):
+  respaldo real restaurado sin red; 23 candidatos y 13Y/14A/14B ensayados juntos,
+  en una transacción terminada en ROLLBACK.
+- [39080925135](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39080925135):
+  ensayo del mismo conjunto en el proyecto fijo de pruebas con ROLLBACK;
+  estado seleccionado de catálogo, conteos, políticas y hashes igual antes/después.
+- [39081019769](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39081019769):
+  ensayo específico del subconjunto de instalación (23 + 14A + 14B), ROLLBACK.
+- [39081043942](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39081043942):
+  **instalación confirmada** de los 23 candidatos iniciales y 14A/14B en una
+  transacción. Contrato de módulos y recibo presentes; hashes de los dos parches
+  comprobados dentro de la transacción. SQL SHA256
+  `948b6e9fe103ba2fc63604ae9b36c29a38c4d0567b3eef32fa144b84eb81b0ae`.
+
+Los conteos de pacientes, tutores, medicaciones, concesiones y verificaciones
+profesionales se conservaron. Admisiones cerradas; enforcement de beta y permisos
+sigue desactivado como exigían los guardas. No se creó autoridad por puesto ni se
+habilitó profesionalmente a nadie. Los nuevos RPC revisados exigen sus concesiones
+explícitas aun con la política global dormida; instalar el contrato no asegura
+que el menú muestre módulos a una cuenta sin concesiones.
+
+13Y **no se instaló**: su ensayo satisfactorio no equivale a despliegue. Debe
+coordinarse con Edge. 13X y restauración de respaldos siguen fuera del paquete.
+El arreglo de adjuntos valida MIME/tamaño; no recrea buckets ni políticas antiguas.
+
+Faltan concesiones elegidas para la cuenta/clínica de prueba y pruebas HTTP con
+sesiones reales de ambas clínicas, anon, Storage y Edge. Esta instalación de
+esquema no acredita una beta clínica operativa. No repetir los workflows de
+instalación/ensayo inicial sobre el estado instalado: rechazan aplicaciones
+parciales o repetidas; las siguientes actualizaciones requieren candidatos aditivos.

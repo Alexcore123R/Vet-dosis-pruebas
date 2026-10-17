@@ -56,3 +56,8 @@ Validación del cierre: [39080528142](https://github.com/Alexcore123R/Vet-dosis-
 aprobó PostgreSQL aislado, análisis Flutter completo sin incidencias y 25 pruebas
 de dashboard, navegación/permisos, identidad y tema Neu. El APK anterior todavía
 no contiene este cierre adicional; requiere recompilación después de la integración.
+
+Actualización remota: 14A y contrato de módulos inicial instalados y verificados en
+[39081043942](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39081043942).
+La cuenta necesita concesiones explícitas para mostrar cada módulo. No se crearon
+permisos por inferirlos del puesto; las pruebas con cuentas reales siguen pendientes.
