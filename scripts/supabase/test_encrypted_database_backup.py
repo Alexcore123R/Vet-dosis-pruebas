@@ -1,10 +1,16 @@
 import unittest
 
-from encrypted_database_backup import configuration_status, connection_environment, export_error_code, validate_passphrase
+from encrypted_database_backup import configuration_status, connection_environment, export_error_code, trusted_ca_bundle, validate_passphrase
 from identity_schema import PROJECT
 
 
 class EncryptedBackupTests(unittest.TestCase):
+    def test_pinned_vendor_ca_is_combined_with_system_roots_and_removed(self):
+        with trusted_ca_bundle() as bundle:
+            self.assertGreaterEqual(bundle.read_bytes().count(b'BEGIN CERTIFICATE'), 2)
+            path = bundle
+        self.assertFalse(path.exists())
+
     def test_diagnostics_only_return_fixed_codes_not_private_connection_text(self):
         self.assertEqual(export_error_code('private-host: certificate verify failed'),
                          'database_tls_verification_failed')

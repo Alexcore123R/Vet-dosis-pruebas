@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import ssl
 import subprocess
 import tempfile
 from urllib.parse import parse_qs, unquote, urlsplit
@@ -13,6 +14,24 @@ from urllib.parse import parse_qs, unquote, urlsplit
 from identity_schema import PROJECT
 
 IMAGE = 'postgres:17-alpine'
+CA_SHA256 = '700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7'
+
+
+@contextmanager
+def trusted_ca_bundle():
+    # Public Supabase Root 2021 CA, obtained over HTTPS from the vendor:
+    # https://supabase-downloads.s3.amazonaws.com/prod/ssl/prod-ca-2021.crt
+    certificate = (Path(__file__).parent / 'certs/supabase-root-2021.crt').read_bytes()
+    if hashlib.sha256(certificate).hexdigest() != CA_SHA256:
+        raise RuntimeError('Public Supabase root certificate integrity check failed.')
+    system_roots = ssl.get_default_verify_paths().cafile
+    if system_roots is None:
+        raise RuntimeError('System certificate authority bundle unavailable.')
+    with tempfile.TemporaryDirectory(prefix='vetdosis-public-ca-') as temporary:
+        bundle = Path(temporary) / 'ca-bundle.pem'
+        bundle.write_bytes(Path(system_roots).read_bytes() + b'\n' + certificate)
+        bundle.chmod(0o444)
+        yield bundle
 
 
 def export_error_code(stderr):
@@ -191,7 +210,10 @@ def main():
         env = {key: value for key, value in os.environ.items()
                if key not in ('SUPABASE_TEST_DB_URL', 'SUPABASE_TEST_BACKUP_PASSPHRASE')}
         env.update(connection)
-        with tempfile.TemporaryFile() as errors:
+        with trusted_ca_bundle() as ca_bundle, tempfile.TemporaryFile() as errors:
+            env['PGSSLROOTCERT'] = '/backup-ca.pem'
+            image_index = command.index(IMAGE)
+            command[image_index:image_index] = ['--mount', f'type=bind,source={ca_bundle},target=/backup-ca.pem,readonly']
             dump = subprocess.Popen(command, env=env, stdout=subprocess.PIPE, stderr=errors)
             try:
                 evidence = encrypt_and_check(dump.stdout, target, passphrase,

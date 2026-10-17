@@ -6,6 +6,7 @@ on:
     paths:
       - 'scripts/supabase/encrypted_database_backup.py'
       - 'scripts/supabase/test_encrypted_database_backup.py'
+      - 'scripts/supabase/certs/supabase-root-2021.crt'
       - 'supabase/tests/run_encrypted_database_backup.sh'
       - '.github/workflows/test-encrypted-database-backup.yml'
 permissions:
