@@ -38,6 +38,36 @@ class FakeBackup implements BackupRepository {
 
   @override
   Future<Map<String, dynamic>> statistics(String clinic) async => {};
+
+  @override
+  Future<Map<String, dynamic>> stageRestorePreview(
+    String clinic, {
+    required String format,
+    required int version,
+    required String archiveSha256,
+    required DateTime? sourceServerAt,
+    required Map<String, int> tableCounts,
+  }) async => {
+    'schema_version': 1,
+    'mode': 'restore_preview',
+    'stage_id': 'stage',
+    'clinic_id': clinic,
+    'archive_sha256': archiveSha256,
+    'source_server_at': sourceServerAt?.toUtc().toIso8601String(),
+    'table_counts': tableCounts,
+    'imports_applied': false,
+  };
+
+  @override
+  Future<Map<String, dynamic>> restorePreview(String clinic) async => {
+    'schema_version': 1,
+    'mode': 'restore_preview',
+    'stage': null,
+    'imports_applied': false,
+  };
+
+  @override
+  Future<void> discardRestorePreview(String clinic, String stageId) async {}
 }
 
 class FakeOperations implements OperationsRepository {
