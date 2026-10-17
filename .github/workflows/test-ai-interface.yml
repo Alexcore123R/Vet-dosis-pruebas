@@ -1,0 +1,26 @@
+name: Validar interfaz de proveedores IA
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/modules/ai/**'
+      - 'lib/core/app.dart'
+      - 'test/ai_configuration_test.dart'
+      - 'test/ai_plans_test.dart'
+      - '.github/workflows/test-ai-interface.yml'
+permissions:
+  contents: read
+jobs:
+  flutter-ai:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze lib/core/app.dart lib/modules/ai test/ai_configuration_test.dart test/ai_plans_test.dart
+      - run: flutter test test/ai_configuration_test.dart test/ai_plans_test.dart test/platform_review_test.dart test/module_navigation_dashboard_test.dart
