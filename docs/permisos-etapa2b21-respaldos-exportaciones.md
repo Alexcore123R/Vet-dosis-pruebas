@@ -70,3 +70,23 @@ El manifiesto acepta como máximo 25 000 identificadores y solo tablas en una al
 Por ahora la allowlist cubre: tutores, pacientes, casos clínicos, hospitalizaciones, documentos, recetas, frascos, inventario/lotes, citas, tareas y mensajes. Las demás tablas permanecen pendientes para una fase posterior de dependencias y orden de importación.
 
 La interfaz muestra conteos de «sin choque» y «ya existentes», pero todavía no ofrece políticas de reemplazo, mezcla ni inserción. `imports_applied` permanece en `false`.
+
+
+## Simulación de decisiones (13S)
+
+El candidato `13S_restore_decision_preview.sql` toma el staging y la comparación de conflictos y produce un plan **sin escribir datos operacionales**. El archivo verificado genera además un manifiesto determinista de dependencias por registro; su hash queda ligado al staging para detectar cambios entre la revisión y cualquier fase posterior.
+
+La política actual es deliberadamente conservadora:
+
+- un ID que ya existe en la misma clínica se clasifica como `keep_existing`; nunca se sobrescribe;
+- un ID nuevo con dependencias satisfechas queda como `create_candidate`;
+- una dependencia de entidad que no existe queda `blocked_missing_dependency`;
+- una referencia a personal que ya no pertenece a la clínica queda `manual_review`;
+- un mismo ID que existe en otra clínica o en un ámbito distinto queda `blocked_foreign_identity`;
+- no existen todavía políticas de mezcla ni reemplazo: `overwrite=false` y `merge=false`.
+
+La simulación propaga dependencias principales: tutor → paciente; paciente/plantilla/personal → documento; paciente/documento/personal → caso clínico; caso/perfil/delegación → receta; inventario → lote/frascos; y las referencias de agenda/tareas/mensajes al personal vigente. Las versiones de plantilla que dependen de otra versión entrante sin orden resuelto quedan en revisión manual, no se adivina un orden.
+
+La comparación de IDs también distingue colisiones de otra clínica. Una identidad UUID existente fuera del espacio destino no se considera «nueva»: queda bloqueada antes de cualquier decisión de importación.
+
+El reporte mostrado en la app resume por tabla: candidatos a crear, registros actuales que se conservarían, bloqueos por dependencia, colisiones de otro espacio y revisiones manuales. Sigue devolviendo `imports_applied=false`.
