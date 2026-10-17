@@ -55,6 +55,7 @@ select pg_temp.assert_true(
 );
 select pg_temp.expect_error(format($q$select public.create_clinic_invitation(%L,'synthetic-admin-invite@example.test','admin')$q$,:'clinic'),'admin_required');
 select pg_temp.expect_error(format($q$select public.set_clinic_member_role(%L,'00000000-0000-0000-0000-000000000193','admin')$q$,:'clinic'),'admin_required');
+select pg_temp.expect_error(format($q$select public.set_clinic_member_role(%L,'00000000-0000-0000-0000-000000000194','auxiliar')$q$,:'clinic'),'admin_required');
 select pg_temp.expect_error(format($q$select public.remove_clinic_member(%L,'00000000-0000-0000-0000-000000000194')$q$,:'clinic'),'admin_required');
 select pg_temp.assert_true(length(public.create_clinic_invitation(:'clinic','synthetic-aux-invite@example.test','auxiliar'))>0,'workspace manager cannot create non-admin invitation');
 select public.set_clinic_member_role(:'clinic','00000000-0000-0000-0000-000000000193','recepcion');
