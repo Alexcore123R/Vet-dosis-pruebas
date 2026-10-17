@@ -37,6 +37,8 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     widget.repository,
     widget.member.clinicId,
   );
+  bool get canManageWorkspace =>
+      widget.canManageWorkspace || model.data['can_manage'] == true;
   Timer? timer;
   String? token;
   int remaining = 0;
