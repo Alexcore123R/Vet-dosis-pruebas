@@ -3,6 +3,7 @@ import '../../auth/domain/clinic_membership.dart';
 import '../../patients/presentation/patient_view_model.dart' show newOperationId;
 import 'clinical_models.dart';
 import 'clinical_repository.dart';
+import 'vital_reference_catalog.dart';
 import 'vitals_models.dart';
 
 class ClinicalVitalsScreen extends StatefulWidget {
@@ -12,12 +13,14 @@ class ClinicalVitalsScreen extends StatefulWidget {
     required this.member,
     required this.caseData,
     this.latestWeight,
+    this.referenceCatalog,
   });
 
   final ClinicalRepository repository;
   final ClinicMembership member;
   final ClinicalCase caseData;
   final String? latestWeight;
+  final VitalReferenceCatalog? referenceCatalog;
 
   @override
   State<ClinicalVitalsScreen> createState() => _ClinicalVitalsScreenState();
@@ -147,25 +150,76 @@ class _ClinicalVitalsScreenState extends State<ClinicalVitalsScreen> {
     }
   }
 
+  VitalReferenceEvaluation? referenceEvaluation(String key) {
+    final catalog = widget.referenceCatalog;
+    if (catalog == null) return null;
+    try {
+      return catalog.evaluate(
+        species: widget.caseData.patientSpecies,
+        parameter: key,
+        rawValue: controllers[key]?.text,
+      );
+    } on FormatException {
+      return null;
+    }
+  }
+
   Widget numberField(
     String key,
     String label,
     String unit, {
     String? helper,
     IconData? icon,
-  }) =>
-      TextField(
-        controller: controllers[key],
-        enabled: !busy,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        decoration: InputDecoration(
-          labelText: label,
-          suffixText: unit,
-          helperText: helper,
-          prefixIcon: icon == null ? null : Icon(icon),
+  }) {
+    final evaluation = referenceEvaluation(key);
+    final theme = Theme.of(context);
+    final outside = evaluation != null &&
+        evaluation.state != VitalReferenceState.within;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: controllers[key],
+          enabled: !busy,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: label,
+            suffixText: unit,
+            helperText: helper,
+            prefixIcon: icon == null ? null : Icon(icon),
+          ),
+          onChanged: (_) => setState(() {}),
         ),
-        onChanged: (_) => setState(() {}),
-      );
+        if (evaluation != null) ...[
+          const SizedBox(height: 7),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Chip(
+                avatar: Icon(
+                  outside
+                      ? Icons.priority_high_rounded
+                      : Icons.check_circle_outline,
+                  size: 16,
+                ),
+                label: Text(evaluation.label),
+                backgroundColor: outside
+                    ? theme.colorScheme.errorContainer
+                    : theme.colorScheme.primaryContainer,
+              ),
+              Text(
+                'Referencia verificada · ${evaluation.entry.min.display()}–'
+                '${evaluation.entry.max.display()} ${evaluation.entry.unit}',
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
 
   BoxDecoration softDecoration(BuildContext context, {bool accent = false}) {
     final theme = Theme.of(context);
@@ -482,15 +536,21 @@ class _ClinicalVitalsScreenState extends State<ClinicalVitalsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Interpretación automática todavía desactivada',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                      Text(
+                        widget.referenceCatalog == null
+                            ? 'Interpretación automática todavía desactivada'
+                            : 'Referencias clínicas versionadas activas',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Se guardan hechos estructurados. $species aún no tiene rangos '
-                        'de referencia verificados cargados en el catálogo, por lo que '
-                        'VetDosis no clasificará estos valores como normales o anormales.',
+                        widget.referenceCatalog == null
+                            ? 'Se guardan hechos estructurados. $species aún no tiene rangos '
+                                'de referencia verificados cargados en el catálogo, por lo que '
+                                'VetDosis no clasificará estos valores como normales o anormales.'
+                            : 'Los indicadores solo comparan contra referencias verificadas '
+                                'del catálogo ${widget.referenceCatalog!.version}. Estar dentro '
+                                'de un rango de referencia no equivale a un diagnóstico.',
                       ),
                     ],
                   ),
