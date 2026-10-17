@@ -17,11 +17,13 @@ class AiScreen extends StatefulWidget {
     required this.member,
     this.initialDraft,
     this.canManageWorkspace = false,
+    this.configurationOnly = false,
   });
   final AiRepository repository;
   final ClinicMembership member;
   final String? initialDraft;
   final bool canManageWorkspace;
+  final bool configurationOnly;
   @override
   State<AiScreen> createState() => _AiScreenState();
 }
@@ -367,6 +369,26 @@ class _AiScreenState extends State<AiScreen> {
     builder: (context, _) => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (widget.configurationOnly) ...[
+          Text('Proveedores de IA y privacidad', style: Theme.of(context).textTheme.headlineSmall),
+          const Text('Administra claves personales o de clínica. Las claves no se vuelven a mostrar.'),
+          if (vm.busy || working) const LinearProgressIndicator(),
+          if (vm.error != null) Text(vm.error!),
+          FilledButton(onPressed: working ? null : key, child: const Text('Agregar proveedor / clave')),
+          for (final k in vm.rows('connections'))
+            if (k['can_manage'] == true)
+              ListTile(
+                title: Text("${aiProviderLabels[k['provider']] ?? k['provider']} · ${aiScopeLabel(k['scope'])}"),
+                trailing: TextButton(
+                  onPressed: working ? null : () => run(() async {
+                    await widget.repository.disableKey(k['id'] as String);
+                    await vm.load();
+                  }),
+                  child: const Text('Revocar clave'),
+                ),
+              ),
+          const Text('La privacidad de cada conversación se administra desde su chat.'),
+        ] else ...[
         Text('Asistente IA', style: Theme.of(context).textTheme.headlineSmall),
         const Text(
           'Apoyo con IA · respuestas sin verificar. Dosis, normativa y cálculos requieren fuentes verificadas y el motor clínico; este chat no emite recetas ni registra actos.',
@@ -399,37 +421,12 @@ class _AiScreenState extends State<AiScreen> {
               onPressed: working ? null : newChat,
               child: const Text('Nuevo chat'),
             ),
-            TextButton(
-              onPressed: working ? null : key,
-              child: const Text('Agregar proveedor / clave'),
-            ),
             IconButton(
               onPressed: working ? null : vm.load,
               icon: const Icon(Icons.refresh),
             ),
           ],
         ),
-        for (final k in vm.rows('connections'))
-          if (k['can_manage'] == true)
-            ListTile(
-              title: Text(
-                '${aiProviderLabels[k['provider']] ?? k['provider']} · ${aiScopeLabel(k['scope'])}',
-              ),
-              trailing: TextButton(
-                onPressed: working
-                    ? null
-                    : () => run(() async {
-                        await widget.repository.disableKey(k['id'] as String);
-                        if (connection == k['id']) {
-                          connection = null;
-                          model = null;
-                          modelOptions = [];
-                        }
-                        await vm.load();
-                      }),
-                child: const Text('Revocar clave'),
-              ),
-            ),
         DropdownButtonFormField<String>(
           isExpanded: true,
           key: ValueKey(vm.selected),
@@ -639,6 +636,7 @@ class _AiScreenState extends State<AiScreen> {
             child: const Text('Solicitar respuesta'),
           ),
         ],
+      ],
       ],
     ),
   );
