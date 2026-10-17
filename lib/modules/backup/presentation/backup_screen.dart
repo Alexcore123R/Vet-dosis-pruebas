@@ -33,12 +33,37 @@ class BackupScreen extends StatefulWidget {
 class _BackupScreenState extends State<BackupScreen> {
   late final model = BackupViewModel(widget.repository, widget.member.clinicId);
   bool working = false, ack = false, protect = true;
+  BackupAccess? access;
+  BackupScope scope = BackupScope.clinic;
   BackupRecoveryReport? inspection;
   String? result;
   @override
   void initState() {
     super.initState();
-    if (widget.member.role == ClinicRole.admin) model.load();
+    loadAccess();
+  }
+
+  Future<void> loadAccess() async {
+    try {
+      final next = BackupAccess.read(
+        await widget.repository.workspace(widget.member.clinicId),
+      );
+      if (!mounted) return;
+      setState(() {
+        access = next;
+        scope = next.workspaceKind == 'personal' && next.personal
+            ? BackupScope.personal
+            : BackupScope.clinic;
+      });
+      if (next.statistics && !widget.backupOnly) await model.load();
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => result =
+              'No se pudo comprobar el alcance del respaldo. Revisa conexión y permisos.',
+        );
+      }
+    }
   }
 
   @override
@@ -80,14 +105,18 @@ class _BackupScreenState extends State<BackupScreen> {
     final bytes = await BackupArchive.create(
       widget.repository,
       widget.member.clinicId,
+      scope: scope,
       clinicalAssets: {
-        for (final name in [
-          'catalog.v1.json',
-          'calculations.v1.json',
-          'regulatory.catalog.v1.json',
-          'forms.reference.v1.json',
-          'forms.clinical.v1.json',
-        ])
+        for (final name
+            in scope == BackupScope.clinic
+                ? [
+                    'catalog.v1.json',
+                    'calculations.v1.json',
+                    'regulatory.catalog.v1.json',
+                    'forms.reference.v1.json',
+                    'forms.clinical.v1.json',
+                  ]
+                : <String>[])
           name: await rootBundle.loadString('assets/clinical/$name'),
       },
     );
@@ -98,7 +127,7 @@ class _BackupScreenState extends State<BackupScreen> {
     await FilePicker.saveFile(
       dialogTitle: 'Guardar respaldo operacional',
       fileName:
-          'vetdosis-${widget.member.clinicId}-${DateTime.now().toUtc().toIso8601String().substring(0, 10)}.${protect ? 'vetbackup' : 'json'}',
+          'vetdosis-${scope.name}-${widget.member.clinicId}-${DateTime.now().toUtc().toIso8601String().substring(0, 10)}.${protect ? 'vetbackup' : 'json'}',
       bytes: output,
     );
     if (mounted) {
@@ -111,7 +140,12 @@ class _BackupScreenState extends State<BackupScreen> {
 
   Future<void> csv({String format = 'csv'}) async {
     final snapshot =
-        jsonDecode(await widget.repository.snapshot(widget.member.clinicId))
+        jsonDecode(
+              await widget.repository.snapshot(
+                widget.member.clinicId,
+                scope: scope,
+              ),
+            )
             as Map;
     final tables = snapshot['tables'] as Map;
     if (!mounted) return;
@@ -201,8 +235,13 @@ class _BackupScreenState extends State<BackupScreen> {
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: model,
-    builder: (context, _) => widget.member.role != ClinicRole.admin
-        ? const Text('Los respaldos requieren acceso de administrador.')
+    builder: (context, _) => access == null
+        ? Column(
+            children: [
+              if (result == null) const LinearProgressIndicator(),
+              if (result != null) Text(result!),
+            ],
+          )
         : Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -216,7 +255,7 @@ class _BackupScreenState extends State<BackupScreen> {
                 onPressed: working ? null : model.load,
                 icon: const Icon(Icons.refresh),
               ),
-              if (!widget.backupOnly) ...[
+              if (!widget.backupOnly && access!.statistics) ...[
                 const Text(
                   'Ventas mensuales netas de devoluciones registradas en el mes, en MXN. No representan utilidad neta.',
                 ),
@@ -245,8 +284,33 @@ class _BackupScreenState extends State<BackupScreen> {
                 const Divider(),
               ],
               const Text(
-                'El respaldo operacional incluye registros y PDF históricos; agrega las fotos de inventario. Excluye credenciales, firmas reutilizables y fichas médicas de otros empleados. Drive, restauración y respaldo integral del servidor quedan para la integración final.',
+                'El respaldo de clínica incluye registros y PDF históricos. El personal incluye solo datos propios permitidos y nunca expedientes. Drive y restauración de servidor siguen pendientes.',
               ),
+              if (access!.clinic && access!.personal)
+                SegmentedButton<BackupScope>(
+                  segments: const [
+                    ButtonSegment(
+                      value: BackupScope.clinic,
+                      label: Text('Clínica'),
+                    ),
+                    ButtonSegment(
+                      value: BackupScope.personal,
+                      label: Text('Personal'),
+                    ),
+                  ],
+                  selected: {scope},
+                  onSelectionChanged: working
+                      ? null
+                      : (value) => setState(() => scope = value.single),
+                )
+              else
+                Text(
+                  !access!.clinic && !access!.personal
+                      ? 'No tienes un alcance de respaldo vigente.'
+                      : access!.personal
+                      ? 'Alcance: datos personales propios, sin expedientes.'
+                      : 'Alcance: operación de la clínica autorizada.',
+                ),
               SwitchListTile(
                 value: protect,
                 onChanged: working
@@ -254,7 +318,7 @@ class _BackupScreenState extends State<BackupScreen> {
                     : (value) => setState(() => protect = value),
                 title: const Text('Proteger respaldo con contraseña'),
                 subtitle: const Text(
-                  'Activado por defecto. CSV se exporta sin cifrar.',
+                  'Activado por defecto. Usa una contraseña distinta para cada tipo. CSV se exporta sin cifrar.',
                 ),
               ),
               if (!protect)
@@ -274,7 +338,14 @@ class _BackupScreenState extends State<BackupScreen> {
                 spacing: 8,
                 children: [
                   FilledButton(
-                    onPressed: ack && !working ? () => run(backup) : null,
+                    onPressed:
+                        ack &&
+                            !working &&
+                            ((scope == BackupScope.clinic && access!.clinic) ||
+                                (scope == BackupScope.personal &&
+                                    access!.personal))
+                        ? () => run(backup)
+                        : null,
                     child: Text(
                       protect
                           ? 'Exportar respaldo protegido'
@@ -282,12 +353,26 @@ class _BackupScreenState extends State<BackupScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: ack && !working ? () => run(() => csv()) : null,
+                    onPressed:
+                        ack &&
+                            !working &&
+                            ((scope == BackupScope.clinic && access!.clinic) ||
+                                (scope == BackupScope.personal &&
+                                    access!.personal))
+                        ? () => run(() => csv())
+                        : null,
                     child: const Text('Tabla CSV'),
                   ),
                   for (final format in ['pdf', 'xlsx'])
                     TextButton(
-                      onPressed: ack && !working && widget.identity != null
+                      onPressed:
+                          ack &&
+                              !working &&
+                              widget.identity != null &&
+                              ((scope == BackupScope.clinic &&
+                                      access!.clinic) ||
+                                  (scope == BackupScope.personal &&
+                                      access!.personal))
                           ? () => run(() => csv(format: format))
                           : null,
                       child: Text('Tabla ${format.toUpperCase()} con membrete'),

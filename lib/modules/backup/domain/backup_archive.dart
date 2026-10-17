@@ -10,9 +10,10 @@ class BackupArchive {
   static Future<Uint8List> create(
     BackupRepository repository,
     String clinic, {
+    BackupScope scope = BackupScope.clinic,
     Map<String, String> clinicalAssets = const {},
   }) async {
-    final snapshot = await repository.snapshot(clinic);
+    final snapshot = await repository.snapshot(clinic, scope: scope);
     final data = jsonDecode(snapshot) as Map;
     if (data['clinic_id'] != clinic || data['version'] != 1) {
       throw const FormatException('El respaldo no corresponde a esta clínica.');

@@ -20,6 +20,8 @@ class ModuleAccess {
       'prescriptions': false,
       'forms': false,
       'clinical': false,
+      'statistics': false,
+      'backup': false,
     },
     {
       'patients': false,
@@ -48,6 +50,8 @@ class ModuleAccess {
       'prescriptions',
       'forms',
       'clinical',
+      'statistics',
+      'backup',
     };
     const expectedSummaries = {
       'patients',
@@ -91,6 +95,8 @@ bool moduleNavigationAllowed(
     'Caja' => access.module('sales'),
     'Receta' => access.module('prescriptions'),
     'Formatos' => access.module('forms') || access.module('clinical'),
+    'Estadísticas' => access.module('statistics'),
+    'Respaldo' || 'Estadísticas y respaldo' => access.module('backup'),
     _ => true,
   };
 }

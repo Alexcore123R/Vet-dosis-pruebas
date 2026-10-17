@@ -29,6 +29,8 @@ Map<String, dynamic> contract({String enabled = ''}) => {
       'prescriptions',
       'forms',
       'clinical',
+      'statistics',
+      'backup',
     ])
       name: name == enabled,
   },
@@ -81,10 +83,20 @@ void main() {
     final denied = ModuleAccess.read(contract());
     expect(navigationAllowed('Pacientes', member, denied), false);
     expect(navigationAllowed('Hospitalización', member, denied), false);
+    expect(navigationAllowed('Respaldo', member, denied), false);
+    expect(navigationAllowed('Estadísticas', member, denied), false);
     final inventory = ModuleAccess.read(contract(enabled: 'inventory'));
     expect(navigationAllowed('Inventario', member, inventory), true);
     expect(navigationAllowed('Caja', member, inventory), false);
     expect(navigationAllowed('Pacientes', member, inventory), false);
+  });
+
+  test('backup and statistics are independent server modules', () {
+    final raw = contract();
+    (raw['modules'] as Map)['backup'] = true;
+    final backup = ModuleAccess.read(raw);
+    expect(navigationAllowed('Respaldo', member, backup), true);
+    expect(navigationAllowed('Estadísticas', member, backup), false);
   });
 
   test('unknown or incomplete module contracts fail closed', () {

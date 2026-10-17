@@ -7,11 +7,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vetdosis_pro/modules/backup/domain/backup_archive.dart';
 import 'package:vetdosis_pro/modules/backup/domain/backup_cipher.dart';
 import 'package:vetdosis_pro/modules/backup/domain/backup_recovery_report.dart';
+import 'package:vetdosis_pro/modules/backup/domain/backup_repository.dart';
 import 'package:vetdosis_pro/modules/backup/presentation/backup_password_dialog.dart';
 import 'remaining_test.dart' show FakeBackup;
 
 class CountingBackup extends FakeBackup {
   int reads = 0;
+  bool allow = true;
+  @override
+  Future<Map<String, dynamic>> workspace(String clinic) async => {
+    'schema_version': 1,
+    'mode': 'explicit_backup',
+    'workspace_kind': 'clinic',
+    'exports': {'clinic': allow, 'personal': false},
+    'statistics': allow,
+  };
   @override
   Future<Map<String, dynamic>> statistics(String clinic) async {
     reads++;
@@ -20,8 +30,30 @@ class CountingBackup extends FakeBackup {
 }
 
 void main() {
+  test('backup access contract validates both scopes', () {
+    final access = BackupAccess.read({
+      'schema_version': 1,
+      'mode': 'explicit_backup',
+      'workspace_kind': 'personal',
+      'exports': {'clinic': false, 'personal': true},
+      'statistics': false,
+    });
+    expect(access.personal, true);
+    expect(access.clinic, false);
+    expect(
+      () => BackupAccess.read({
+        'schema_version': 1,
+        'mode': 'explicit_backup',
+        'workspace_kind': 'personal',
+        'exports': {'clinic': false},
+        'statistics': false,
+      }),
+      throwsFormatException,
+    );
+  });
+
   testWidgets(
-    'Backup protection is on by default and a non-admin does not request statistics',
+    'Backup protection is on and server capability controls statistics',
     (tester) async {
       final repo = CountingBackup();
       const admin = ClinicMembership(
@@ -45,6 +77,7 @@ void main() {
         true,
       );
       final calls = repo.reads;
+      repo.allow = false;
       const auxiliary = ClinicMembership(
         clinicId: 'clinic',
         clinicName: 'Prueba',
@@ -65,7 +98,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(repo.reads, calls);
       expect(
-        find.text('Los respaldos requieren acceso de administrador.'),
+        find.text('No tienes un alcance de respaldo vigente.'),
         findsOneWidget,
       );
     },

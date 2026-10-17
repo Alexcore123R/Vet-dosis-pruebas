@@ -19,7 +19,15 @@ class FakeBackup implements BackupRepository {
   String? rawSnapshot;
   bool fail = false;
   @override
-  Future<String> snapshot(String clinic) async =>
+  Future<Map<String, dynamic>> workspace(String clinic) async => {
+    'schema_version': 1,
+    'mode': 'explicit_backup',
+    'workspace_kind': 'clinic',
+    'exports': {'clinic': true, 'personal': false},
+    'statistics': true,
+  };
+  @override
+  Future<String> snapshot(String clinic, {required BackupScope scope}) async =>
       rawSnapshot ??
       ' {"clinic_id":"$clinic","version":1,"tables":{"inventario":[{"photo_path":"$path","stock":123456789012345.123456789}]}} ';
   @override
@@ -221,7 +229,10 @@ void main() {
       final repo = FakeBackup();
       final bytes = await BackupArchive.create(repo, 'clinic');
       final envelope = jsonDecode(utf8.decode(bytes)) as Map;
-      expect(envelope['snapshot_json'], await repo.snapshot('clinic'));
+      expect(
+        envelope['snapshot_json'],
+        await repo.snapshot('clinic', scope: BackupScope.clinic),
+      );
       expect(envelope['snapshot_json'], contains('123456789012345.123456789'));
       expect(BackupArchive.verify(bytes)['clinic_id'], 'clinic');
     },

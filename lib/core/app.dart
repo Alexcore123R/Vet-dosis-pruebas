@@ -739,7 +739,7 @@ class CoreShell extends StatelessWidget {
                 else if (model.screen == 'Respaldo' ||
                     model.screen == 'Estadísticas y respaldo')
                   backup != null &&
-                          auth?.active?.role == ClinicRole.admin &&
+                          allowed(model.screen) &&
                           auth?.offline != true
                       ? BackupScreen(
                           identity: identity,
@@ -748,7 +748,7 @@ class CoreShell extends StatelessWidget {
                           backupOnly: model.screen == 'Respaldo',
                         )
                       : const Text(
-                          'Las estadísticas y el respaldo requieren conexión y acceso admin de la clínica.',
+                          'Las estadísticas y el respaldo requieren conexión y permiso vigente.',
                         )
                 else if (model.screen == 'Asistente IA')
                   ai != null && auth?.active != null && auth?.offline != true

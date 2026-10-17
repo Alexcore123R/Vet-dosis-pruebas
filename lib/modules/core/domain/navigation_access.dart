@@ -24,7 +24,8 @@ bool navigationAllowed(
     'Inventario' || 'Caja' || 'Escanear producto' || 'Formatos' => true,
     'Estadísticas' ||
     'Respaldo' ||
-    'Estadísticas y respaldo' => role == ClinicRole.admin,
+    'Estadísticas y respaldo' when access == null => role == ClinicRole.admin,
+    'Estadísticas' || 'Respaldo' || 'Estadísticas y respaldo' => true,
     'Equipo y avisos' || 'Pendientes del equipo' => !member.isPersonal,
     'Checado' => !member.isPersonal,
     _ => true,

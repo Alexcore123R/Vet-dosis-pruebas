@@ -24,7 +24,10 @@ class BackupRecoveryReport {
         'Este archivo corresponde a otra clínica. Abre su espacio autorizado para revisarlo.',
       );
     }
-    if (snapshot['format'] != 'vetdosis-operational-backup' ||
+    if (!{
+          'vetdosis-operational-backup',
+          'vetdosis-personal-backup',
+        }.contains(snapshot['format']) ||
         snapshot['version'] != 1) {
       throw const FormatException('No es un respaldo operacional compatible.');
     }

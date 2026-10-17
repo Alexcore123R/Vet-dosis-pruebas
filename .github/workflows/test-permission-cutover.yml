@@ -188,3 +188,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Probar navegación y consultas del dashboard por permisos
         run: bash supabase/tests/run_module_navigation_dashboard.sh
+
+  backups-exports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar respaldos de clínica y personales sin restaurar
+        run: bash supabase/tests/run_permission_backups_exports.sh

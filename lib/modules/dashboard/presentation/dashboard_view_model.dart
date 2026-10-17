@@ -88,7 +88,7 @@ class DashboardViewModel extends ChangeNotifier {
         section('Pacientes', () async {
           patientCount = (await patients!.patients(m.clinicId)).length;
         }),
-      if (backup != null && navigationAllowed('Estadísticas', m))
+      if (backup != null && navigationAllowed('Estadísticas', m, moduleAccess))
         section('Estadísticas', () async {
           statistics = await backup!.statistics(m.clinicId);
         }),

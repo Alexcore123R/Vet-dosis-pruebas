@@ -18,7 +18,7 @@ class BackupViewModel extends ChangeNotifier {
     } catch (_) {
       data = {};
       error =
-          'No se pudieron consultar las estadísticas. Revisa conexión y acceso admin.';
+          'No se pudieron consultar las estadísticas. Revisa conexión y permisos.';
     }
     if (_disposed) return;
     busy = false;
