@@ -66,7 +66,7 @@ begin
  clinic=private.storage_safe_uuid(parts[1]);
  case_id=private.storage_safe_uuid(parts[2]);
  object_name=parts[3];
- if clinic is null or case_id is null or object_name !~ '^[0-9a-fA-F-]{36}[.][A-Za-z0-9]+ then return false;end if;
+ if clinic is null or case_id is null or object_name !~ '^[0-9a-fA-F-]{36}[.][A-Za-z0-9]+$' then return false;end if;
  object_id=private.storage_safe_uuid(split_part(object_name,'.',1));
  extension=lower(split_part(object_name,'.',2));
  if object_id is null or extension not in ('png','jpg','jpeg','webp','pdf') then return false;end if;
