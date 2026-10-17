@@ -90,7 +90,7 @@ returns text language plpgsql security definer set search_path='' as $$
 declare token text;invite_id uuid;
 begin
  if not private.workspace_management_authorized(target_clinic,auth.uid()) then raise exception 'workspace_manage_required';end if;
- if invite_role='admin' and not private.permission_admin(target_clinic) then raise exception 'admin_required';end if;
+ if invite_role='admin' and coalesce(private.permission_admin(target_clinic),false) is not true then raise exception 'admin_required';end if;
  if not private.team_plan(target_clinic) then raise exception 'clinic_plan_required';end if;
  token=encode(extensions.gen_random_bytes(32),'hex');
  insert into public.clinic_invitations(clinic_id,email,role,token_hash,created_by)
@@ -117,9 +117,9 @@ declare current_role text;
 begin
  perform 1 from public.clinics where id=target_clinic for update;
  if not private.workspace_management_authorized(target_clinic,auth.uid()) then raise exception 'workspace_manage_required';end if;
- select role into current_role from public.clinic_members where clinic_id=target_clinic and user_id=target_user;
+ select role into current_role from public.clinic_members where clinic_id=target_clinic and user_id=target_user for update;
  if not found then raise exception 'member_not_found';end if;
- if current_role='admin' and not private.permission_admin(target_clinic) then raise exception 'admin_required';end if;
+ if current_role='admin' and coalesce(private.permission_admin(target_clinic),false) is not true then raise exception 'admin_required';end if;
  delete from public.clinic_members where clinic_id=target_clinic and user_id=target_user;
  insert into public.audit_log(clinic_id,actor_id,action,entity_id) values(target_clinic,auth.uid(),'member_removed',target_user::text);
 end$$;
@@ -129,9 +129,9 @@ declare current_role text;
 begin
  perform 1 from public.clinics where id=target_clinic for update;
  if not private.workspace_management_authorized(target_clinic,auth.uid()) then raise exception 'workspace_manage_required';end if;
- select role into current_role from public.clinic_members where clinic_id=target_clinic and user_id=target_user;
+ select role into current_role from public.clinic_members where clinic_id=target_clinic and user_id=target_user for update;
  if not found then raise exception 'member_not_found';end if;
- if (new_role='admin' or current_role='admin') and not private.permission_admin(target_clinic) then raise exception 'admin_required';end if;
+ if (new_role='admin' or current_role='admin') and coalesce(private.permission_admin(target_clinic),false) is not true then raise exception 'admin_required';end if;
  update public.clinic_members set role=new_role where clinic_id=target_clinic and user_id=target_user;
  insert into public.audit_log(clinic_id,actor_id,action,entity_id,details)
  values(target_clinic,auth.uid(),'member_role_changed',target_user::text,jsonb_build_object('role',new_role));
