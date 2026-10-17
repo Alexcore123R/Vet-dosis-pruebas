@@ -40,10 +40,12 @@ set role service_role;
 select pg_temp.expect_error(format($q$select public.ai_key_store_server('00000000-0000-0000-0000-000000000190','clinic',%L,'openai',repeat('c',24),repeat('n',16))$q$,:'clinic'),'workspace_manage_required');
 reset role;
 
--- Existing permission administrator grants the explicit management capability.
+-- Existing permission administrator grants explicit workspace management.
+-- Admin membership remains a second key: admin-only operations require both authorities.
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000150',false);set role authenticated;
 select public.permission_grant(:'clinic','00000000-0000-0000-0000-000000000190','workspace.manage',null,clock_timestamp()+interval '1 day','Synthetic workspace management') as manage_grant \gset
 select public.permission_grant(:'clinic','00000000-0000-0000-0000-000000000192','workspace.manage',null,clock_timestamp()+interval '1 day','Synthetic capability-only workspace management') as capability_manage_grant \gset
+select public.permission_grant(:'clinic','00000000-0000-0000-0000-000000000150','workspace.manage',null,clock_timestamp()+interval '1 day','Synthetic admin workspace management') as admin_manage_grant \gset
 reset role;
 
 -- workspace.manage can manage ordinary team state but cannot manufacture or destroy admin authority.
@@ -62,7 +64,7 @@ select public.set_clinic_member_role(:'clinic','00000000-0000-0000-0000-00000000
 select public.remove_clinic_member(:'clinic','00000000-0000-0000-0000-000000000193');
 reset role;
 
--- A real permission administrator retains authority over admin invitations and admin membership.
+-- A permission administrator with workspace.manage retains authority over admin invitations and admin membership.
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000150',false);set role authenticated;
 select pg_temp.assert_true(length(public.create_clinic_invitation(:'clinic','synthetic-real-admin-invite@example.test','admin'))>0,'permission admin cannot create admin invitation');
 select public.set_clinic_member_role(:'clinic','00000000-0000-0000-0000-000000000192','admin');
