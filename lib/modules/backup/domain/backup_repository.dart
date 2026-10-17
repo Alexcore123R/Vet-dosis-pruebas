@@ -14,6 +14,13 @@ abstract class BackupRepository {
     required Map<String, int> tableCounts,
   });
   Future<Map<String, dynamic>> restorePreview(String clinic);
+  Future<Map<String, dynamic>> previewRestoreConflicts(
+    String clinic, {
+    required String stageId,
+    required String archiveSha256,
+    required String manifestSha256,
+    required Map<String, List<String>> manifest,
+  });
   Future<void> discardRestorePreview(String clinic, String stageId);
 }
 
