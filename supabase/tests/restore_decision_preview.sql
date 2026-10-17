@@ -18,6 +18,10 @@ select public.permission_grant(:'clinic','00000000-0000-0000-0000-000000000195',
 select public.permission_grant(:'clinic','00000000-0000-0000-0000-000000000195','workspace.manage',null,clock_timestamp()+interval '1 day','Synthetic restore plan authority') as manage_grant \gset
 reset role;
 
+-- Snapshot operational rows only after synthetic auth/permission setup so this assertion
+-- isolates the restore preview itself from unrelated fixture side effects.
+select count(*) as patients_before from public.vet_patients where clinic_id=:'clinic' \\gset
+
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000195',false);set role authenticated;
 select public.restore_preview_stage(
  :'clinic','vetdosis-operational-backup',1,repeat('1',64),
