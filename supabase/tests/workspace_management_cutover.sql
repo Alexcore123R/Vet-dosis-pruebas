@@ -45,7 +45,7 @@ select pg_temp.assert_true(jsonb_array_length(public.clinic_team_snapshot(:'clin
 select public.att_settings_save(:'clinic','{"latitude":20.7,"longitude":-103.4,"radius_m":100,"max_accuracy_m":50,"privacy_notice":"Aviso sintético de ubicación para pruebas."}'::jsonb);
 select pg_temp.assert_true(public.att_qr(:'clinic') ? 'token','manager cannot issue attendance QR');
 select pg_temp.assert_true(public.plan_payment_history(:'clinic')='[]'::jsonb,'unexpected synthetic payment history');
-select public.plan_request(:'clinic','clinic','monthly',repeat('p',24)) as request \gset
+select public.plan_request(:'clinic','clinic','monthly',repeat('a',48)) as request \gset
 reset role;
 
 update public.subscription_plans set published=true where code='clinic';
@@ -85,5 +85,5 @@ reset role;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000191',false);set role authenticated;
 select public.personal_workspace_create() as personal \gset
 select pg_temp.assert_true(public.workspace_management_status(:'personal'),'personal owner not projected as manager');
-select public.plan_request(:'personal','individual','monthly',repeat('i',24));
+select public.plan_request(:'personal','individual','monthly',repeat('b',48));
 reset role;
