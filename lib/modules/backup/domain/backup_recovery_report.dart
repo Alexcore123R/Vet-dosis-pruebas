@@ -130,6 +130,11 @@ class BackupRecoveryReport {
           throw FormatException('Hay identificadores repetidos en $name.');
         }
         if (name == 'vet_owners') {
+          if (row['clinic_id'] != expectedClinic) {
+            throw const FormatException(
+              'Un tutor del respaldo no declara la clínica esperada.',
+            );
+          }
           final id = requiredUuid(row['id'], name, 'id');
           final ownerName = row['name'];
           if (ownerName is! String ||
