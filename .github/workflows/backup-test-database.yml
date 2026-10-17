@@ -1,0 +1,43 @@
+name: Respaldar base de pruebas (cifrado)
+on:
+  workflow_dispatch:
+    inputs:
+      check_only:
+        description: Solo comprobar configuración (no crea copia)
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: supabase-test-beta-preparation
+  cancel-in-progress: false
+jobs:
+  encrypted-backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Comprobar configuración sin mostrar secretos
+        env:
+          SUPABASE_TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+          SUPABASE_TEST_BACKUP_PASSPHRASE: ${{ secrets.SUPABASE_TEST_BACKUP_PASSPHRASE }}
+        run: python3 scripts/supabase/encrypted_database_backup.py --check-config
+      - name: Crear respaldo cifrado y comprobar integridad
+        if: ${{ !inputs.check_only }}
+        env:
+          SUPABASE_TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+          SUPABASE_TEST_BACKUP_PASSPHRASE: ${{ secrets.SUPABASE_TEST_BACKUP_PASSPHRASE }}
+        run: python3 scripts/supabase/encrypted_database_backup.py --output-dir "$RUNNER_TEMP/vetdosis-encrypted-backup"
+      - name: Guardar únicamente archivo cifrado y manifiesto
+        if: ${{ !inputs.check_only }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vetdosis-encrypted-database-backup
+          path: |
+            ${{ runner.temp }}/vetdosis-encrypted-backup/*.dump.gpg
+            ${{ runner.temp }}/vetdosis-encrypted-backup/manifest.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Limpiar copia del runner
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/vetdosis-encrypted-backup"

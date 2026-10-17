@@ -1,0 +1,20 @@
+name: Probar respaldo cifrado (aislado)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/supabase/encrypted_database_backup.py'
+      - 'scripts/supabase/test_encrypted_database_backup.py'
+      - 'supabase/tests/run_encrypted_database_backup.sh'
+      - '.github/workflows/test-encrypted-database-backup.yml'
+permissions:
+  contents: read
+jobs:
+  synthetic-backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s scripts/supabase -p 'test_encrypted_database_backup.py'
+      - run: bash supabase/tests/run_encrypted_database_backup.sh

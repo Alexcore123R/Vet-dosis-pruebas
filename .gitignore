@@ -67,3 +67,7 @@ supabase/config.*.local.json
 *.pfx
 **/key.properties
 *.signing-backup.gpg
+# Operational backups and decrypted archives never belong in Git.
+*.dump
+*.dump.gpg
+*.backup.gpg
