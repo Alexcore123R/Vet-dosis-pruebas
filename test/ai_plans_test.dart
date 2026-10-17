@@ -90,6 +90,7 @@ class PlanFake implements SubscriptionRepository {
   int requests = 0;
   @override
   Future<Map<String, dynamic>> dashboard(String clinic) async => {
+    'can_manage': true,
     'workspace': {'kind': 'personal'},
     'effective': {
       'name': 'Gratis',
