@@ -1,0 +1,24 @@
+name: Ensayar integración en pruebas (ROLLBACK)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: supabase-test-beta-preparation
+  cancel-in-progress: false
+jobs:
+  rollback-trial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s scripts/supabase -p 'test_*.py'
+      - name: Ensayar transacción en proyecto fijo y verificar rollback
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: python3 scripts/supabase/integration_remote_rehearsal.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: remote-rollback-trial
+          path: remote-rollback-trial.json
+          retention-days: 7
