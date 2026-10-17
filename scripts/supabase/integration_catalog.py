@@ -119,9 +119,13 @@ def compare(baseline, remote):
             raise ValueError('Missing routine security metadata.')
         for name in sorted(baseline['routines'].keys() | remote['routines'].keys()):
             if baseline['routines'].get(name) != remote['routines'].get(name):
+                expected_routine = baseline['routines'].get(name)
+                actual_routine = remote['routines'].get(name)
                 differences.append({'object': name, 'kind': 'routine_security_differs',
-                                    'expected': baseline['routines'].get(name),
-                                    'actual': remote['routines'].get(name)})
+                                    'expected': expected_routine, 'actual': actual_routine,
+                                    'changed_fields': sorted(
+                                        key for key in (expected_routine or {}).keys() | (actual_routine or {}).keys()
+                                        if (expected_routine or {}).get(key) != (actual_routine or {}).get(key))})
     return {'project_ref': PROJECT, 'read_only': True, 'deploy_ready': False,
             'differences': differences, 'compared_relations': len(REQUIRED_RELATIONS),
             'compared_functions': len(REQUIRED_FUNCTIONS),
@@ -148,7 +152,8 @@ def main():
     report = compare(json.loads(args.baseline.read_text()), rows[0]['catalog'])
     args.output.write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps({**report, 'differences': report['differences'][:25],
-                      'difference_index': [{'object': d['object'], 'kind': d['kind']}
+                      'difference_index': [{'object': d['object'], 'kind': d['kind'],
+                                            'changed_fields': d.get('changed_fields', [])}
                                            for d in report['differences']],
                       'total_differences': len(report['differences']),
                       'full_report_in_artifact': True}, indent=2))
