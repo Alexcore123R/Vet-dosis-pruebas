@@ -149,6 +149,27 @@ class FakeBackup implements BackupRepository {
   }
 
   @override
+  Future<Map<String, dynamic>> preflightRestore(
+    String clinic, {
+    required String stageId,
+    required String archiveSha256,
+    required String conflictManifestSha256,
+    required String dependencyManifestSha256,
+  }) async => {
+    'schema_version': 1,
+    'mode': 'restore_preflight',
+    'preflight_id': 'preflight',
+    'stage_id': stageId,
+    'archive_sha256': archiveSha256,
+    'conflict_manifest_sha256': conflictManifestSha256,
+    'dependency_manifest_sha256': dependencyManifestSha256,
+    'checked_entries': 0,
+    'applicable': true,
+    'blockers': <dynamic>[],
+    'imports_applied': false,
+  };
+
+  @override
   Future<void> discardRestorePreview(String clinic, String stageId) async {}
 }
 
