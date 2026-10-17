@@ -28,12 +28,14 @@ select public.permission_grant(:'clinic','00000000-0000-0000-0000-000000000194',
 reset role;
 
 select id as existing_patient from public.vet_patients where clinic_id=:'clinic' order by id limit 1 \gset
+select id as global_template from public.form_templates where clinic_id is null order by id limit 1 \gset
+select id as global_template_version from public.form_template_versions where clinic_id is null and template_id=:'global_template'::uuid order by version,id limit 1 \gset
 
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000194',false);set role authenticated;
 select public.restore_preview_stage(
  :'clinic','vetdosis-operational-backup',1,repeat('c',64),
  clock_timestamp()-interval '1 hour',
- '{"vet_patients":3,"clinic_tasks":1}'::jsonb
+ '{"vet_patients":3,"clinic_tasks":1,"form_templates":1,"form_template_versions":1}'::jsonb
 ) as stage \gset
 
 select public.restore_preview_conflicts(
@@ -43,17 +45,23 @@ select public.restore_preview_conflicts(
  repeat('d',64),
  jsonb_build_object(
    'vet_patients',jsonb_build_array(:'existing_patient','00000000-0000-0000-0000-000000000299','00000000-0000-0000-0000-000000000352'),
-   'clinic_tasks',jsonb_build_array('00000000-0000-0000-0000-000000000298')
+   'clinic_tasks',jsonb_build_array('00000000-0000-0000-0000-000000000298'),
+   'form_templates',jsonb_build_array(:'global_template'),
+   'form_template_versions',jsonb_build_array(:'global_template_version')
  )
 ) as conflicts \gset
 
 select pg_temp.assert_true((:'conflicts'::jsonb->>'imports_applied')::boolean=false,'conflict preview claimed imports');
-select pg_temp.assert_true((:'conflicts'::jsonb->>'incoming')::int=4,'incoming count mismatch');
-select pg_temp.assert_true((:'conflicts'::jsonb->>'existing')::int=1,'existing count mismatch');
+select pg_temp.assert_true((:'conflicts'::jsonb->>'incoming')::int=6,'incoming count mismatch');
+select pg_temp.assert_true((:'conflicts'::jsonb->>'existing')::int=3,'existing count mismatch');
 select pg_temp.assert_true((:'conflicts'::jsonb->>'foreign_conflict')::int=1,'foreign identity conflict missing');
 select pg_temp.assert_true((:'conflicts'::jsonb->>'new')::int=2,'new count mismatch');
 select pg_temp.assert_true((:'conflicts'::jsonb->'tables'->'vet_patients'->>'existing')::int=1,'patient conflict missing');
 select pg_temp.assert_true((:'conflicts'::jsonb->'tables'->'vet_patients'->>'foreign_conflict')::int=1,'cross-workspace patient collision missing');
+select pg_temp.assert_true((:'conflicts'::jsonb->'tables'->'form_templates'->>'existing')::int=1,'global template not treated as existing');
+select pg_temp.assert_true((:'conflicts'::jsonb->'tables'->'form_templates'->>'foreign_conflict')::int=0,'global template treated as foreign');
+select pg_temp.assert_true((:'conflicts'::jsonb->'tables'->'form_template_versions'->>'existing')::int=1,'global template version not treated as existing');
+select pg_temp.assert_true((:'conflicts'::jsonb->'tables'->'form_template_versions'->>'foreign_conflict')::int=0,'global template version treated as foreign');
 select pg_temp.assert_true(
  (public.restore_preview_get(:'clinic')->'stage'->'conflicts'->>'manifest_sha256')=repeat('d',64),
  'stored conflict report missing'
