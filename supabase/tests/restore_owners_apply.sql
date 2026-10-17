@@ -86,7 +86,7 @@ select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000197'
 -- Payload IDs cannot diverge from the verified manifest.
 select pg_temp.expect_error(
  format($q$select public.restore_prepare_owners(%L,%L::uuid,%L,'[{"id":"00000000-0000-0000-0000-000000000599","clinic_id":%L,"name":"Wrong"}]'::jsonb)$q$,
-  :'clinic',:'stage'::jsonb->>'stage_id',repeat('1',64),:'clinic'),
+  :'clinic',:'drift_stage'::jsonb->>'stage_id',repeat('4',64),:'clinic'),
  'restore_owner_payload_changed'
 );
 reset role;
