@@ -73,7 +73,7 @@ def run_restore(directory, passphrase, output, trial=False):
             subprocess.run(['docker','run','-d','--name',name,'--network','none',
                             '-e','POSTGRES_PASSWORD=synthetic-isolated-restore-only',
                             '-e','POSTGRES_HOST_AUTH_METHOD=trust',IMAGE,
-                            'postgres','-c','cron.launch_active_jobs=off'],
+                            'postgres','-D','/etc/postgresql','-c','cron.launch_active_jobs=off'],
                            stdout=subprocess.DEVNULL,stderr=errors,check=True)
             network=subprocess.check_output(['docker','inspect',name,'--format','{{.HostConfig.NetworkMode}}'],text=True).strip()
             if network!='none': raise RuntimeError('Restore container must have no network.')
