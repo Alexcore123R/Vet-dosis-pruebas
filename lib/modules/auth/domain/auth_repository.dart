@@ -25,6 +25,8 @@ abstract interface class PasswordRecoveryRepository {
 
 abstract interface class TeamRepository {
   bool get teamManagementAvailable;
+  /// null means the explicit capability endpoint is not installed yet.
+  Future<bool?> canManageWorkspace(String clinicId);
   Future<Map<String, dynamic>> team(String clinicId);
   Future<void> setMemberRole(String clinicId, String userId, ClinicRole role);
   Future<void> removeMember(String clinicId, String userId);
