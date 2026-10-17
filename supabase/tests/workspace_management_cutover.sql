@@ -25,7 +25,7 @@ values(:'clinic','00000000-0000-0000-0000-000000000190','admin'),
       (:'clinic','00000000-0000-0000-0000-000000000192','auxiliar'),
       (:'clinic','00000000-0000-0000-0000-000000000193','auxiliar'),
       (:'clinic','00000000-0000-0000-0000-000000000194','admin')
-on conflict(clinic_id,user_id) do nothing;
+on conflict(clinic_id,user_id) do update set role=excluded.role;
 
 -- Visual admin is not workspace-management authority.
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000190',false);set role authenticated;
