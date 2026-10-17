@@ -1056,7 +1056,36 @@ class CoreShell extends StatelessWidget {
           title: Text(option.$1),
           subtitle: Text(option.$2),
           trailing: const Icon(Icons.chevron_right),
-          onTap: () => model.navigate(option.$3),
+          onTap: () {
+            if (option.$1 == 'Proveedor de IA y privacidad') {
+              if (ai == null || auth?.active == null || auth?.offline == true) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('La configuración de IA requiere cuenta y conexión.')),
+                );
+                return;
+              }
+              Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => Scaffold(
+                    appBar: AppBar(title: const Text('Proveedores de IA')),
+                    body: SafeArea(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: AiScreen(
+                          repository: ai!,
+                          member: auth!.active!,
+                          configurationOnly: true,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            } else {
+              model.navigate(option.$3);
+            }
+          },
         ),
     if (allowed('Hospitalización')) ...[
       const Divider(),
