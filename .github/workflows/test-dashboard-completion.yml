@@ -1,0 +1,29 @@
+name: Validar cierre de dashboard
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/modules/dashboard/**'
+      - 'lib/modules/core/presentation/module_access_boundary.dart'
+      - 'test/module_navigation_dashboard_test.dart'
+      - 'supabase/proposed/14A_dashboard_sales_metrics.sql'
+      - 'supabase/tests/*dashboard_sales_metrics*'
+      - '.github/workflows/test-dashboard-completion.yml'
+permissions:
+  contents: read
+jobs:
+  dashboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar métricas en PostgreSQL aislado
+        run: bash supabase/tests/run_dashboard_sales_metrics.sh
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test test/dashboard_test.dart test/dashboard_round2_test.dart test/module_navigation_dashboard_test.dart test/identity_test.dart test/neu_theme_test.dart

@@ -31,3 +31,23 @@ Propuesta para votaciones, todavía sin migración: polls(clinic_id,id,question,
 ## Validación
 
 Pruebas de dashboard, fecha de clínica, cálculos de inventario, notas/pendientes, turnos propios, planificación de anticipación y persistencia; navegación móvil, texto grande, claro/oscuro; regresión de hospitalización e inventario. Análisis estático y compilación según los resultados del turno. La instalación y prueba de datos reales de esta revisión quedan pendientes del APK actualizado.
+
+## Cierre adicional — 17 de octubre
+
+El cliente muestra ahora `sale_count` y `average_ticket` si el servidor los entrega.
+La actualización candidata `14A_dashboard_sales_metrics.sql` añade ambos campos a
+la función privada de totales existente, sin cambiar sus permisos ni movimientos.
+Son ventas completas del periodo, excluyendo las revertidas antes de su cierre;
+el promedio usa sus importes originales, no el neto de caja dividido entre líneas.
+Un periodo sin ventas devuelve cero y promedio nulo. Los totales de caja siguen
+incluyendo los reversos según la fecha del movimiento. Esta candidata está fuera
+del paquete de permisos de 23 archivos y todavía no está aplicada en remoto.
+
+Si falla la consulta del contrato de módulos, aparece un aviso con Reintentar;
+los módulos permanecen bloqueados hasta obtener un contrato válido. No confundir
+este error de carga con una respuesta válida que deniega permisos a la persona.
+
+Pendientes de cierre operativo: aplicar y validar permisos en el servidor de
+prueba, desplegar las métricas tras revisar su candidata, y comprobar en teléfono
+el escáner/cámara, identidad, navegación y alarmas. Las votaciones aún requieren
+definir privacidad y cambio de voto; no se incluyen como función terminada.

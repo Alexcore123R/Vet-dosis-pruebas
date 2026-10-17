@@ -565,9 +565,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             money(totals?['recorded_net']),
                           ),
                         ]),
-                        const Text(
-                          'Número de ventas y ticket promedio: no disponibles en la consulta actual.',
-                        ),
+                        metrics([
+                          (
+                            'Ventas vigentes del día',
+                            totals?['sale_count'] is int
+                                ? '${totals!['sale_count']}'
+                                : 'No disponible',
+                          ),
+                          (
+                            'Ticket promedio de ventas vigentes',
+                            totals?['average_ticket'] == null
+                                ? 'No disponible'
+                                : money(totals!['average_ticket']),
+                          ),
+                        ]),
                         for (final entry in [
                           ('Efectivo', 'cash'),
                           ('Tarjeta', 'card'),

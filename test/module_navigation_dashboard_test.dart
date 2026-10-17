@@ -141,6 +141,32 @@ void main() {
     model.dispose();
   });
 
+  testWidgets('failed permissions show retry without enabling modules', (
+    tester,
+  ) async {
+    final repository = SequenceAccessRepo([{}, contract(enabled: 'inventory')]);
+    await tester.pumpWidget(MaterialApp(
+      home: ModuleAccessBoundary(
+        member: member,
+        repository: repository,
+        revision: 0,
+        builder: (access) => Scaffold(body: Text(
+          navigationAllowed('Inventario', member, access)
+              ? 'inventory-visible'
+              : 'inventory-hidden',
+        )),
+      ),
+    ));
+    await tester.pump();
+    expect(find.textContaining('No se pudieron comprobar'), findsOneWidget);
+    expect(find.text('inventory-hidden'), findsOneWidget);
+    await tester.tap(find.text('Reintentar'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('No se pudieron comprobar'), findsNothing);
+    expect(find.text('inventory-visible'), findsOneWidget);
+    expect(repository.calls, 2);
+  });
+
   testWidgets('identity change clears an earlier module contract', (
     tester,
   ) async {
