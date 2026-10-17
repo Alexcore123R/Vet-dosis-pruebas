@@ -162,3 +162,43 @@ Sigue pendiente revisar constraints, políticas completas, grants y triggers,
 disponer de respaldo verificable y probar las sesiones reales. Los informes
 conservan `deploy_ready=false`. La migración adicional 13Y de renovación IA sigue
 fuera del paquete de 23 candidatos y necesita despliegue coordinado con Edge/cliente.
+
+## Revisión de seguridad y recuperación (17 octubre)
+
+[Inspección 39061840288](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39061840288)
+aprobada; las 50 pruebas Python pasaron en la ampliación. Se inspeccionaron además
+hashes de constraints, políticas y triggers, privilegios efectivos de tabla para
+anon/authenticated/service_role y metadatos de las 266 funciones de la base local.
+No se exportaron cuerpos de funciones remotas ni registros de aplicación.
+
+La API de respaldos respondió con `backups=[]`, `pitr_enabled=false` y
+`walg_enabled=true`. Esta última bandera no acredita un punto recuperable:
+no se ha verificado restauración ni se conoce una copia externa. No se descargó
+ningún respaldo y no se activaron servicios de pago.
+
+La comparación ampliada reporta 208 diferencias de metadatos, no 208 fallos:
+
+- 164 funciones difieren. En 152 solo cambia EXECUTE para service_role. Otras
+  diferencias incluyen EXECUTE para anon; requieren considerar el cuerpo y sus
+  controles, sin inferir exposición clínica solo por ese permiso.
+- Los cuerpos de `has_clinic_role` e `is_clinic_member` coinciden por hash con
+  `deployment/02_pruebas_dosis_pacientes.sql`, y `ai_prepare` con
+  `deployment/07B_pruebas.sql`. El simulador parte de adaptaciones distintas.
+- `support_attachment_reserve` coincide con `deployment/07D_pruebas.sql`.
+  `support_attachment_finish` coincide exactamente con la versión histórica de
+  ese archivo en `a9743f57dc84`: verifica acceso y existencia del objeto, pero aún
+  no incorpora la comprobación actual de MIME/tamaño contra la reserva. Preparar
+  un reemplazo puntual revisado; no reejecutar toda la creación M14.
+- En `clinic_members` ya no están las cuatro políticas heredadas de la fixture
+  (lectura de roster y escrituras de administradores); queda `vd_memberships_read`.
+  No restaurar esas políticas antiguas automáticamente para igualar el simulador.
+- Hay 25 diferencias de permisos de tabla. Las revisadas reflejan acceso del rol
+  de servicio; Storage también otorga privilegios a anon y depende de sus políticas.
+  Esto no acredita acceso HTTP de anon ni reemplaza probar RLS con sesiones reales.
+- Storage añade sus propios triggers y constraints respecto de la fixture mínima.
+
+Pendientes concretos antes de aplicar: disponer de copia recuperable y ensayar su
+restauración; reproducir o revisar las diferencias restantes de ACL/políticas y
+cuerpos desplegados; preparar la actualización puntual del finalizador de adjuntos;
+coordinar 13Y y Edge; probar cuentas separadas y anon por HTTP. La inspección sigue
+manteniendo `deploy_ready=false`, sin cambios remotos ni apertura de admisiones.
