@@ -210,5 +210,5 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Probar vista previa, conflictos, decisiones y preflight sin importar registros
+      - name: Probar recuperación segura y restauración limitada de tutores
         run: bash supabase/tests/run_restore_preview_staging.sh
