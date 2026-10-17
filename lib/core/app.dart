@@ -102,31 +102,91 @@ class VetDosisApp extends StatelessWidget {
   final ModuleAccessRepository? moduleAccess;
   ThemeData theme(Brightness brightness) {
     final dark = brightness == Brightness.dark;
+    final neumorphic = model.settings.visualStyle == 'neu';
+    final background = dark
+        ? const Color(0xFF0B121C)
+        : const Color(0xFFF2F7FA);
+    final surface = dark
+        ? const Color(0xFF131E2A)
+        : const Color(0xFFF9FBFD);
+    final primary = dark
+        ? const Color(0xFF55E2D3)
+        : const Color(0xFF31CDBD);
+    final secondary = dark
+        ? const Color(0xFFB69BFF)
+        : const Color(0xFFA88DF2);
+    final tertiary = dark
+        ? const Color(0xFFFF92C9)
+        : const Color(0xFFF29AC4);
+    final scheme = ColorScheme.fromSeed(
+      seedColor: neumorphic
+          ? primary
+          : paletteColors[model.settings.palette],
+      brightness: brightness,
+    ).copyWith(
+      primary: neumorphic ? primary : null,
+      onPrimary: neumorphic ? const Color(0xFF062321) : null,
+      secondary: neumorphic ? secondary : null,
+      tertiary: neumorphic ? tertiary : null,
+      surface: neumorphic ? surface : null,
+    );
+
     return ThemeData(
       useMaterial3: true,
-      inputDecorationTheme: model.settings.visualStyle == 'neu'
+      colorScheme: scheme,
+      scaffoldBackgroundColor: neumorphic ? background : null,
+      inputDecorationTheme: neumorphic
           ? InputDecorationTheme(
               filled: true,
-              fillColor: dark
-                  ? const Color(0xFF28333B)
-                  : const Color(0xFFE5EBEF),
+              fillColor: surface,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 16,
+              ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(18),
+                borderSide: BorderSide(
+                  color: dark
+                      ? const Color(0xFF26384A)
+                      : const Color(0xFFDDE7EF),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: BorderSide(
+                  color: dark
+                      ? const Color(0xFF26384A)
+                      : const Color(0xFFDDE7EF),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: BorderSide(color: primary, width: 1.5),
               ),
             )
           : null,
+      chipTheme: neumorphic
+          ? ChipThemeData(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              side: BorderSide(
+                color: dark
+                    ? const Color(0xFF2A3A4B)
+                    : const Color(0xFFDDE7EF),
+              ),
+            )
+          : null,
+      navigationBarTheme: neumorphic
+          ? NavigationBarThemeData(
+              backgroundColor: surface,
+              indicatorColor: primary.withValues(alpha: dark ? 0.22 : 0.18),
+              elevation: 0,
+            )
+          : null,
       extensions: [
-        WorkspaceStyle(neumorphic: model.settings.visualStyle == 'neu'),
+        WorkspaceStyle(neumorphic: neumorphic),
       ],
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: model.settings.visualStyle == 'neu'
-            ? const Color(0xFF087D89)
-            : paletteColors[model.settings.palette],
-        brightness: brightness,
-      ),
-      scaffoldBackgroundColor: dark
-          ? const Color(0xFF20272D)
-          : const Color(0xFFEDF2F4),
     );
   }
 
@@ -1033,25 +1093,57 @@ class CoreShell extends StatelessWidget {
 class SoftPanel extends StatelessWidget {
   const SoftPanel({super.key, required this.child});
   final Widget child;
+
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final surface = dark
+        ? const Color(0xFF131E2A)
+        : const Color(0xFFF9FBFD);
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: dark
+              ? const [Color(0xFF182536), Color(0xFF101923)]
+              : const [Color(0xFFFFFFFF), Color(0xFFF1F6FA)],
+        ),
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: dark
+              ? const Color(0xFF243547)
+              : const Color(0xFFE4EDF3),
+        ),
         boxShadow: [
           BoxShadow(
-            color: dark ? const Color(0x55000000) : const Color(0xFFD0D8DC),
-            offset: const Offset(6, 6),
-            blurRadius: 14,
+            color: dark
+                ? const Color(0x99000000)
+                : const Color(0xFFD5E0E7),
+            offset: const Offset(7, 8),
+            blurRadius: 18,
           ),
           BoxShadow(
-            color: dark ? const Color(0xFF2A333B) : Colors.white,
+            color: dark
+                ? const Color(0x182DE6D1)
+                : const Color(0xFFFFFFFF),
             offset: const Offset(-6, -6),
-            blurRadius: 14,
+            blurRadius: 16,
           ),
         ],
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primary.withValues(alpha: dark ? 0.035 : 0.025),
+            theme.colorScheme.secondary.withValues(alpha: dark ? 0.025 : 0.018),
+            surface.withValues(alpha: 0),
+          ],
+        ),
       ),
       child: child,
     );
