@@ -44,6 +44,9 @@ Deno.serve(async req => {
       const {data:scope,error:scopeError}=await user.from(table).select('clinic_id').eq('id',input.id).single();
       if(scopeError || !scope || !await betaAccess(user,true,scope.clinic_id))return reply({error:'beta_write_denied'},403);
       const rendered=await renderForm(doc.snapshot,font);if(!rendered.mvzPng)return reply({error:'signature_required'},400);
+      // Revalidate the authenticated caller immediately before the privileged write.
+      const {data:current,error:currentError}=await user.rpc('rx_pdf_snapshot',args);
+      if(currentError||!current||current.revision!==doc.revision||current.content_hash!==doc.content_hash||current.state!=='awaiting_review')return reply({error:'rx_access_or_revision_changed'},409);
       const server=createClient(url,serviceKey,{auth:{persistSession:false}});
       const {error:saveError}=await server.rpc('rx_pdf_register',{...args,p_revision:doc.revision,p_content_hash:doc.content_hash,p_pdf:base64(rendered.bytes),p_signature:base64(rendered.mvzPng)});
       if(saveError)return reply({error:'rx_pdf_conflict'},409);
@@ -58,6 +61,9 @@ Deno.serve(async req => {
       if(readError)return reply({error:'document_access_denied'},403);if(existing)return reply(existing);
       if(!await betaAccess(user,true,doc.clinic_id))return reply({error:'beta_write_denied'},403);
       const rendered=await renderForm(doc.snapshot,font,{tutorPreview:true});
+      // Rendering can take time; prove the caller still has access before service-role storage.
+      const {data:current,error:currentError}=await user.rpc('form_document_preview_snapshot',args);
+      if(currentError||!current||current.revision!==doc.revision||current.content_hash!==doc.content_hash||current.state!=='awaiting_tutor')return reply({error:'preview_access_or_revision_changed'},409);
       const server=createClient(url,serviceKey,{auth:{persistSession:false}});
       const {error:saveError}=await server.rpc('form_preview_register',{...args,p_revision:doc.revision,p_content_hash:doc.content_hash,p_pdf:base64(rendered.bytes)});
       if(saveError)return reply({error:'preview_revision_conflict'},409);
@@ -74,6 +80,9 @@ Deno.serve(async req => {
     if(!await betaAccess(user,true,doc.clinic_id))return reply({error:'beta_write_denied'},403);
     const rendered=await renderForm(doc.snapshot,font);
     if ((!doc.snapshot.clinical && !rendered.tutorPng) || !rendered.mvzPng) return reply({error:'signature_images_required'},400);
+    // Recheck the same user-visible snapshot immediately before the service-role write.
+    const {data:current,error:currentError}=await user.rpc('form_document_snapshot',{p_id:doc.id});
+    if(currentError||!current||current.revision!==doc.revision||current.content_hash!==doc.content_hash||current.state!=='awaiting_review')return reply({error:'document_access_or_revision_changed'},409);
     const server=createClient(url,serviceKey,{auth:{persistSession:false}});
     const {error:saveError}=await server.rpc('form_register_pdf',{
       p_id:doc.id,p_revision:doc.revision,p_content_hash:doc.content_hash,
