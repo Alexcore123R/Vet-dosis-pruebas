@@ -160,8 +160,8 @@ void main() {
       await t.pumpAndSettle();
       await t.tap(find.text('Paciente · Historia'));
       await t.pumpAndSettle();
-      await t.ensureVisible(find.text('Anexar medición'));
-      await t.tap(find.text('Anexar medición'));
+      await t.ensureVisible(find.text('Anexar medición individual'));
+      await t.tap(find.text('Anexar medición individual'));
       await t.pumpAndSettle();
       expect(forms.legacyStaffReads, 0);
       expect(find.text('Quién realizó'), findsNothing);
@@ -204,7 +204,7 @@ void main() {
       await t.pumpAndSettle();
       await t.tap(find.text('Paciente · Historia'));
       await t.pumpAndSettle();
-      expect(find.text('Anexar medición'), findsNothing);
+      expect(find.text('Anexar medición individual'), findsNothing);
       expect(find.text('Anexar actuación'), findsNothing);
       expect(find.text('Autorizar persona y procedimiento'), findsNothing);
       expect(find.text('Ver PDF original firmado'), findsNothing);
