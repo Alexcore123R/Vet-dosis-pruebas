@@ -210,5 +210,5 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Probar staging de recuperación sin importar registros
+      - name: Probar vista previa, conflictos y decisiones sin importar registros
         run: bash supabase/tests/run_restore_preview_staging.sh
