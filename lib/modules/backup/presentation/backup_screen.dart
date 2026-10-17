@@ -512,7 +512,8 @@ class _BackupScreenState extends State<BackupScreen> {
                       Text(
                         'Identificadores revisados: ${restoreConflicts!['incoming'] ?? 0} · '
                         'sin choque: ${restoreConflicts!['new'] ?? 0} · '
-                        'ya existentes: ${restoreConflicts!['existing'] ?? 0}',
+                        'ya existentes: ${restoreConflicts!['existing'] ?? 0} · '
+                        'ID en otro espacio: ${restoreConflicts!['foreign_conflict'] ?? 0}',
                       ),
                       for (final entry
                           in (Map<String, dynamic>.from(
@@ -524,7 +525,8 @@ class _BackupScreenState extends State<BackupScreen> {
                           title: Text(entry.key),
                           subtitle: Text(
                             'Nuevos: ${(entry.value as Map)['new']} · '
-                            'existentes: ${(entry.value as Map)['existing']}',
+                            'existentes: ${(entry.value as Map)['existing']} · '
+                            'otro espacio: ${(entry.value as Map)['foreign_conflict'] ?? 0}',
                           ),
                           trailing: Text(
                             '${(entry.value as Map)['incoming']}',
@@ -540,6 +542,7 @@ class _BackupScreenState extends State<BackupScreen> {
                         'Candidatos a crear: ${restorePlan!['create_candidate'] ?? 0} · '
                         'conservar actuales: ${restorePlan!['keep_existing'] ?? 0} · '
                         'bloqueados: ${restorePlan!['blocked_missing_dependency'] ?? 0} · '
+                        'ID de otro espacio: ${restorePlan!['blocked_foreign_identity'] ?? 0} · '
                         'revisión manual: ${restorePlan!['manual_review'] ?? 0}',
                       ),
                       for (final entry
@@ -554,6 +557,7 @@ class _BackupScreenState extends State<BackupScreen> {
                             'Crear: ${(entry.value as Map)['create_candidate']} · '
                             'conservar: ${(entry.value as Map)['keep_existing']} · '
                             'bloqueados: ${(entry.value as Map)['blocked_missing_dependency']} · '
+                            'otro espacio: ${(entry.value as Map)['blocked_foreign_identity'] ?? 0} · '
                             'manual: ${(entry.value as Map)['manual_review']}',
                           ),
                         ),
