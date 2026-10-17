@@ -36,6 +36,7 @@ class _BackupScreenState extends State<BackupScreen> {
   BackupAccess? access;
   BackupScope scope = BackupScope.clinic;
   BackupRecoveryReport? inspection;
+  Map<String, dynamic>? restoreStage;
   String? result;
   @override
   void initState() {
@@ -226,8 +227,49 @@ class _BackupScreenState extends State<BackupScreen> {
     if (mounted) {
       setState(() {
         inspection = report;
+        restoreStage = null;
         result =
             '${encrypted ? 'Contraseña y cifrado comprobados. ' : ''}Integridad verificada · ${report.records} registros. No se modificó la base de datos ni se acreditó el origen del archivo.';
+      });
+    }
+  }
+
+  Future<void> stageRestorePreview() async {
+    final report = inspection;
+    if (report == null || !report.clinicBackup || access?.restorePreview != true) {
+      return;
+    }
+    final staged = await widget.repository.stageRestorePreview(
+      widget.member.clinicId,
+      format: report.format,
+      version: report.version,
+      archiveSha256: report.archiveSha256,
+      sourceServerAt: DateTime.tryParse(report.serverAt),
+      tableCounts: report.tables,
+    );
+    if (staged['mode'] != 'restore_preview' ||
+        staged['imports_applied'] != false ||
+        staged['archive_sha256'] != report.archiveSha256) {
+      throw const FormatException('El servidor no confirmó una vista previa segura.');
+    }
+    if (mounted) {
+      setState(() {
+        restoreStage = staged;
+        result =
+            'Vista previa registrada en servidor. No se importó ningún registro. Esta preparación vence automáticamente.';
+      });
+    }
+  }
+
+  Future<void> discardRestorePreview() async {
+    final stage = restoreStage;
+    final id = stage?['stage_id'];
+    if (id is! String) return;
+    await widget.repository.discardRestorePreview(widget.member.clinicId, id);
+    if (mounted) {
+      setState(() {
+        restoreStage = null;
+        result = 'Vista previa descartada. No se modificó ningún registro.';
       });
     }
   }
@@ -401,6 +443,32 @@ class _BackupScreenState extends State<BackupScreen> {
                 if (inspection!.excluded.isNotEmpty)
                   const Text(
                     'El archivo declara exclusiones. Una recuperación completa requiere el respaldo del servidor.',
+                  ),
+                if (inspection!.clinicBackup && access!.restorePreview) ...[
+                  FilledButton.icon(
+                    onPressed: working || restoreStage != null
+                        ? null
+                        : () => run(stageRestorePreview, clearInspection: false),
+                    icon: const Icon(Icons.preview_outlined),
+                    label: const Text('Preparar vista previa en servidor'),
+                  ),
+                  if (restoreStage != null) ...[
+                    Text(
+                      'Vista previa activa · vence ${restoreStage!['expires_at'] ?? 'según el servidor'}',
+                    ),
+                    TextButton(
+                      onPressed: working
+                          ? null
+                          : () => run(
+                              discardRestorePreview,
+                              clearInspection: false,
+                            ),
+                      child: const Text('Descartar vista previa'),
+                    ),
+                  ],
+                ] else if (inspection!.clinicBackup)
+                  const Text(
+                    'La revisión local está disponible, pero tu acceso actual no permite preparar una restauración.',
                   ),
                 TextButton(
                   onPressed: working
