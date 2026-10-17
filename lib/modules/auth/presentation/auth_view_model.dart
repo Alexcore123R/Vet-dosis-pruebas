@@ -34,8 +34,12 @@ class AuthViewModel extends ChangeNotifier {
   String? invitation;
   bool _disposed = false;
   int _revision = 0;
+  final Map<String, bool> _workspaceManagers = {};
   int get accessRevision => _revision;
   bool get signedIn => repository.userId != null;
+  bool canManageWorkspace(String clinicId) => _workspaceManagers[clinicId] == true;
+  bool get canManageActiveWorkspace =>
+      active != null && canManageWorkspace(active!.clinicId);
   Future<void> start() async {
     _subscription = repository.changes.listen((_) => refresh());
     await refresh();
@@ -85,6 +89,27 @@ class AuthViewModel extends ChangeNotifier {
       }
       offline = false;
       memberships = result;
+      _workspaceManagers.clear();
+      if (repository is TeamRepository) {
+        final team = repository as TeamRepository;
+        for (final member in result) {
+          if (member.isPersonal) {
+            _workspaceManagers[member.clinicId] = true;
+            continue;
+          }
+          try {
+            final explicit = await team.canManageWorkspace(member.clinicId);
+            if (_disposed || revision != _revision || userId != repository.userId) {
+              return;
+            }
+            // Legacy compatibility exists only while the explicit RPC is absent.
+            _workspaceManagers[member.clinicId] =
+                explicit ?? member.role == ClinicRole.admin;
+          } catch (_) {
+            _workspaceManagers[member.clinicId] = false;
+          }
+        }
+      }
       active =
           result.where((m) => m.clinicId == previousClinic).firstOrNull ??
           result.firstOrNull;
@@ -109,6 +134,7 @@ class AuthViewModel extends ChangeNotifier {
           snapshot.userId == userId &&
           snapshot.validAt(now(), const Duration(hours: 24))) {
         memberships = snapshot.members;
+        _workspaceManagers.clear();
         active =
             memberships
                 .where((m) => m.clinicId == previousClinic)
@@ -127,6 +153,7 @@ class AuthViewModel extends ChangeNotifier {
       }
       active = null;
       memberships = [];
+      _workspaceManagers.clear();
       if (userId != null) {
         try {
           await cache?.clearAccess(userId);
@@ -228,8 +255,8 @@ class AuthViewModel extends ChangeNotifier {
   });
   Future<void> invite(String email, ClinicRole role) => _run(() async {
     final member = active;
-    if (member == null || member.role != ClinicRole.admin) {
-      throw StateError('admin_required');
+    if (member == null || !canManageWorkspace(member.clinicId)) {
+      throw StateError('workspace_manage_required');
     }
     final revision = _revision;
     final code = await repository.invite(member.clinicId, email, role);
