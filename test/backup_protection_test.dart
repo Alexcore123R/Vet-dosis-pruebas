@@ -154,6 +154,11 @@ void main() {
       expect(report.records, 1);
       expect(report.clinicBackup, true);
       expect(report.archiveSha256, hasLength(64));
+      expect(report.conflictManifestSha256, hasLength(64));
+      expect(
+        report.conflictManifest['vet_patients'],
+        ['00000000-0000-0000-0000-000000000201'],
+      );
       expect(jsonDecode(report.toJson())['restored'], false);
       expect(
         () => BackupRecoveryReport.inspect(archive, 'other'),
