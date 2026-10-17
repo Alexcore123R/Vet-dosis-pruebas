@@ -61,6 +61,10 @@ begin
  for plan_key,decision in select key,value from jsonb_each(s.decision_plan) order by key loop
   checked=checked+1;
   status=decision->>'status';
+  if status is null or status not in ('keep_existing','create_candidate','blocked_missing_dependency','blocked_foreign_identity','manual_review') then
+   blockers=blockers||jsonb_build_object('code','invalid_plan_status','entry',plan_key);
+   continue;
+  end if;
   parts=string_to_array(plan_key,':');
   if cardinality(parts)<>2 or not private.restore_conflict_table_allowed(parts[1]) then
    blockers=blockers||jsonb_build_object('code','invalid_plan_entry','entry',plan_key);
@@ -114,7 +118,7 @@ begin
    elsif s.conflict_manifest ? dep_table and
          exists(select 1 from jsonb_array_elements_text(s.conflict_manifest->dep_table) incoming(value) where incoming.value=dep_id::text) then
     dep_status=s.decision_plan->(dep_table||':'||dep_id::text)->>'status';
-    if dep_status not in ('create_candidate','keep_existing') then
+    if dep_status is null or dep_status not in ('create_candidate','keep_existing') then
      blockers=blockers||jsonb_build_object('code','incoming_dependency_not_applicable','table',row_table,'id',row_id,'dependency_table',dep_table,'dependency',dep_id);
     end if;
    else
