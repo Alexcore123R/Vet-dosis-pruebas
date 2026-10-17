@@ -91,6 +91,28 @@ Deno.serve(async (req) => {
       if (error) return reply({ error: "key_save_denied" }, 403);
       return reply({ id: data });
     }
+    if (input.action === "rotate_key") {
+      if (typeof input.connection !== "string" ||
+          typeof input.key !== "string" || input.key.length < 10 ||
+          input.key.length > 2000) return reply({ error: "invalid_key_request" }, 400);
+      const { data: previous, error: lookupError } = await server.rpc("ai_key_get_server", {
+        p_user: actor, p_connection: input.connection,
+      });
+      if (lookupError || !previous) return reply({ error: "key_access_denied" }, 403);
+      if (!await betaAccess(user, true, previous.scope === "clinic" ? previous.clinic_id : null)) {
+        return reply({ error: "beta_write_denied" }, 403);
+      }
+      const sealed = await sealCredential(
+        input.key, aes,
+        label(previous.provider, previous.scope, previous.owner_id ?? previous.clinic_id),
+      );
+      const { data: version, error: rotateError } = await server.rpc("ai_key_rotate_server", {
+        p_user: actor, p_connection: input.connection,
+        p_cipher: sealed.ciphertext, p_nonce: sealed.nonce,
+      });
+      if (rotateError) return reply({ error: "key_rotation_denied" }, 403);
+      return reply({ version });
+    }
     if (input.action === "models") {
       const { data: key, error } = await server.rpc("ai_key_get_server", {
         p_user: actor,
