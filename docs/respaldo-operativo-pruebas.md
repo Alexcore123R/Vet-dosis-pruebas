@@ -90,3 +90,17 @@ pasó también.
 Esto sustituye el estado previo de secretos ausentes. La restauración completa
 del archivo real en un entorno compatible y la copia de binarios Storage
 **siguen pendientes**; no se acredita recuperación integral del servicio todavía.
+
+### Ensayo posterior de restauración
+
+[Restauración 39077111210](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39077111210)
+aprobada sobre esta misma copia: pg_restore completó sin errores en un PostgreSQL
+Supabase aislado sin red, recuperó 125 tablas de aplicación y pasó las consultas
+de comprobación. También pasó el ensayo con rollback de los 23 candidatos.
+El informe posterior acredita la restauración del archivo; el manifiesto original
+conserva el estado de comprobación al crearse y no se reescribió.
+
+Storage se inspeccionó de nuevo: 3 buckets, 0 archivos. Por ahora no hay binarios
+adicionales que copiar. Esto no instala una política de respaldo de archivos futuros.
+La recuperación integral de identidades/secretos/configuración y las pruebas HTTP
+siguen pendientes. Detalles y límites en `ensayo-restauracion-real.md`.

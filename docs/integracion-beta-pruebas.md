@@ -208,3 +208,10 @@ ya creó la primera copia real de base y verificó descifrado/lectura del archiv
 Caduca en Actions el 24 de octubre: conservar copia externa. Véase
 `respaldo-operativo-pruebas.md`. Sigue pendiente ensayar restauración completa del
 archivo real y copiar binarios Storage; esto no abre beta ni autoriza migraciones.
+
+Actualización posterior: [39077111210](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39077111210)
+acreditó restauración del archivo real en un contenedor Supabase sin red y ensayo
+de los 23 candidatos con rollback sobre esa copia. Storage reportó 3 buckets y
+0 archivos. Véase `ensayo-restauracion-real.md` para los límites (datos clínicos
+consultados vacíos, roles/propietarios no reproducidos como identidades operativas,
+sin prueba HTTP/secretos/plataforma). No se aplicaron cambios al servidor activo.
