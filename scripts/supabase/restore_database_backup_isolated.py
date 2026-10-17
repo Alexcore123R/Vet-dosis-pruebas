@@ -48,7 +48,7 @@ def missing_managed_role(text):
     return None
 
 
-def run_restore(directory, passphrase, output, trial=False):
+def run_restore(directory, passphrase, output, trial=False, client_extras=False):
     validate_passphrase(passphrase)
     manifest=json.loads((directory/'manifest.json').read_text())
     archive=archive_path(directory,manifest)
@@ -144,10 +144,15 @@ def run_restore(directory, passphrase, output, trial=False):
             report['verification_queries_passed']=True
             if trial:
                 from integration_bundle import bundle_sql
+                sql = bundle_sql()
+                if client_extras:
+                    from integration_client_rehearsal import client_rehearsal_sql, EXTRA_FILES
+                    sql = client_rehearsal_sql()
+                    report['client_compatibility_candidates'] = list(EXTRA_FILES)
                 result=subprocess.run(['docker','exec','-i',name,'psql','-w','-h','127.0.0.1','-U',admin,'-d','restored_backup','-v','ON_ERROR_STOP=1'],
-                                      input=bundle_sql().encode(),stdout=subprocess.DEVNULL,stderr=errors)
+                                      input=sql.encode(),stdout=subprocess.DEVNULL,stderr=errors)
                 report['migration_rehearsal_passed']=result.returncode==0
-                report['migration_rehearsal_mode']='23 candidates, ROLLBACK, isolated copy only'
+                report['migration_rehearsal_mode']=('23 candidates + client extras' if client_extras else '23 candidates') + ', ROLLBACK, isolated copy only'
             return report
     finally:
         subprocess.run(['docker','rm','-f','-v',name],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
@@ -159,11 +164,14 @@ def main():
     parser.add_argument('--artifact-dir',type=Path,required=True)
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--trial-migrations',action='store_true')
+    parser.add_argument('--trial-client-extras',action='store_true')
     args=parser.parse_args()
+    if args.trial_client_extras and not args.trial_migrations:
+        parser.error('Client extras require --trial-migrations.')
     if os.environ.get('SUPABASE_TEST_DB_URL'):
         raise SystemExit('Do not provide a live database connection to this isolated restore job.')
     try:
-        report=run_restore(args.artifact_dir,os.environ.get('SUPABASE_TEST_BACKUP_PASSPHRASE',''),args.output,args.trial_migrations)
+        report=run_restore(args.artifact_dir,os.environ.get('SUPABASE_TEST_BACKUP_PASSPHRASE',''),args.output,args.trial_migrations,args.trial_client_extras)
     except (ValueError,RuntimeError,OSError,subprocess.SubprocessError):
         raise SystemExit('Isolated restore failed safely; no private diagnostics are logged.') from None
     print(json.dumps(report,indent=2))

@@ -2,6 +2,11 @@ name: Restaurar respaldo real (solo aislado)
 on:
   workflow_dispatch:
     inputs:
+      client_extras:
+        description: Ensayar también renovación IA, métricas y validación de adjuntos
+        type: boolean
+        default: false
+        required: true
       backup_run_id:
         description: Ejecución que creó el respaldo cifrado
         type: string
@@ -38,8 +43,9 @@ jobs:
           docker pull supabase/postgres:17.11.0.004
       - name: Restaurar sin red y ensayar candidatos con rollback
         env:
+          CLIENT_EXTRAS: ${{ inputs.client_extras && '--trial-client-extras' || '' }}
           SUPABASE_TEST_BACKUP_PASSPHRASE: ${{ secrets.SUPABASE_TEST_BACKUP_PASSPHRASE }}
-        run: python3 scripts/supabase/restore_database_backup_isolated.py --artifact-dir "$RUNNER_TEMP/encrypted-source" --output isolated-restore-report.json --trial-migrations
+        run: python3 scripts/supabase/restore_database_backup_isolated.py --artifact-dir "$RUNNER_TEMP/encrypted-source" --output isolated-restore-report.json --trial-migrations $CLIENT_EXTRAS
       - uses: actions/upload-artifact@v4
         if: always()
         with:
