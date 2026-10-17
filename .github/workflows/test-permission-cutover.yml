@@ -204,3 +204,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Probar autoridad explícita de administración, IA, equipo, asistencia y cobros
         run: bash supabase/tests/run_workspace_management_cutover.sh
+
+  restore-preview-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar staging de recuperación sin importar registros
+        run: bash supabase/tests/run_restore_preview_staging.sh
