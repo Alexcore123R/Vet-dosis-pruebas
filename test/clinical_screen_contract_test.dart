@@ -66,7 +66,7 @@ class ContractClinical extends ClinicalFake
 
   @override
   Future<ClinicalBundle> bundle(String caseId) async =>
-      ClinicalBundle(c, [], [], [], []);
+      ClinicalBundle(c, [], [], [], [], []);
   @override
   Future<void> observation(
     String caseId,
