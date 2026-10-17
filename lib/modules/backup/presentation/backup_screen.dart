@@ -285,14 +285,29 @@ class _BackupScreenState extends State<BackupScreen> {
         conflicts['manifest_sha256'] != report.conflictManifestSha256) {
       throw const FormatException('La revisión de conflictos no coincide con el respaldo.');
     }
-    final plan = await widget.repository.previewRestorePlan(
-      widget.member.clinicId,
-      stageId: stageId,
-      archiveSha256: report.archiveSha256,
-      conflictManifestSha256: report.conflictManifestSha256,
-      dependencyManifestSha256: report.dependencyManifestSha256,
-      dependencies: report.dependencyManifest,
-    );
+    final plan = report.conflictManifest.isEmpty
+        ? <String, dynamic>{
+            'schema_version': 1,
+            'mode': 'restore_decision_preview',
+            'archive_sha256': report.archiveSha256,
+            'conflict_manifest_sha256': report.conflictManifestSha256,
+            'dependency_manifest_sha256': report.dependencyManifestSha256,
+            'create_candidate': 0,
+            'keep_existing': 0,
+            'blocked_missing_dependency': 0,
+            'blocked_foreign_identity': 0,
+            'manual_review': 0,
+            'tables': <String, dynamic>{},
+            'imports_applied': false,
+          }
+        : await widget.repository.previewRestorePlan(
+            widget.member.clinicId,
+            stageId: stageId,
+            archiveSha256: report.archiveSha256,
+            conflictManifestSha256: report.conflictManifestSha256,
+            dependencyManifestSha256: report.dependencyManifestSha256,
+            dependencies: report.dependencyManifest,
+          );
     if (plan['mode'] != 'restore_decision_preview' ||
         plan['imports_applied'] != false ||
         plan['archive_sha256'] != report.archiveSha256 ||
