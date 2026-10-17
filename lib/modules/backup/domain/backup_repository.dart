@@ -48,6 +48,18 @@ abstract class BackupRepository {
     required String preflightId,
     required String ownerPayloadSha256,
   });
+  Future<Map<String, dynamic>> prepareRestorePatients(
+    String clinic, {
+    required String stageId,
+    required String archiveSha256,
+    required List<Map<String, dynamic>> patients,
+  });
+  Future<Map<String, dynamic>> applyRestorePatients(
+    String clinic, {
+    required String stageId,
+    required String preflightId,
+    required String patientPayloadSha256,
+  });
   Future<void> discardRestorePreview(String clinic, String stageId);
 }
 
