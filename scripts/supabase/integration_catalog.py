@@ -60,18 +60,20 @@ def compare(baseline, remote):
             differences.append({'object': name, 'kind': 'missing_relation'})
             continue
         if expected['rls'] != actual['rls']:
-            differences.append({'object': name, 'kind': 'rls_differs'})
+            differences.append({'object': name, 'kind': 'rls_differs',
+                                'expected': expected['rls'], 'actual': actual['rls']})
         for column, definition in expected['columns'].items():
             if actual['columns'].get(column) != definition:
                 differences.append({'object': name + '.' + column, 'kind': 'column_differs',
                                     'expected': definition, 'actual': actual['columns'].get(column)})
-        for column in actual['columns'].keys() - expected['columns'].keys():
+        for column in sorted(actual['columns'].keys() - expected['columns'].keys()):
             differences.append({'object': name + '.' + column, 'kind': 'additional_remote_column'})
     for name, expected in baseline['functions'].items():
         if not expected['present']:
             raise ValueError('Isolated baseline is missing ' + name)
         if expected != remote['functions'][name]:
-            differences.append({'object': name, 'kind': 'function_metadata_differs'})
+            differences.append({'object': name, 'kind': 'function_metadata_differs',
+                                'expected': expected, 'actual': remote['functions'][name]})
     return {'project_ref': PROJECT, 'read_only': True, 'deploy_ready': False,
             'differences': differences, 'compared_relations': len(REQUIRED_RELATIONS),
             'compared_functions': len(REQUIRED_FUNCTIONS),
