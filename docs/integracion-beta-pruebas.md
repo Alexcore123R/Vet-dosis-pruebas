@@ -84,5 +84,7 @@ herramientas administrativas pasaron antes de consultar el catálogo remoto.
   permisos, admisiones o definiciones.
 
 El bloque 13X de Storage clínico, publicado en paralelo desde otra conversación,
-se conservó al integrar Git. Está fuera del manifiesto inicial hasta completar su
-revisión y sus pruebas; no se incorpora silenciosamente a este alcance.
+se conservó al integrar Git. 5.6 sol corrigió un residuo SQL posterior a COMMIT y
+amplió las pruebas. [Storage 39029205418 aprobado](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39029205418).
+Permanece como candidato adicional fuera del manifiesto inicial; su aprobación
+aislada no acredita instalación remota ni un flujo de adjuntos en la interfaz.
