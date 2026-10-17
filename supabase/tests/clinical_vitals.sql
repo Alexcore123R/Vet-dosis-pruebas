@@ -14,8 +14,27 @@ select private.professional_record_external(
  clock_timestamp(),repeat('f',64),'Synthetic vitals verification',
  clock_timestamp()+interval '1 day'
 );
+select id as observation_type
+from private.procedure_types
+where clinic_id=:'clinic' and name='Synthetic observation type'
+order by created_at desc limit 1 \gset
 
+-- Re-establish a current, explicitly non-professional observation path after
+-- the earlier permission tests intentionally revoked/rejoined participants.
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000111',false);
+set role authenticated;
+select public.clinical_scope_bind(
+ :'case_id','observaciones',:'observation_type',false,
+ 'Synthetic vitals policy','Fresh vital capture binding'
+);
+select public.clinical_authorize(
+ :'case_id','00000000-0000-0000-0000-000000000112','observaciones',
+ to_char(clock_timestamp()+interval '1 day','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+ repeat('61',24)
+);
+reset role;
+
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000112',false);
 set role authenticated;
 select set_config(
  'test.vitals',
@@ -69,7 +88,7 @@ select pg_temp.expect_error(
  format(
   $q$select public.clinical_vitals_add(%L::uuid,%L::jsonb,%L)$q$,
   :'case_id',
-  '{"observed_at":"2026-10-17T00:00:00Z","performed_by":"00000000-0000-0000-0000-000000000111"}',
+  '{"observed_at":"2026-10-17T00:00:00Z","performed_by":"00000000-0000-0000-0000-000000000112"}',
   repeat('a',48)
  ),
  'empty_vital_set'
