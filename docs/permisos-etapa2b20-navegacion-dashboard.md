@@ -36,3 +36,5 @@ El principal riesgo era conservar datos o accesos de la clínica anterior durant
 `run_module_navigation_dashboard.sh` aplica toda la cadena en PostgreSQL aislado y prueba administrador visual sin permisos, concesión estrecha, revocación, otra clínica y anónimo. `module_navigation_dashboard_test.dart` prueba contrato estricto, independencia entre inventario/caja, ausencia de consultas ocultas y limpieza al cambiar identidad.
 
 Este bloque no acredita Auth HTTP real, Storage, Edge Functions, restauración, exportación, alarmas en teléfono ni despliegue remoto.
+
+Validación terminada: **349 pruebas Flutter correctas**, incluidas 6 nuevas del contrato, separación entrada/resumen, ausencia de consultas y recarga tras cambio de identidad o revisión de sesión; análisis sin incidencias. PostgreSQL aislado correcto. GitHub Actions: [ejecución 38984829559](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38984829559), código `998a1dd`: **21/21 trabajos correctos**. Sin despliegue a Supabase, APK ni apertura de beta.
