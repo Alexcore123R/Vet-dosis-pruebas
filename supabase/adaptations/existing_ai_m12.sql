@@ -56,12 +56,13 @@ end$$;
 create function public.ai_prepare(p_chat uuid,p_connection uuid,p_model text,p_message text,p_operation text,p_personal boolean,p_team boolean) returns jsonb language plpgsql security definer set search_path='' as $$declare c public.ai_chats;r public.ai_requests;v_msg uuid;plan public.subscription_plans;begin
  select * into c from public.ai_chats where id=p_chat for update;
  if not found or c.owner_id<>auth.uid() or not private.has_clinic_role(c.clinic_id) then raise exception 'owner_required';end if;
+ perform public.beta_access_check(true,c.clinic_id);
  if not private.ai_key_allowed(p_connection,auth.uid()) or exists(select 1 from public.ai_connections where id=p_connection and clinic_id is not null and clinic_id<>c.clinic_id) then raise exception 'key_access_denied';end if;
  if p_team and not private.team_plan(c.clinic_id) then raise exception 'clinic_plan_required';end if;
  select * into r from public.ai_requests where user_id=auth.uid() and operation=p_operation;
  if found then
  if r.chat_id<>p_chat or r.connection_id<>p_connection or r.model<>p_model or r.personal_context<>p_personal or r.team_context<>p_team or (select body from public.ai_messages where id=r.input_message_id)<>p_message then raise exception 'operation_content_changed';end if;
- return jsonb_build_object('id',r.id,'state',r.state);end if;
+ return jsonb_build_object('id',r.id,'state',r.state,'clinic_id',c.clinic_id);end if;
  if length(p_message) not between 1 and 12000 or length(p_operation) not between 16 and 100 then raise exception 'invalid_message';end if;
  if exists(select 1 from public.ai_requests where chat_id=p_chat and state in ('queued','processing')) then raise exception 'chat_in_progress';end if;
  perform 1 from private.workspace_usage where clinic_id=c.clinic_id for update;plan=private.plan_for(c.clinic_id);
@@ -70,8 +71,8 @@ create function public.ai_prepare(p_chat uuid,p_connection uuid,p_model text,p_m
  update private.ai_daily_usage set attempts=attempts+1 where clinic_id=c.clinic_id and day=(clock_timestamp() at time zone 'UTC')::date;
  insert into public.ai_messages(clinic_id,chat_id,role,body,created_by) values(c.clinic_id,c.id,'user',p_message,auth.uid()) returning id into v_msg;
  insert into public.ai_requests(clinic_id,chat_id,user_id,connection_id,model,operation,personal_context,team_context,input_message_id) values(c.clinic_id,c.id,auth.uid(),p_connection,p_model,p_operation,p_personal,p_team,v_msg) returning * into r;
- return jsonb_build_object('id',r.id,'state',r.state);
-end$$;
+ return jsonb_build_object('id',r.id,'state',r.state,'clinic_id',c.clinic_id);
+end$;
 -- Gateway-only storage of AES-GCM ciphertext.
 create function public.ai_key_store_server(p_user uuid,p_scope text,p_clinic uuid,p_provider text,p_cipher text,p_nonce text) returns uuid language plpgsql security definer set search_path='' as $$declare v_id uuid;begin
  if not exists(select 1 from auth.users where id=p_user and email_confirmed_at is not null) then raise exception 'verified_user_required';end if;
