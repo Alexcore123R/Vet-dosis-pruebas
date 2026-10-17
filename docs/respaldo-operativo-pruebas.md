@@ -70,3 +70,23 @@ todavía la restauración de la copia real.
 - [Comprobación de configuración 39069134970](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39069134970)
   terminó sin crear respaldo: ambos secretos están ausentes. `backup_created=false`.
   No se ha conectado pg_dump al proyecto real ni se ha generado una copia recuperable de él.
+
+### Primera copia real creada
+
+[Respaldo 39073667621](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39073667621)
+completado el 17 de octubre de 2026 a las 22:06 UTC. Se verificaron descifrado
+íntegro por SHA-256 y lectura del archivo con pg_restore. El artefacto
+`vetdosis-encrypted-database-backup` (ID 12116465184, 1 429 869 bytes) está disponible
+hasta el **24 de octubre de 2026, 22:06 UTC**. La administradora debe descargarlo
+y conservarlo fuera de la retención temporal de Actions.
+
+Los dos primeros intentos no publicaron copias: el contenedor no confiaba en la
+CA de Supabase. Se incorporó la raíz pública oficial de 2021, fijada por SHA-256,
+combinada con las raíces del sistema. Se mantuvo `sslmode=verify-full`; no se
+desactivó TLS ni la validación del hostname. El test aislado posterior
+[39073667133](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39073667133)
+pasó también.
+
+Esto sustituye el estado previo de secretos ausentes. La restauración completa
+del archivo real en un entorno compatible y la copia de binarios Storage
+**siguen pendientes**; no se acredita recuperación integral del servicio todavía.

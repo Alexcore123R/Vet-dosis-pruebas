@@ -202,3 +202,9 @@ restauración; reproducir o revisar las diferencias restantes de ACL/políticas 
 cuerpos desplegados; preparar la actualización puntual del finalizador de adjuntos;
 coordinar 13Y y Edge; probar cuentas separadas y anon por HTTP. La inspección sigue
 manteniendo `deploy_ready=false`, sin cambios remotos ni apertura de admisiones.
+
+Actualización de recuperación: el [respaldo cifrado 39073667621](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39073667621)
+ya creó la primera copia real de base y verificó descifrado/lectura del archivo.
+Caduca en Actions el 24 de octubre: conservar copia externa. Véase
+`respaldo-operativo-pruebas.md`. Sigue pendiente ensayar restauración completa del
+archivo real y copiar binarios Storage; esto no abre beta ni autoriza migraciones.
