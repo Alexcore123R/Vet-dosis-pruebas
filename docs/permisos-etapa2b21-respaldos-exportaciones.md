@@ -33,3 +33,20 @@ flutter test
 Las pruebas usan cuentas y contenido sintéticos. Cubren anonimato, usuario ajeno, rol visual sin capacidad, autoridad incompleta, separación de estadísticas, propiedad personal, allowlist personal y revocación inmediata.
 
 Validación del candidato `4d7e8b3`: 351 pruebas Flutter y 22/22 trabajos del corte de permisos aprobados en [GitHub Actions](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/38985700276).
+
+
+## Vista previa de restauración (13Q)
+
+Se añadió un candidato posterior, `13Q_restore_preview_staging.sql`, que **no restaura datos todavía**. Su única función es preparar de forma segura una restauración futura:
+
+- exige `backup.restore` y además `workspace.manage` o responsabilidad profesional vigente;
+- el rol visual `admin` por sí solo no concede acceso;
+- admite únicamente respaldos operacionales v1 de la misma clínica;
+- registra hash SHA-256, fecha del respaldo y conteos por tabla, pero no almacena ni importa las filas del respaldo;
+- existe un solo staging por clínica; preparar otro reemplaza el anterior con un `stage_id` nuevo;
+- caduca a los 14 días y puede descartarse explícitamente;
+- devuelve siempre `imports_applied: false` y las pruebas comprueban que el número de pacientes no cambia durante la vista previa.
+
+La pantalla de respaldo puede enviar esta previsualización al servidor solo después de que el archivo haya sido descifrado y verificado localmente. El hash enviado corresponde al archivo de respaldo ya verificado, de modo que una fase de aplicación futura deberá exigir exactamente el mismo contenido antes de considerar una importación.
+
+La restauración efectiva, resolución de conflictos, inserción de filas y recuperación de adjuntos siguen fuera de este candidato.
