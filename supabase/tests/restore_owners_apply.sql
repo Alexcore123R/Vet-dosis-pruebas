@@ -41,8 +41,12 @@ select public.restore_apply_owners(:'clinic',(:'stage'::jsonb->>'stage_id')::uui
 select pg_temp.assert_true((:'applied'::jsonb->>'imports_applied')::boolean,'owner restore not applied');
 select pg_temp.assert_true((:'applied'::jsonb->>'created')::int=1,'wrong owner create count');
 select pg_temp.assert_true((:'applied'::jsonb->>'kept_existing')::int=1,'wrong owner keep count');
+
+-- Verify operational rows outside RLS; the restore call itself already ran as authenticated.
+reset role;
 select pg_temp.assert_true((select name from public.vet_owners where id=:'existing_owner')=:'existing_name','existing owner overwritten');
 select pg_temp.assert_true(exists(select 1 from public.vet_owners where id='00000000-0000-0000-0000-000000000501' and created_by='00000000-0000-0000-0000-000000000197'),'new owner missing or wrong attribution');
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000197',false);set role authenticated;
 
 -- Successful retry is idempotent.
 select public.restore_apply_owners(:'clinic',(:'stage'::jsonb->>'stage_id')::uuid,(:'preflight'::jsonb->>'preflight_id')::uuid,:'prepared'::jsonb->>'payload_sha256') as retry \gset
