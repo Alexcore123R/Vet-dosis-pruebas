@@ -9,6 +9,11 @@ abstract interface class ClinicalRepository {
     Map<String, dynamic> data,
     String operationId,
   );
+  Future<Map<String, dynamic>> vitals(
+    String caseId,
+    Map<String, dynamic> data,
+    String operationId,
+  );
   Future<void> act(
     String caseId,
     String scope,
@@ -156,6 +161,19 @@ class SupabaseClinicalRepository
       'p_operation': operationId,
     });
   }
+
+  @override
+  Future<Map<String, dynamic>> vitals(
+    String caseId,
+    Map<String, dynamic> data,
+    String operationId,
+  ) async => Map<String, dynamic>.from(
+    await rpc('clinical_vitals_add', {
+      'p_case': caseId,
+      'p_data': data,
+      'p_operation': operationId,
+    }) as Map,
+  );
 
   @override
   Future<void> act(
