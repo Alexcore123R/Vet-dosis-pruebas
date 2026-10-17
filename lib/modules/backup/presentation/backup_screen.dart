@@ -39,7 +39,9 @@ class _BackupScreenState extends State<BackupScreen> {
   Map<String, dynamic>? restoreStage;
   Map<String, dynamic>? restoreConflicts;
   Map<String, dynamic>? restorePlan;
+  Map<String, dynamic>? restoreOwnerPayload;
   Map<String, dynamic>? restorePreflight;
+  Map<String, dynamic>? restoreOwnerApply;
   String? result;
   @override
   void initState() {
@@ -233,7 +235,9 @@ class _BackupScreenState extends State<BackupScreen> {
         restoreStage = null;
         restoreConflicts = null;
         restorePlan = null;
+        restoreOwnerPayload = null;
         restorePreflight = null;
+        restoreOwnerApply = null;
         result =
             '${encrypted ? 'Contraseña y cifrado comprobados. ' : ''}Integridad verificada · ${report.records} registros. No se modificó la base de datos ni se acreditó el origen del archivo.';
       });
@@ -317,6 +321,22 @@ class _BackupScreenState extends State<BackupScreen> {
         plan['dependency_manifest_sha256'] != report.dependencyManifestSha256) {
       throw const FormatException('La simulación de restauración no coincide con el respaldo.');
     }
+    Map<String, dynamic>? ownerPayload;
+    if (report.restoreOwners.isNotEmpty) {
+      ownerPayload = await widget.repository.prepareRestoreOwners(
+        widget.member.clinicId,
+        stageId: stageId,
+        archiveSha256: report.archiveSha256,
+        owners: report.restoreOwners,
+      );
+      if (ownerPayload['mode'] != 'restore_owner_payload' ||
+          ownerPayload['imports_applied'] != false ||
+          ownerPayload['archive_sha256'] != report.archiveSha256) {
+        throw const FormatException(
+          'La preparación de tutores no coincide con el respaldo.',
+        );
+      }
+    }
     final preflight = report.conflictManifest.isEmpty
         ? <String, dynamic>{
             'schema_version': 1,
@@ -350,10 +370,79 @@ class _BackupScreenState extends State<BackupScreen> {
         restoreStage = staged;
         restoreConflicts = conflicts;
         restorePlan = plan;
+        restoreOwnerPayload = ownerPayload;
         restorePreflight = preflight;
+        restoreOwnerApply = null;
         result = preflight['applicable'] == true
             ? 'Preflight aprobado para este estado actual. Sigue sin existir una importación activa.'
             : 'Preflight bloqueado: hay decisiones o cambios que deben resolverse. No se importó ningún registro.';
+      });
+    }
+  }
+
+  Future<void> applyOwnerRestore() async {
+    final stage = restoreStage;
+    final payload = restoreOwnerPayload;
+    final preflight = restorePreflight;
+    if (stage == null ||
+        payload == null ||
+        preflight?['applicable'] != true ||
+        restoreOwnerApply != null) {
+      return;
+    }
+    final stageId = stage['stage_id'];
+    final preflightId = preflight?['preflight_id'];
+    final payloadSha = payload['payload_sha256'];
+    if (stageId is! String || preflightId is! String || payloadSha is! String) {
+      throw const FormatException(
+        'La restauración preparada no tiene identificadores válidos.',
+      );
+    }
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Restaurar tutores nuevos'),
+            content: Text(
+              'Se crearán únicamente ${payload['create_candidate'] ?? 0} tutores '
+              'que no existen actualmente. Los tutores existentes no se modificarán. '
+              'La operación es atómica: si algo cambia, no se crea ninguno.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Restaurar tutores'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed) return;
+
+    final applied = await widget.repository.applyRestoreOwners(
+      widget.member.clinicId,
+      stageId: stageId,
+      preflightId: preflightId,
+      ownerPayloadSha256: payloadSha,
+    );
+    if (applied['mode'] != 'restore_apply_owners' ||
+        applied['imports_applied'] != true ||
+        applied['overwrite'] != false ||
+        applied['merge'] != false) {
+      throw const FormatException(
+        'El servidor no confirmó una restauración limitada y segura.',
+      );
+    }
+    if (mounted) {
+      setState(() {
+        restoreOwnerApply = applied;
+        result =
+            'Tutores restaurados: ${applied['created'] ?? 0}. '
+            'Existentes conservados: ${applied['kept_existing'] ?? 0}.';
       });
     }
   }
@@ -368,7 +457,9 @@ class _BackupScreenState extends State<BackupScreen> {
         restoreStage = null;
         restoreConflicts = null;
         restorePlan = null;
+        restoreOwnerPayload = null;
         restorePreflight = null;
+        restoreOwnerApply = null;
         result = 'Vista previa descartada. No se modificó ningún registro.';
       });
     }
@@ -639,8 +730,35 @@ class _BackupScreenState extends State<BackupScreen> {
                               '${blocker['count'] == null ? '' : ' (${blocker['count']})'}',
                             ),
                         const Text(
-                          'El preflight solo verifica que el plan siga siendo coherente. No ejecuta la restauración.',
+                          'El preflight solo verifica que el plan siga siendo coherente.',
                         ),
+                        if (restoreOwnerPayload != null) ...[
+                          Text(
+                            'Tutores preparados: ${restoreOwnerPayload!['rows'] ?? 0} · '
+                            'nuevos: ${restoreOwnerPayload!['create_candidate'] ?? 0} · '
+                            'existentes: ${restoreOwnerPayload!['keep_existing'] ?? 0}',
+                          ),
+                          if (restorePreflight!['applicable'] == true &&
+                              (restoreOwnerPayload!['create_candidate'] as num? ?? 0) > 0 &&
+                              restoreOwnerApply == null)
+                            FilledButton.icon(
+                              onPressed: working
+                                  ? null
+                                  : () => run(
+                                      applyOwnerRestore,
+                                      clearInspection: false,
+                                    ),
+                              icon: const Icon(Icons.restore_outlined),
+                              label: const Text(
+                                'Restaurar solo tutores nuevos',
+                              ),
+                            ),
+                          if (restoreOwnerApply != null)
+                            Text(
+                              'Restauración aplicada · creados: ${restoreOwnerApply!['created'] ?? 0} · '
+                              'conservados: ${restoreOwnerApply!['kept_existing'] ?? 0}',
+                            ),
+                        ],
                       ],
                     ] else
                       const Text(
