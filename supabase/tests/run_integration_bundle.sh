@@ -32,7 +32,7 @@ print(bundle_sql(commit=True).replace('-- Candidate: 13F_permission_medication.s
     'select 1/0; -- synthetic mid-bundle failure\n-- Candidate: 13F_permission_medication.sql'))
 PY
 then echo 'Injected failure incorrectly accepted';exit 1;fi
-rg -q 'division by zero' "$work_dir/injected.log"
+grep -Fq 'division by zero' "$work_dir/injected.log"
 docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 <<'SQL'
 do $$begin
  if to_regclass('private.beta_integration_receipts') is not null
@@ -48,11 +48,11 @@ end$$;
 create function private.permission_patient_read(uuid) returns boolean language sql as $$select false$$;
 SQL
 if docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 < "$work_dir/apply.sql" > "$work_dir/partial.log" 2>&1;then echo 'Partial installation incorrectly accepted';exit 1;fi
-rg -q 'integration_partial_or_already_applied_requires_review' "$work_dir/partial.log"
+grep -Fq 'integration_partial_or_already_applied_requires_review' "$work_dir/partial.log"
 docker exec "$container_name" psql -U postgres -v ON_ERROR_STOP=1 -c 'drop function private.permission_patient_read(uuid)' >/dev/null
 docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 < "$work_dir/apply.sql" > "$work_dir/test.log" 2>&1 || { tail -c 6000 "$work_dir/test.log";exit 1; }
 if docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 < "$work_dir/apply.sql" > "$work_dir/repeat.log" 2>&1;then echo 'Repeated rollout incorrectly accepted';exit 1;fi
-rg -q 'integration_partial_or_already_applied_requires_review' "$work_dir/repeat.log"
+grep -Fq 'integration_partial_or_already_applied_requires_review' "$work_dir/repeat.log"
 docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 <<'SQL'
 do $$begin
  if (select count(*) from private.beta_integration_receipts)<>1 then raise exception 'integration_receipt_missing_or_duplicated';end if;
