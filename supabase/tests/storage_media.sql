@@ -73,6 +73,16 @@ select pg_temp.assert_true(
  'authorized actor cannot read registered clinical attachment'
 );
 
+-- A retry/upsert on the same private object is allowed only while authority is current.
+update storage.objects
+set metadata='{"mimetype":"application/pdf","size":5000,"retry":true}'::jsonb
+where bucket_id='clinical-attachments' and name=current_setting('test.attachment');
+select pg_temp.assert_true(
+ (select metadata->>'retry'='true' from storage.objects
+  where bucket_id='clinical-attachments' and name=current_setting('test.attachment')),
+ 'authorized retry/upsert did not update the existing attachment'
+);
+
 select pg_temp.expect_error(
  format(
   $q$insert into storage.objects(bucket_id,name) values('clinical-attachments',%L)$q$,
@@ -131,6 +141,30 @@ select pg_temp.assert_true(
  not private.storage_clinical_attachment_allowed(:'clinic'::text||'/'||:'case_id'::text||'/cccccccc-cccc-4ccc-8ccc-cccccccccccc.pdf',true),
  'revoked clinical.attach still permits upload'
 );
+
+update storage.objects
+set metadata='{"mimetype":"application/pdf","size":6000,"retry":"revoked"}'::jsonb
+where bucket_id='clinical-attachments' and name=current_setting('test.attachment');
+select pg_temp.assert_true(
+ (select metadata->>'retry'='true' from storage.objects
+  where bucket_id='clinical-attachments' and name=current_setting('test.attachment')),
+ 'revoked retry/upsert changed an existing attachment'
+);
+-- Revoked actors cannot remove existing files through DELETE, either.
+with deleted as (
+ delete from storage.objects
+ where bucket_id='clinical-attachments' and name=current_setting('test.attachment')
+ returning id
+)
+select pg_temp.assert_true((select count(*)=0 from deleted),
+ 'revoked clinical.attach deleted an existing attachment');
+
+with deleted as (
+ delete from storage.objects where bucket_id='patient-photos' returning id
+)
+select pg_temp.assert_true((select count(*)=0 from deleted),
+ 'revoked patient.write deleted an existing photo');
+
 reset role;
 
 set role anon;
