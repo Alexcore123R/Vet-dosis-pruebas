@@ -127,7 +127,20 @@ begin
       ])
       or r->>'state' not in ('below','within','above')
       or r->>'parameter' not in ('fc','fr','temperature','tllc','bp_systolic','bp_diastolic')
-      or r->>'min' !~ '^[0-9]{1,12}([.][0-9]{1,9})? note=coalesce(p_data->>'notes','');
+      or r->>'min' !~ '^[0-9]{1,12}([.][0-9]{1,9})?$'
+      or r->>'max' !~ '^[0-9]{1,12}([.][0-9]{1,9})?$'
+      or (r->>'min')::numeric>(r->>'max')::numeric
+      or length(r->>'source')=0
+      or length(r->>'catalog_version')=0
+      or length(r->>'reference_id')=0
+  ) then
+   raise exception 'invalid_vital_reference_snapshot';
+  end if;
+ else
+  refs='[]'::jsonb;
+ end if;
+ if p_data ? 'notes' and jsonb_typeof(p_data->'notes')<>'string' then raise exception 'invalid_vital_set';end if;
+ note=coalesce(p_data->>'notes','');
  if length(note)>4000 then raise exception 'invalid_vital_set';end if;
  if fc_n is null and fr_n is null and temp_n is null and tllc_n is null and sbp_n is null and color is null and humidity is null and btrim(note)='' then
   raise exception 'empty_vital_set';
