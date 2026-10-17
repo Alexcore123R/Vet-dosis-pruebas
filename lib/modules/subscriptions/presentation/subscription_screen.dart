@@ -29,7 +29,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   String period = 'monthly';
   bool saving = false;
   bool get canManageWorkspace =>
-      canManageWorkspace || model.data['can_manage'] == true;
+      widget.canManageWorkspace || model.data['can_manage'] == true;
   @override
   void initState() {
     super.initState();
