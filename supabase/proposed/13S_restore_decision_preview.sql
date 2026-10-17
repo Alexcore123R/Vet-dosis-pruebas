@@ -30,11 +30,11 @@ declare
  s private.backup_restore_staging;
  k text; row_id uuid; row_key text; deps jsonb; dep jsonb; dep_table text; dep_id uuid;
  incoming_ids uuid[]; supplied_ids uuid[]; target_status text;
- row_exists boolean; dep_exists boolean; blocked boolean; manual boolean; reason text;
+ row_exists boolean; foreign_exists boolean; dep_exists boolean; blocked boolean; manual boolean; reason text;
  plan_index jsonb='{}'; details jsonb='{}'; tables_report jsonb='{}';
- create_n integer; keep_n integer; blocked_n integer; manual_n integer; table_total integer;
- total_create integer=0;total_keep integer=0;total_blocked integer=0;total_manual integer=0;
- samples_create jsonb;samples_keep jsonb;samples_blocked jsonb;samples_manual jsonb;
+ create_n integer; keep_n integer; blocked_n integer; foreign_n integer; manual_n integer; table_total integer;
+ total_create integer=0;total_keep integer=0;total_blocked integer=0;total_foreign integer=0;total_manual integer=0;
+ samples_create jsonb;samples_keep jsonb;samples_blocked jsonb;samples_foreign jsonb;samples_manual jsonb;
  order_tables text[]=array[
   'vet_owners','inventario','form_templates','professional_profiles',
   'vet_patients','lotes_inventario','form_template_versions',
@@ -74,8 +74,8 @@ begin
 
  foreach k in array order_tables loop
   if not (s.conflict_manifest ? k) then continue;end if;
-  create_n=0;keep_n=0;blocked_n=0;manual_n=0;table_total=0;
-  samples_create='[]'::jsonb;samples_keep='[]'::jsonb;samples_blocked='[]'::jsonb;samples_manual='[]'::jsonb;
+  create_n=0;keep_n=0;blocked_n=0;foreign_n=0;manual_n=0;table_total=0;
+  samples_create='[]'::jsonb;samples_keep='[]'::jsonb;samples_blocked='[]'::jsonb;samples_foreign='[]'::jsonb;samples_manual='[]'::jsonb;
 
   for row_key,deps in select key,value from jsonb_each(p_dependencies->k) order by key loop
    table_total=table_total+1;
@@ -84,9 +84,13 @@ begin
 
    execute format('select exists(select 1 from public.%I where clinic_id=$1 and id=$2)',k)
     into row_exists using p_clinic,row_id;
+   execute format('select exists(select 1 from public.%I where id=$1 and clinic_id is distinct from $2)',k)
+    into foreign_exists using row_id,p_clinic;
 
    if row_exists then
     target_status='keep_existing';reason='same_id_exists';
+   elsif foreign_exists then
+    target_status='blocked_foreign_identity';reason='same_id_other_workspace';
    else
     blocked=false;manual=false;reason='dependencies_satisfied';
     for dep in select value from jsonb_array_elements(deps) loop
@@ -102,11 +106,11 @@ begin
       select exists(select 1 from public.medication_product_versions where id=dep_id) into dep_exists;
       if not dep_exists then blocked=true;reason='missing_catalog_dependency';end if;
      elsif s.conflict_manifest ? dep_table and
-           exists(select 1 from jsonb_array_elements_text(s.conflict_manifest->dep_table) x where x=dep_id::text) then
+           exists(select 1 from jsonb_array_elements_text(s.conflict_manifest->dep_table) as incoming(value) where incoming.value=dep_id::text) then
       target_status=plan_index->>(dep_table||':'||dep_id::text);
       if target_status is null then
        manual=true;reason='dependency_order_needs_review';
-      elsif target_status in ('blocked_missing_dependency','manual_review') then
+      elsif target_status in ('blocked_missing_dependency','blocked_foreign_identity','manual_review') then
        blocked=true;reason='incoming_parent_not_restorable';
       end if;
      else
@@ -132,6 +136,8 @@ begin
     create_n=create_n+1;if jsonb_array_length(samples_create)<10 then samples_create=samples_create||to_jsonb(row_id::text);end if;
    elsif target_status='keep_existing' then
     keep_n=keep_n+1;if jsonb_array_length(samples_keep)<10 then samples_keep=samples_keep||to_jsonb(row_id::text);end if;
+   elsif target_status='blocked_foreign_identity' then
+    foreign_n=foreign_n+1;if jsonb_array_length(samples_foreign)<10 then samples_foreign=samples_foreign||to_jsonb(row_id::text);end if;
    elsif target_status='manual_review' then
     manual_n=manual_n+1;if jsonb_array_length(samples_manual)<10 then samples_manual=samples_manual||to_jsonb(row_id::text);end if;
    else
@@ -140,13 +146,13 @@ begin
   end loop;
 
   total_create=total_create+create_n;total_keep=total_keep+keep_n;
-  total_blocked=total_blocked+blocked_n;total_manual=total_manual+manual_n;
+  total_blocked=total_blocked+blocked_n;total_foreign=total_foreign+foreign_n;total_manual=total_manual+manual_n;
   tables_report=tables_report||jsonb_build_object(k,jsonb_build_object(
    'incoming',table_total,'create_candidate',create_n,'keep_existing',keep_n,
-   'blocked_missing_dependency',blocked_n,'manual_review',manual_n,
+   'blocked_missing_dependency',blocked_n,'blocked_foreign_identity',foreign_n,'manual_review',manual_n,
    'samples',jsonb_build_object(
     'create_candidate',samples_create,'keep_existing',samples_keep,
-    'blocked_missing_dependency',samples_blocked,'manual_review',samples_manual
+    'blocked_missing_dependency',samples_blocked,'blocked_foreign_identity',samples_foreign,'manual_review',samples_manual
    )
   ));
  end loop;
@@ -161,12 +167,12 @@ begin
       'conflict_manifest_sha256',p_conflict_manifest_sha256,
       'dependency_manifest_sha256',p_dependency_manifest_sha256,
       'create_candidate',total_create,'keep_existing',total_keep,
-      'blocked_missing_dependency',total_blocked,'manual_review',total_manual,
+      'blocked_missing_dependency',total_blocked,'blocked_foreign_identity',total_foreign,'manual_review',total_manual,
       'tables',tables_report,
       'policy',jsonb_build_object(
        'existing','keep_current','new','candidate_only',
-       'missing_dependency','block','staff_reference','manual_review',
-       'overwrite',false,'merge',false
+       'missing_dependency','block','foreign_identity','block',
+       'staff_reference','manual_review','overwrite',false,'merge',false
       ),
       'imports_applied',false,'planned_at',clock_timestamp()
      )
@@ -175,7 +181,7 @@ begin
 
  insert into public.audit_log(clinic_id,actor_id,action,entity_id,details)
  values(p_clinic,auth.uid(),'backup_restore_decision_previewed',p_stage::text,
-  jsonb_build_object('create_candidate',total_create,'keep_existing',total_keep,'blocked',total_blocked,'manual',total_manual));
+  jsonb_build_object('create_candidate',total_create,'keep_existing',total_keep,'blocked',total_blocked,'foreign_identity',total_foreign,'manual',total_manual));
 
  return tables_report;
 end$$;
