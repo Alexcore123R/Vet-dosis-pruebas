@@ -47,6 +47,21 @@ begin
 end$$;
 revoke all on function private.restore_counts_valid(jsonb) from public,anon,authenticated,service_role;
 
+create or replace function public.backup_workspace(p_clinic uuid) returns jsonb
+language plpgsql stable security definer set search_path='' as $
+declare kind text;
+begin
+ perform public.beta_access_check(false,p_clinic);
+ if auth.uid() is null or not exists(select 1 from public.clinic_members where clinic_id=p_clinic and user_id=auth.uid()) then raise exception 'current_member_required';end if;
+ select workspace_kind.kind into kind from public.account_workspaces workspace_kind where clinic_id=p_clinic;
+ return jsonb_build_object(
+  'schema_version',1,'mode','explicit_backup','workspace_kind',kind,
+  'exports',jsonb_build_object('clinic',private.backup_clinic_authorized(p_clinic),'personal',private.backup_personal_authorized(p_clinic)),
+  'statistics',private.permission_effective(p_clinic,auth.uid(),'sales.read') is not null,
+  'restore_preview',private.restore_preview_authorized(p_clinic,auth.uid())
+ );
+end$;
+
 create function public.restore_preview_stage(
  p_clinic uuid,
  p_format text,
@@ -121,8 +136,8 @@ begin
  values(p_clinic,auth.uid(),'backup_restore_preview_discarded',p_stage::text);
 end$$;
 
-revoke all on function public.restore_preview_stage(uuid,text,integer,text,timestamptz,jsonb),public.restore_preview_get(uuid),public.restore_preview_discard(uuid,uuid) from public,anon;
-grant execute on function public.restore_preview_stage(uuid,text,integer,text,timestamptz,jsonb),public.restore_preview_get(uuid),public.restore_preview_discard(uuid,uuid) to authenticated;
+revoke all on function public.backup_workspace(uuid),public.restore_preview_stage(uuid,text,integer,text,timestamptz,jsonb),public.restore_preview_get(uuid),public.restore_preview_discard(uuid,uuid) from public,anon;
+grant execute on function public.backup_workspace(uuid),public.restore_preview_stage(uuid,text,integer,text,timestamptz,jsonb),public.restore_preview_get(uuid),public.restore_preview_discard(uuid,uuid) to authenticated;
 
 notify pgrst,'reload schema';
 commit;
