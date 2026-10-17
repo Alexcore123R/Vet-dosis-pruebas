@@ -3,6 +3,9 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'backup_archive.dart';
 
+typedef RestoreDependencyManifest =
+    Map<String, Map<String, List<Map<String, String>>>>;
+
 /// A read-only recovery inspection, never an executable SQL/import instruction.
 class BackupRecoveryReport {
   BackupRecoveryReport._(
@@ -15,13 +18,17 @@ class BackupRecoveryReport {
     this.archiveSha256,
     this.conflictManifest,
     this.conflictManifestSha256,
+    this.dependencyManifest,
+    this.dependencyManifestSha256,
   );
 
   final String clinic, serverAt, format, archiveSha256, conflictManifestSha256;
+  final String dependencyManifestSha256;
   final int version;
   final Map<String, int> tables;
   final List<String> excluded;
   final Map<String, List<String>> conflictManifest;
+  final RestoreDependencyManifest dependencyManifest;
 
   bool get clinicBackup => format == 'vetdosis-operational-backup';
   int get records => tables.values.fold(0, (sum, count) => sum + count);
@@ -51,12 +58,17 @@ class BackupRecoveryReport {
 
     final counts = <String, int>{};
     final manifest = <String, List<String>>{};
+    final dependencies = <String, Map<String, List<Map<String, String>>>>{};
     const conflictTables = {
       'vet_owners',
       'vet_patients',
+      'form_templates',
+      'form_template_versions',
+      'form_documents',
+      'professional_profiles',
+      'professional_delegations',
       'clinical_cases',
       'hospital_stays',
-      'form_documents',
       'prescriptions',
       'medication_vials',
       'inventario',
@@ -69,46 +81,140 @@ class BackupRecoveryReport {
       r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
     );
 
+    String requiredUuid(Object? value, String table, String field) {
+      if (value is! String || !uuidPattern.hasMatch(value)) {
+        throw FormatException('Identificador inválido en $table.$field.');
+      }
+      return value.toLowerCase();
+    }
+
+    void dependency(
+      List<Map<String, String>> target,
+      String table,
+      Object? value,
+      String sourceTable,
+      String field, {
+      bool optional = false,
+    }) {
+      if (value == null && optional) return;
+      target.add({
+        'table': table,
+        'id': requiredUuid(value, sourceTable, field),
+      });
+    }
+
     for (final entry in source.entries) {
       if (entry.key is! String || entry.value is! List) {
         throw const FormatException('Una tabla del respaldo no es válida.');
       }
+      final name = entry.key as String;
+      final rows = entry.value as List;
+      counts[name] = rows.length;
       final ids = <String>{};
-      for (final row in entry.value as List) {
-        if (row is! Map) {
+      final tableDependencies = <String, List<Map<String, String>>>{};
+
+      for (final raw in rows) {
+        if (raw is! Map) {
           throw const FormatException('Una fila del respaldo no es válida.');
         }
+        final row = Map<String, dynamic>.from(raw);
         if (row['clinic_id'] != null && row['clinic_id'] != expectedClinic) {
           throw const FormatException(
             'El archivo mezcla registros de distintas clínicas.',
           );
         }
         if (row['id'] != null && !ids.add('${row['id']}')) {
-          throw FormatException(
-            'Hay identificadores repetidos en ${entry.key}.',
-          );
+          throw FormatException('Hay identificadores repetidos en $name.');
         }
+        if (!conflictTables.contains(name)) continue;
+
+        final id = requiredUuid(row['id'], name, 'id');
+        final rowDependencies = <Map<String, String>>[];
+        switch (name) {
+          case 'vet_patients':
+            dependency(rowDependencies, 'vet_owners', row['owner_id'], name, 'owner_id');
+          case 'form_templates':
+            dependency(rowDependencies, 'clinic_members', row['responsible_id'], name, 'responsible_id', optional: true);
+            dependency(rowDependencies, 'clinic_members', row['created_by'], name, 'created_by', optional: true);
+          case 'form_template_versions':
+            dependency(rowDependencies, 'form_templates', row['template_id'], name, 'template_id');
+            dependency(rowDependencies, 'form_template_versions', row['base_version_id'], name, 'base_version_id', optional: true);
+            dependency(rowDependencies, 'clinic_members', row['responsible_id'], name, 'responsible_id', optional: true);
+            dependency(rowDependencies, 'clinic_members', row['created_by'], name, 'created_by', optional: true);
+          case 'form_documents':
+            dependency(rowDependencies, 'vet_patients', row['patient_id'], name, 'patient_id');
+            dependency(rowDependencies, 'form_template_versions', row['version_id'], name, 'version_id');
+            dependency(rowDependencies, 'clinic_members', row['responsible_id'], name, 'responsible_id');
+            dependency(rowDependencies, 'clinic_members', row['assigned_aux_id'], name, 'assigned_aux_id', optional: true);
+            dependency(rowDependencies, 'clinic_members', row['created_by'], name, 'created_by');
+          case 'professional_profiles':
+            dependency(rowDependencies, 'clinic_members', row['user_id'], name, 'user_id');
+          case 'professional_delegations':
+            dependency(rowDependencies, 'professional_profiles', row['profile_id'], name, 'profile_id');
+            dependency(rowDependencies, 'clinic_members', row['recipient_id'], name, 'recipient_id');
+            dependency(rowDependencies, 'clinical_cases', row['case_id'], name, 'case_id', optional: true);
+            dependency(rowDependencies, 'clinic_members', row['created_by'], name, 'created_by');
+          case 'clinical_cases':
+            dependency(rowDependencies, 'vet_patients', row['patient_id'], name, 'patient_id');
+            dependency(rowDependencies, 'form_documents', row['document_id'], name, 'document_id');
+            dependency(rowDependencies, 'form_documents', row['consent_id'], name, 'consent_id', optional: true);
+            dependency(rowDependencies, 'clinic_members', row['responsible_id'], name, 'responsible_id');
+          case 'hospital_stays':
+            dependency(rowDependencies, 'vet_patients', row['patient_id'], name, 'patient_id');
+            dependency(rowDependencies, 'clinic_members', row['admitted_by'], name, 'admitted_by');
+            dependency(rowDependencies, 'clinic_members', row['discharged_by'], name, 'discharged_by', optional: true);
+          case 'prescriptions':
+            dependency(rowDependencies, 'clinical_cases', row['case_id'], name, 'case_id');
+            dependency(rowDependencies, 'vet_patients', row['patient_id'], name, 'patient_id');
+            dependency(rowDependencies, 'clinic_members', row['responsible_id'], name, 'responsible_id');
+            dependency(rowDependencies, 'clinic_members', row['created_by'], name, 'created_by');
+            dependency(rowDependencies, 'professional_profiles', row['profile_id'], name, 'profile_id', optional: true);
+            dependency(rowDependencies, 'professional_delegations', row['delegation_id'], name, 'delegation_id', optional: true);
+          case 'medication_vials':
+            dependency(rowDependencies, 'inventario', row['inventory_id'], name, 'inventory_id', optional: true);
+            dependency(rowDependencies, 'lotes_inventario', row['inventory_lot_id'], name, 'inventory_lot_id', optional: true);
+            dependency(rowDependencies, 'medication_product_versions', row['product_version_id'], name, 'product_version_id');
+            dependency(rowDependencies, 'clinic_members', row['responsible_id'], name, 'responsible_id');
+          case 'inventario':
+            dependency(rowDependencies, 'medication_product_versions', row['medication_version_id'], name, 'medication_version_id', optional: true);
+          case 'lotes_inventario':
+            dependency(rowDependencies, 'inventario', row['item_id'], name, 'item_id');
+          case 'clinic_appointments':
+            dependency(rowDependencies, 'vet_patients', row['patient_id'], name, 'patient_id', optional: true);
+            dependency(rowDependencies, 'clinic_members', row['professional_id'], name, 'professional_id');
+            dependency(rowDependencies, 'clinic_members', row['created_by'], name, 'created_by');
+          case 'clinic_tasks':
+            dependency(rowDependencies, 'clinic_members', row['assigned_to'], name, 'assigned_to', optional: true);
+            dependency(rowDependencies, 'clinic_members', row['completed_by'], name, 'completed_by', optional: true);
+            dependency(rowDependencies, 'clinic_members', row['created_by'], name, 'created_by');
+          case 'clinic_messages':
+            dependency(rowDependencies, 'clinic_members', row['author_id'], name, 'author_id');
+        }
+        rowDependencies.sort((a, b) {
+          final table = a['table']!.compareTo(b['table']!);
+          return table != 0 ? table : a['id']!.compareTo(b['id']!);
+        });
+        tableDependencies[id] = rowDependencies;
       }
 
-      final name = entry.key as String;
-      counts[name] = (entry.value as List).length;
       if (conflictTables.contains(name)) {
-        final values = <String>{};
-        for (final row in entry.value as List) {
-          final id = (row as Map)['id'];
-          if (id != null) {
-            if (id is! String || !uuidPattern.hasMatch(id)) {
-              throw FormatException('Identificador inválido en $name.');
-            }
-            values.add(id.toLowerCase());
-          }
-        }
-        manifest[name] = values.toList()..sort();
+        manifest[name] = tableDependencies.keys.toList()..sort();
+        dependencies[name] = {
+          for (final id in (tableDependencies.keys.toList()..sort()))
+            id: tableDependencies[id]!,
+        };
       }
     }
 
     final canonicalManifest = jsonEncode({
       for (final key in (manifest.keys.toList()..sort())) key: manifest[key],
+    });
+    final canonicalDependencies = jsonEncode({
+      for (final table in (dependencies.keys.toList()..sort()))
+        table: {
+          for (final id in (dependencies[table]!.keys.toList()..sort()))
+            id: dependencies[table]![id],
+        },
     });
     final scope = snapshot['scope'];
     final raw = scope is Map ? scope['excluded'] : null;
@@ -123,6 +229,8 @@ class BackupRecoveryReport {
       sha256.convert(archive).toString(),
       manifest,
       sha256.convert(utf8.encode(canonicalManifest)).toString(),
+      dependencies,
+      sha256.convert(utf8.encode(canonicalDependencies)).toString(),
     );
   }
 
@@ -134,6 +242,7 @@ class BackupRecoveryReport {
     'record_count': records,
     'archive_sha256': archiveSha256,
     'conflict_manifest_sha256': conflictManifestSha256,
+    'dependency_manifest_sha256': dependencyManifestSha256,
     'conflict_manifest_tables': conflictManifest.map(
       (key, value) => MapEntry(key, value.length),
     ),
