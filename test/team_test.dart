@@ -15,6 +15,8 @@ const admin = ClinicMembership(
 
 class TeamFake extends FakeAuth implements TeamRepository {
   @override
+  Future<bool?> canManageWorkspace(String clinicId) async => clinicId == 'a';
+  @override
   bool get teamManagementAvailable => true;
   int removals = 0;
   bool fail = false;
