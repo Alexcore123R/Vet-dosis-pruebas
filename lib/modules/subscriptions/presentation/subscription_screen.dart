@@ -12,9 +12,11 @@ class SubscriptionScreen extends StatefulWidget {
     super.key,
     required this.repository,
     required this.member,
+    this.canManageWorkspace = false,
   });
   final SubscriptionRepository repository;
   final ClinicMembership member;
+  final bool canManageWorkspace;
   @override
   State<SubscriptionScreen> createState() => _SubscriptionScreenState();
 }
@@ -153,7 +155,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             'Consultas con clave propia por día: ${(model.data['effective'] as Map)['ai_daily']} · créditos de lealtad: ${model.data['reward_points']}',
           ),
         ],
-        if (widget.member.role == ClinicRole.admin &&
+        if (widget.canManageWorkspace &&
             widget.repository is PaymentHistoryRepository)
           PaymentHistoryPanel(
             repository: widget.repository as PaymentHistoryRepository,
@@ -189,7 +191,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         : 'Inventario, ventas y corte manual propios; sin equipo compartido.',
                   ),
                   if (p['code'] != 'free' &&
-                      widget.member.role == ClinicRole.admin &&
+                      widget.canManageWorkspace &&
                       ((model.data['workspace'] as Map?)?['kind'] ==
                               'personal') ==
                           (p['code'] == 'individual'))
@@ -204,7 +206,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ),
           ),
         if (model.data['reward_enabled'] == true &&
-            widget.member.role == ClinicRole.admin)
+            widget.canManageWorkspace)
           TextButton(
             onPressed: () => redeem(),
             child: const Text('Canjear puntos por beneficio temporal'),
