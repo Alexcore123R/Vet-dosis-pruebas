@@ -73,7 +73,8 @@ def run_restore(directory, passphrase, output, trial=False):
             subprocess.run(['docker','run','-d','--name',name,'--network','none',
                             '-e','POSTGRES_PASSWORD=synthetic-isolated-restore-only',
                             '-e','POSTGRES_HOST_AUTH_METHOD=trust',IMAGE,
-                            'postgres','-D','/etc/postgresql','-c','cron.launch_active_jobs=off'],
+                            'postgres','-D','/etc/postgresql','-c','cron.launch_active_jobs=off',
+                            '-c','cron.database_name=restored_backup'],
                            stdout=subprocess.DEVNULL,stderr=errors,check=True)
             network=subprocess.check_output(['docker','inspect',name,'--format','{{.HostConfig.NetworkMode}}'],text=True).strip()
             if network!='none': raise RuntimeError('Restore container must have no network.')
@@ -84,15 +85,25 @@ def run_restore(directory, passphrase, output, trial=False):
                 time.sleep(1)
             if not ready:
                 report['failure_stage']='isolated_database_startup';return report
+            admin=None
+            for candidate in ('supabase_admin','postgres'):
+                probe=subprocess.run(['docker','exec',name,'psql','-w','-h','127.0.0.1','-U',candidate,
+                                      '-d','postgres','-At','-c','select rolsuper from pg_roles where rolname=current_user'],
+                                     stdout=subprocess.PIPE,stderr=errors)
+                if probe.returncode==0 and probe.stdout.strip()==b't':
+                    admin=candidate;break
+            if admin is None:
+                report['failure_stage']='isolated_superuser_unavailable';return report
+            report['isolated_superuser_verified']=True
             setup=''.join("do $$begin if not exists(select 1 from pg_roles where rolname='"+role+"') then create role "+role+" nologin;end if;end$$;\n" for role in ROLES)
             setup+='create database restored_backup template template0;\n'
-            result=subprocess.run(['docker','exec','-i',name,'psql','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1'],
+            result=subprocess.run(['docker','exec','-i',name,'psql','-w','-h','127.0.0.1','-U',admin,'-d','postgres','-v','ON_ERROR_STOP=1'],
                                   input=setup.encode(),stdout=subprocess.DEVNULL,stderr=errors)
             if result.returncode:
                 report['failure_stage']='isolated_role_setup';return report
             plaintext.seek(0)
             errors.seek(0);errors.truncate()
-            result=subprocess.run(['docker','exec','-i',name,'pg_restore','-U','postgres','--no-owner',
+            result=subprocess.run(['docker','exec','-i',name,'pg_restore','-w','-h','127.0.0.1','-U',admin,'--no-owner',
                                    '--exit-on-error','--dbname','restored_backup'],
                                   stdin=plaintext,stdout=subprocess.DEVNULL,stderr=errors)
             if result.returncode:
@@ -108,14 +119,14 @@ def run_restore(directory, passphrase, output, trial=False):
               'storage_objects_metadata',(select count(*) from storage.objects),
               'application_tables',(select count(*) from pg_tables where schemaname in ('public','private'))
             )"""
-            result=subprocess.run(['docker','exec','-i',name,'psql','-U','postgres','-d','restored_backup','-At','-v','ON_ERROR_STOP=1'],
+            result=subprocess.run(['docker','exec','-i',name,'psql','-w','-h','127.0.0.1','-U',admin,'-d','restored_backup','-At','-v','ON_ERROR_STOP=1'],
                                   input=counts_sql.encode(),stdout=subprocess.PIPE,stderr=errors)
             if result.returncode: report['verification_queries_passed']=False;return report
             report['restored_counts']=json.loads(result.stdout)
             report['verification_queries_passed']=True
             if trial:
                 from integration_bundle import bundle_sql
-                result=subprocess.run(['docker','exec','-i',name,'psql','-U','postgres','-d','restored_backup','-v','ON_ERROR_STOP=1'],
+                result=subprocess.run(['docker','exec','-i',name,'psql','-w','-h','127.0.0.1','-U',admin,'-d','restored_backup','-v','ON_ERROR_STOP=1'],
                                       input=bundle_sql().encode(),stdout=subprocess.DEVNULL,stderr=errors)
                 report['migration_rehearsal_passed']=result.returncode==0
                 report['migration_rehearsal_mode']='23 candidates, ROLLBACK, isolated copy only'
