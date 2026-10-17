@@ -42,6 +42,19 @@ returns boolean language sql stable security definer set search_path='' as $$
 $$;
 revoke all on function private.ai_key_allowed(uuid,uuid,boolean) from public,anon,authenticated,service_role;
 
+create or replace function public.ai_dashboard(p_clinic uuid) returns jsonb
+language plpgsql security definer set search_path='' as $
+begin
+ if not private.has_clinic_role(p_clinic) then raise exception 'access_denied';end if;
+ return jsonb_build_object(
+  'can_manage',private.workspace_management_authorized(p_clinic,auth.uid()),
+  'connections',(select coalesce(jsonb_agg(to_jsonb(c)||jsonb_build_object('can_manage',private.ai_key_allowed(c.id,auth.uid(),true))),'[]') from public.ai_connections c where (c.owner_id=auth.uid() or c.clinic_id=p_clinic) and private.ai_key_allowed(c.id,auth.uid(),false)),
+  'chats',(select coalesce(jsonb_agg(to_jsonb(c) order by created_at desc),'[]') from public.ai_chats c where c.clinic_id=p_clinic and private.ai_chat_allowed(c.id,auth.uid())),
+  'daily_used',coalesce((select attempts from private.ai_daily_usage where clinic_id=p_clinic and day=(clock_timestamp() at time zone 'UTC')::date),0),
+  'daily_limit',(private.plan_for(p_clinic)).ai_daily
+ );
+end$;
+
 create or replace function public.ai_key_store_server(
  p_user uuid,p_scope text,p_clinic uuid,p_provider text,p_cipher text,p_nonce text
 ) returns uuid language plpgsql security definer set search_path='' as $$
@@ -137,6 +150,7 @@ begin
  if not private.has_clinic_role(p_clinic) then raise exception 'access_denied';end if;
  manager=private.workspace_management_authorized(p_clinic,auth.uid());
  return jsonb_build_object(
+  'can_manage',manager,
   'settings',(select to_jsonb(s) from public.attendance_settings s where clinic_id=p_clinic),
   'consented',exists(select 1 from public.attendance_consents c join public.attendance_settings s using(clinic_id) where c.clinic_id=p_clinic and c.user_id=auth.uid() and c.settings_version=s.version),
   'events',(select coalesce(jsonb_agg(to_jsonb(e)||jsonb_build_object('effective_at',coalesce((select c.corrected_at from public.attendance_corrections c where c.event_id=e.id order by c.created_at desc,c.id desc limit 1),e.server_at)) order by server_at desc),'[]') from public.attendance_events e where clinic_id=p_clinic and (user_id=auth.uid() or manager)),
@@ -208,6 +222,7 @@ begin
  manager=private.workspace_management_authorized(p_clinic,auth.uid());
  p=private.plan_for(p_clinic);
  return jsonb_build_object(
+  'can_manage',manager,
   'workspace',(select to_jsonb(w) from public.account_workspaces w where clinic_id=p_clinic),
   'effective',to_jsonb(p),
   'plans',(select jsonb_agg(to_jsonb(x) order by monthly_cents) from public.subscription_plans x),
