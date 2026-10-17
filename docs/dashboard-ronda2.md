@@ -51,3 +51,8 @@ Pendientes de cierre operativo: aplicar y validar permisos en el servidor de
 prueba, desplegar las métricas tras revisar su candidata, y comprobar en teléfono
 el escáner/cámara, identidad, navegación y alarmas. Las votaciones aún requieren
 definir privacidad y cambio de voto; no se incluyen como función terminada.
+
+Validación del cierre: [39080528142](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39080528142)
+aprobó PostgreSQL aislado, análisis Flutter completo sin incidencias y 25 pruebas
+de dashboard, navegación/permisos, identidad y tema Neu. El APK anterior todavía
+no contiene este cierre adicional; requiere recompilación después de la integración.

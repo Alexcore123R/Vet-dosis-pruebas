@@ -57,7 +57,7 @@ class _ModuleAccessBoundaryState extends State<ModuleAccessBoundary> {
       );
       if (mounted && request == generation) {
         setState(() {
-        access = next;
+          access = next;
           loading = false;
         });
       }
@@ -65,8 +65,8 @@ class _ModuleAccessBoundaryState extends State<ModuleAccessBoundary> {
       // Fail closed for reviewed modules. A stale contract is never retained.
       if (mounted && request == generation) {
         setState(() {
-        access = null;
-        failed = true;
+          access = null;
+          failed = true;
           loading = false;
         });
       }
