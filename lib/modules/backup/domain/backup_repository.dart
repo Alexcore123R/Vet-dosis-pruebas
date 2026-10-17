@@ -29,6 +29,13 @@ abstract class BackupRepository {
     required String dependencyManifestSha256,
     required Map<String, Map<String, List<Map<String, String>>>> dependencies,
   });
+  Future<Map<String, dynamic>> preflightRestore(
+    String clinic, {
+    required String stageId,
+    required String archiveSha256,
+    required String conflictManifestSha256,
+    required String dependencyManifestSha256,
+  });
   Future<void> discardRestorePreview(String clinic, String stageId);
 }
 
