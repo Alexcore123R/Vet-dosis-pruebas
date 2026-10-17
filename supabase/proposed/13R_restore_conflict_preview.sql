@@ -4,6 +4,7 @@ begin;
 
 alter table private.backup_restore_staging
  add column conflict_manifest_sha256 text,
+ add column conflict_manifest jsonb,
  add column conflict_report jsonb,
  add constraint backup_restore_conflict_hash_shape
   check(conflict_manifest_sha256 is null or conflict_manifest_sha256 ~ '^[a-f0-9]{64}$');
@@ -78,6 +79,7 @@ begin
 
  update private.backup_restore_staging
  set conflict_manifest_sha256=p_manifest_sha256,
+     conflict_manifest=p_manifest,
      conflict_report=jsonb_build_object(
       'schema_version',1,'mode','restore_conflicts',
       'archive_sha256',p_archive_sha256,
