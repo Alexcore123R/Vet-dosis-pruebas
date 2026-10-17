@@ -56,7 +56,6 @@ end$$;
 create function public.ai_prepare(p_chat uuid,p_connection uuid,p_model text,p_message text,p_operation text,p_personal boolean,p_team boolean) returns jsonb language plpgsql security definer set search_path='' as $$declare c public.ai_chats;r public.ai_requests;v_msg uuid;plan public.subscription_plans;begin
  select * into c from public.ai_chats where id=p_chat for update;
  if not found or c.owner_id<>auth.uid() or not private.has_clinic_role(c.clinic_id) then raise exception 'owner_required';end if;
- perform public.beta_access_check(true,c.clinic_id);
  if not private.ai_key_allowed(p_connection,auth.uid()) or exists(select 1 from public.ai_connections where id=p_connection and clinic_id is not null and clinic_id<>c.clinic_id) then raise exception 'key_access_denied';end if;
  if p_team and not private.team_plan(c.clinic_id) then raise exception 'clinic_plan_required';end if;
  select * into r from public.ai_requests where user_id=auth.uid() and operation=p_operation;
