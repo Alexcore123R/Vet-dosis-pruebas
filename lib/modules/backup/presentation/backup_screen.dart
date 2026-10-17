@@ -23,6 +23,74 @@ String restorePreviewCloseMessage(bool importsApplied) => importsApplied
     ? 'Vista previa cerrada. Los registros ya restaurados permanecen en la clínica; cerrar la vista previa no los revierte.'
     : 'Vista previa descartada. No se modificó ningún registro.';
 
+@visibleForTesting
+Map<String, dynamic> readRestorePreviewState(Map<String, dynamic> value) {
+  Map<String, dynamic>? readMap(dynamic raw, String field) {
+    if (raw == null) return null;
+    if (raw is! Map) {
+      throw FormatException('Estado de restauración inválido: $field.');
+    }
+    return Map<String, dynamic>.from(raw);
+  }
+
+  if (value['schema_version'] != 1 ||
+      value['mode'] != 'restore_preview' ||
+      value['imports_applied'] is! bool) {
+    throw const FormatException('Contrato de vista previa desconocido.');
+  }
+  final stage = readMap(value['stage'], 'stage');
+  if (stage == null) {
+    return {
+      'stage': null,
+      'conflicts': null,
+      'plan': null,
+      'preflight': null,
+      'owner_payload': null,
+      'owner_apply': null,
+      'imports_applied': false,
+    };
+  }
+  final stageId = stage['stage_id'];
+  final archiveSha = stage['archive_sha256'];
+  if (stageId is! String ||
+      archiveSha is! String ||
+      !RegExp(r'^[a-f0-9]{64}$').hasMatch(archiveSha)) {
+    throw const FormatException('La vista previa guardada no es válida.');
+  }
+
+  final conflicts = readMap(stage['conflicts'], 'conflicts');
+  final plan = readMap(stage['decisions'], 'decisions');
+  final preflight = readMap(stage['preflight'], 'preflight');
+  final ownerSummary = readMap(stage['owner_payload'], 'owner_payload');
+  Map<String, dynamic>? ownerPayload;
+  Map<String, dynamic>? ownerApply;
+  if (ownerSummary != null) {
+    ownerApply = readMap(ownerSummary['apply_report'], 'apply_report');
+    Map<String, dynamic>? ownerDecision;
+    final decisionTables = readMap(plan?['tables'], 'decision tables');
+    if (decisionTables != null) {
+      ownerDecision = readMap(decisionTables['vet_owners'], 'vet_owners decision');
+    }
+    ownerPayload = {
+      ...ownerSummary,
+      'create_candidate':
+          ownerDecision?['create_candidate'] ?? ownerApply?['created'] ?? 0,
+      'keep_existing':
+          ownerDecision?['keep_existing'] ?? ownerApply?['kept_existing'] ?? 0,
+    };
+  }
+
+  return {
+    'stage': stage,
+    'conflicts': conflicts,
+    'plan': plan,
+    'preflight': preflight,
+    'owner_payload': ownerPayload,
+    'owner_apply': ownerApply,
+    'imports_applied': value['imports_applied'] as bool,
+  };
+}
+
 class BackupScreen extends StatefulWidget {
   const BackupScreen({
     super.key,
@@ -70,6 +138,18 @@ class _BackupScreenState extends State<BackupScreen> {
             ? BackupScope.personal
             : BackupScope.clinic;
       });
+      if (next.restorePreview) {
+        try {
+          await reloadRestorePreview();
+        } catch (_) {
+          if (mounted) {
+            setState(
+              () => result =
+                  'No se pudo recuperar la vista previa de restauración del servidor.',
+            );
+          }
+        }
+      }
       if (next.statistics && !widget.backupOnly) await model.load();
     } catch (_) {
       if (mounted) {
@@ -79,6 +159,25 @@ class _BackupScreenState extends State<BackupScreen> {
         );
       }
     }
+  }
+
+  void applyRestorePreviewState(Map<String, dynamic> state) {
+    final stage = state['stage'] as Map<String, dynamic>?;
+    setState(() {
+      restoreStage = stage;
+      restoreConflicts = state['conflicts'] as Map<String, dynamic>?;
+      restorePlan = state['plan'] as Map<String, dynamic>?;
+      restoreOwnerPayload = state['owner_payload'] as Map<String, dynamic>?;
+      restorePreflight = state['preflight'] as Map<String, dynamic>?;
+      restoreOwnerApply = state['owner_apply'] as Map<String, dynamic>?;
+    });
+  }
+
+  Future<void> reloadRestorePreview() async {
+    final raw = await widget.repository.restorePreview(widget.member.clinicId);
+    final state = readRestorePreviewState(raw);
+    if (!mounted) return;
+    applyRestorePreviewState(state);
   }
 
   @override
@@ -241,14 +340,12 @@ class _BackupScreenState extends State<BackupScreen> {
     if (mounted) {
       setState(() {
         inspection = report;
-        restoreStage = null;
-        restoreConflicts = null;
-        restorePlan = null;
-        restoreOwnerPayload = null;
-        restorePreflight = null;
-        restoreOwnerApply = null;
+        final sameServerPreview =
+            restoreStage?['archive_sha256'] == report.archiveSha256;
         result =
-            '${encrypted ? 'Contraseña y cifrado comprobados. ' : ''}Integridad verificada · ${report.records} registros. No se modificó la base de datos ni se acreditó el origen del archivo.';
+            '${encrypted ? 'Contraseña y cifrado comprobados. ' : ''}Integridad verificada · ${report.records} registros. '
+            'No se modificó la base de datos ni se acreditó el origen del archivo.'
+            '${sameServerPreview ? ' Se recuperó la vista previa activa de este mismo respaldo.' : ''}';
       });
     }
   }
@@ -627,6 +724,36 @@ class _BackupScreenState extends State<BackupScreen> {
                 ],
               ),
               if (result != null) Text(result!),
+              if (restoreStage != null &&
+                  access!.restorePreview &&
+                  (inspection == null ||
+                      restoreStage!['archive_sha256'] !=
+                          inspection!.archiveSha256)) ...[
+                const Divider(),
+                const Text('Vista previa del servidor recuperada'),
+                Text(
+                  'Respaldo: ${(restoreStage!['archive_sha256'] as String).substring(0, 12)}… · '
+                  'vence ${restoreStage!['expires_at'] ?? 'según el servidor'}',
+                ),
+                Text(
+                  restoreOwnerApply?['imports_applied'] == true
+                      ? 'Esta vista ya aplicó una restauración limitada. Cerrarla no revierte los registros creados.'
+                      : 'Para continuar con esta vista previa, revisa de nuevo el mismo archivo de respaldo.',
+                ),
+                TextButton(
+                  onPressed: working
+                      ? null
+                      : () => run(
+                          discardRestorePreview,
+                          clearInspection: false,
+                        ),
+                  child: Text(
+                    restorePreviewCloseLabel(
+                      restoreOwnerApply?['imports_applied'] == true,
+                    ),
+                  ),
+                ),
+              ],
               if (inspection != null) ...[
                 Text(
                   'Clínica: ${inspection!.clinic} · ${inspection!.serverAt}',
@@ -653,7 +780,9 @@ class _BackupScreenState extends State<BackupScreen> {
                     icon: const Icon(Icons.preview_outlined),
                     label: const Text('Preparar vista previa en servidor'),
                   ),
-                  if (restoreStage != null) ...[
+                  if (restoreStage != null &&
+                      restoreStage!['archive_sha256'] ==
+                          inspection!.archiveSha256) ...[
                     Text(
                       'Vista previa activa · vence ${restoreStage!['expires_at'] ?? 'según el servidor'}',
                     ),
