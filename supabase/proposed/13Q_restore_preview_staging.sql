@@ -48,7 +48,7 @@ end$$;
 revoke all on function private.restore_counts_valid(jsonb) from public,anon,authenticated,service_role;
 
 create or replace function public.backup_workspace(p_clinic uuid) returns jsonb
-language plpgsql stable security definer set search_path='' as $
+language plpgsql stable security definer set search_path='' as $$
 declare kind text;
 begin
  perform public.beta_access_check(false,p_clinic);
@@ -60,7 +60,7 @@ begin
   'statistics',private.permission_effective(p_clinic,auth.uid(),'sales.read') is not null,
   'restore_preview',private.restore_preview_authorized(p_clinic,auth.uid())
  );
-end$;
+end$$;
 
 create function public.restore_preview_stage(
  p_clinic uuid,
