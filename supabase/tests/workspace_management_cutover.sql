@@ -70,7 +70,7 @@ select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000150'
 select public.permission_revoke(:'manage_grant','Synthetic workspace management revocation');
 reset role;
 
-select set_config('request.jwt.claim.sub','00000000-0000-0000-000000000190',false);set role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000190',false);set role authenticated;
 select pg_temp.assert_true(public.workspace_management_status(:'clinic')=false,'revoked workspace manager still projected');
 select pg_temp.assert_true(exists(
  select 1 from jsonb_array_elements(public.ai_dashboard(:'clinic')->'connections') x
