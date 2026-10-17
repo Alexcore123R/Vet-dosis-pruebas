@@ -20,7 +20,7 @@ reset role;
 
 -- Snapshot operational rows only after synthetic auth/permission setup so this assertion
 -- isolates the restore preview itself from unrelated fixture side effects.
-select count(*) as patients_before from public.vet_patients where clinic_id=:'clinic' \\gset
+select count(*) as patients_before from public.vet_patients where clinic_id=:'clinic' \gset
 
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000195',false);set role authenticated;
 select public.restore_preview_stage(
