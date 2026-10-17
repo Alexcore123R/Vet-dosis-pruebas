@@ -153,6 +153,8 @@ Diferencias observadas y conservadas como revisión explícita:
 diferencias de nulabilidad/RLS en PostgreSQL efímero antes del ensayo atómico.
 El ensayo local aprobó aplicación de los 23 candidatos, rollback ante error,
 rechazo de instalación parcial/repetida, conteos sin cambios y hashes finales.
+[Ensayo CI 39061388108](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39061388108)
+aprobado también: ejecutó la base original y la variante con diferencias observadas.
 Las columnas adicionales de Storage no se recrean: este ensayo no consume sus
 valores y no equivale a restaurar el esquema completo del servicio.
 
