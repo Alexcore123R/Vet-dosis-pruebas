@@ -27,7 +27,7 @@ grant execute on function public.ai_key_rotate_server(uuid,uuid,text,text) to se
 -- so a concurrent rotation cannot interleave before the claim commits.
 alter table public.ai_requests add column credential_version integer;
 create function private.ai_capture_credential_version() returns trigger
-language plpgsql security definer set search_path='' as $
+language plpgsql security definer set search_path='' as $$
 begin
  if new.state='processing' and old.state='queued' then
   select k.key_version into new.credential_version
@@ -47,7 +47,7 @@ revoke all on function private.ai_capture_credential_version() from public,anon,
 -- generated answer. This closes the check-to-write rotation race.
 create or replace function public.ai_finish_server(
  p_id uuid,p_user uuid,p_body text,p_success boolean
-) returns void language plpgsql security definer set search_path='' as $
+) returns void language plpgsql security definer set search_path='' as $$
 declare r public.ai_requests;v_msg uuid;v_version integer;
 begin
  select * into r from public.ai_requests where id=p_id and user_id=p_user for update;
