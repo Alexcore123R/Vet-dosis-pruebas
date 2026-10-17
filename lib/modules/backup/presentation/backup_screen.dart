@@ -14,6 +14,15 @@ import '../domain/backup_repository.dart';
 import '../domain/backup_archive.dart';
 import 'backup_view_model.dart';
 
+@visibleForTesting
+String restorePreviewCloseLabel(bool importsApplied) =>
+    importsApplied ? 'Cerrar vista previa' : 'Descartar vista previa';
+
+@visibleForTesting
+String restorePreviewCloseMessage(bool importsApplied) => importsApplied
+    ? 'Vista previa cerrada. Los registros ya restaurados permanecen en la clínica; cerrar la vista previa no los revierte.'
+    : 'Vista previa descartada. No se modificó ningún registro.';
+
 class BackupScreen extends StatefulWidget {
   const BackupScreen({
     super.key,
@@ -451,6 +460,7 @@ class _BackupScreenState extends State<BackupScreen> {
     final stage = restoreStage;
     final id = stage?['stage_id'];
     if (id is! String) return;
+    final importsApplied = restoreOwnerApply?['imports_applied'] == true;
     await widget.repository.discardRestorePreview(widget.member.clinicId, id);
     if (mounted) {
       setState(() {
@@ -460,7 +470,7 @@ class _BackupScreenState extends State<BackupScreen> {
         restoreOwnerPayload = null;
         restorePreflight = null;
         restoreOwnerApply = null;
-        result = 'Vista previa descartada. No se modificó ningún registro.';
+        result = restorePreviewCloseMessage(importsApplied);
       });
     }
   }
@@ -753,11 +763,15 @@ class _BackupScreenState extends State<BackupScreen> {
                                 'Restaurar solo tutores nuevos',
                               ),
                             ),
-                          if (restoreOwnerApply != null)
+                          if (restoreOwnerApply != null) ...[
                             Text(
                               'Restauración aplicada · creados: ${restoreOwnerApply!['created'] ?? 0} · '
                               'conservados: ${restoreOwnerApply!['kept_existing'] ?? 0}',
                             ),
+                            const Text(
+                              'Cerrar esta vista previa no deshace los tutores ya restaurados.',
+                            ),
+                          ],
                         ],
                       ],
                     ] else
@@ -771,7 +785,11 @@ class _BackupScreenState extends State<BackupScreen> {
                               discardRestorePreview,
                               clearInspection: false,
                             ),
-                      child: const Text('Descartar vista previa'),
+                      child: Text(
+                        restorePreviewCloseLabel(
+                          restoreOwnerApply?['imports_applied'] == true,
+                        ),
+                      ),
                     ),
                   ],
                 ] else if (inspection!.clinicBackup)
