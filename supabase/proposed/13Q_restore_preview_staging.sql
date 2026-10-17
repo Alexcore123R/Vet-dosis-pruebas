@@ -36,7 +36,7 @@ language plpgsql immutable set search_path='' as $$
 declare k text;v jsonb;n bigint;keys_count integer;
 begin
  if p_counts is null or jsonb_typeof(p_counts)<>'object' then return false;end if;
- keys_count=jsonb_object_length(p_counts);
+ select count(*)::integer into keys_count from jsonb_object_keys(p_counts);
  if keys_count<1 or keys_count>100 then return false;end if;
  for k,v in select key,value from jsonb_each(p_counts) loop
   if k !~ '^[a-zA-Z0-9_]{1,100}$' or jsonb_typeof(v)<>'number' then return false;end if;
@@ -98,7 +98,7 @@ begin
 
  insert into public.audit_log(clinic_id,actor_id,action,entity_id,details)
  values(p_clinic,auth.uid(),'backup_restore_preview_staged',s.stage_id::text,
-  jsonb_build_object('archive_sha256',s.archive_sha256,'expires_at',s.expires_at,'tables',jsonb_object_length(s.table_counts)));
+  jsonb_build_object('archive_sha256',s.archive_sha256,'expires_at',s.expires_at,'tables',(select count(*) from jsonb_object_keys(s.table_counts))));
 
  return jsonb_build_object(
   'schema_version',1,'mode','restore_preview',
