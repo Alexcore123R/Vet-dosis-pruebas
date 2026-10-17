@@ -22,9 +22,11 @@ class AttendanceScreen extends StatefulWidget {
     super.key,
     required this.repository,
     required this.member,
+    this.canManageWorkspace = false,
   });
   final AttendanceRepository repository;
   final ClinicMembership member;
+  final bool canManageWorkspace;
   @override
   State<AttendanceScreen> createState() => _AttendanceScreenState();
 }
@@ -274,7 +276,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
         ),
         if (model.busy || working) const LinearProgressIndicator(),
         if (model.error != null) Text(model.error!),
-        if (widget.member.role == ClinicRole.admin)
+        if (widget.canManageWorkspace)
           Wrap(
             spacing: 8,
             children: [
@@ -348,7 +350,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
             subtitle: Text(
               'Servidor: ${e['server_at']}\nEfectiva: ${e['effective_at']}',
             ),
-            trailing: widget.member.role == ClinicRole.admin
+            trailing: widget.canManageWorkspace
                 ? IconButton(
                     icon: const Icon(Icons.edit_note),
                     onPressed: () async {
