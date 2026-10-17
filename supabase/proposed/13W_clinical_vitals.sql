@@ -88,7 +88,7 @@ begin
 
  foreach field in array array['fc','fr','temperature','tllc','bp_systolic','bp_diastolic'] loop
   if p_data ? field and p_data->field<>'null'::jsonb then
-   if jsonb_typeof(p_data->field)<>'string' or p_data->>field !~ '^\d{1,12}(\.\d{1,9})? then
+   if jsonb_typeof(p_data->field)<>'string' or p_data->>field !~ '^\d{1,12}(\.\d{1,9})?
     raise exception 'invalid_vital_set';
    end if;
    n=(p_data->>field)::numeric;
