@@ -44,6 +44,18 @@ select set_config(
   'fc','85','fr','22','temperature','38.5','tllc','1.5',
   'bp_systolic','125','bp_diastolic','75',
   'mucosa_color','rosadas','mucosa_humidity','humedas',
+  'reference_snapshot',jsonb_build_array(jsonb_build_object(
+   'catalog_version','synthetic-2026-10',
+   'reference_id','canine-fc',
+   'species','Canino',
+   'parameter','fc',
+   'unit','lpm',
+   'min','60.000000000',
+   'max','120.000000000',
+   'source','Synthetic source for tests only',
+   'reviewed_at','2026-10-17T00:00:00.000Z',
+   'state','within'
+  )),
   'notes','Synthetic physical examination'
  )::text,
  false
@@ -53,6 +65,13 @@ select public.clinical_vitals_add(:'case_id',current_setting('test.vitals')::jso
 select pg_temp.assert_true(:'vital'::jsonb->>'id'=:'retry'::jsonb->>'id','retry duplicated vital snapshot');
 select pg_temp.assert_true(abs((:'vital'::jsonb->>'pam')::numeric-91.6666666666666667)<0.000001,'PAM calculation mismatch');
 select pg_temp.assert_true(:'vital'::jsonb->>'mucosa_color'='rosadas','mucosa color missing');
+select pg_temp.assert_true(
+ (:'vital'::jsonb->'reference_snapshot'->0->>'catalog_version')='synthetic-2026-10'
+ and (:'vital'::jsonb->'reference_snapshot'->0->>'reference_id')='canine-fc'
+ and (:'vital'::jsonb->'reference_snapshot'->0->>'state')='within',
+ 'vital reference snapshot missing'
+);
+
 select pg_temp.assert_true(not(:'vital'::jsonb ? 'triage_status'),'server invented a diagnostic triage status');
 select pg_temp.assert_true(
  exists(
@@ -83,6 +102,33 @@ select pg_temp.expect_error(
   repeat('9',48)
  ),
  'invalid_vital_set'
+);
+
+select pg_temp.expect_error(
+ format(
+  $q$select public.clinical_vitals_add(%L::uuid,%L::jsonb,%L)$q$,
+  :'case_id',
+  (
+   current_setting('test.vitals')::jsonb ||
+   jsonb_build_object(
+    'reference_snapshot',
+    jsonb_build_array(jsonb_build_object(
+     'catalog_version','synthetic',
+     'reference_id','bad',
+     'species','Canino',
+     'parameter','fc',
+     'unit','lpm',
+     'min','120',
+     'max','60',
+     'source','Synthetic source',
+     'reviewed_at','2026-10-17T00:00:00Z',
+     'state','within'
+    ))
+   )
+  )::text,
+  repeat('c',48)
+ ),
+ 'invalid_vital_reference_snapshot'
 );
 select pg_temp.expect_error(
  format(
