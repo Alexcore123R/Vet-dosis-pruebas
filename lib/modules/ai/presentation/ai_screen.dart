@@ -216,6 +216,47 @@ class _AiScreenState extends State<AiScreen> {
     }
   }
 
+  Future<void> rotateKey(String connectionId) async {
+    final controller = TextEditingController();
+    try {
+      final accepted = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Renovar API key'),
+          content: TextField(
+            controller: controller,
+            obscureText: true,
+            enableSuggestions: false,
+            autocorrect: false,
+            decoration: const InputDecoration(
+              labelText: 'Nueva API key',
+              helperText: 'La clave anterior dejará de utilizarse en nuevas solicitudes.',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Renovar'),
+            ),
+          ],
+        ),
+      );
+      if (accepted != true) return;
+      await run(() async {
+        await widget.repository.rotateKey(connectionId, controller.text.trim());
+        controller.clear();
+        await vm.load();
+      });
+    } finally {
+      controller.clear();
+      controller.dispose();
+    }
+  }
+
   Future<void> editPolicy() async {
     final chat = current!;
     String visibility = chat['visibility'] as String,
@@ -379,12 +420,21 @@ class _AiScreenState extends State<AiScreen> {
             if (k['can_manage'] == true)
               ListTile(
                 title: Text("${aiProviderLabels[k['provider']] ?? k['provider']} · ${aiScopeLabel(k['scope'])}"),
-                trailing: TextButton(
-                  onPressed: working ? null : () => run(() async {
-                    await widget.repository.disableKey(k['id'] as String);
-                    await vm.load();
-                  }),
-                  child: const Text('Revocar clave'),
+                trailing: Wrap(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextButton(
+                      onPressed: working ? null : () => rotateKey(k['id'] as String),
+                      child: const Text('Renovar'),
+                    ),
+                    TextButton(
+                      onPressed: working ? null : () => run(() async {
+                        await widget.repository.disableKey(k['id'] as String);
+                        await vm.load();
+                      }),
+                      child: const Text('Revocar'),
+                    ),
+                  ],
                 ),
               ),
           const Text('La privacidad de cada conversación se administra desde su chat.'),
