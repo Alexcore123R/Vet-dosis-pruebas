@@ -13,6 +13,7 @@ on:
       - 'supabase/proposed/13T_restore_application_preflight.sql'
       - 'supabase/proposed/13U_restore_owners_apply.sql'
       - 'supabase/tests/restore_*.sql'
+      - 'supabase/tests/workspace_management_cutover.sql'
       - 'supabase/tests/run_restore_preview_staging.sh'
       - 'lib/modules/backup/**'
       - 'test/backup_protection_test.dart'
