@@ -111,6 +111,11 @@ class SupabaseAiRepository implements AiRepository, StarterAiRepository {
   }
 
   @override
+  Future<void> rotateKey(String connection, String key) async {
+    await gateway({'action': 'rotate_key', 'connection': connection, 'key': key});
+  }
+
+  @override
   Future<void> disableKey(String connection) async {
     await client.rpc('ai_connection_disable', params: {'p_id': connection});
   }
