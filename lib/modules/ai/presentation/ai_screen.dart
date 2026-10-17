@@ -16,10 +16,12 @@ class AiScreen extends StatefulWidget {
     required this.repository,
     required this.member,
     this.initialDraft,
+    this.canManageWorkspace = false,
   });
   final AiRepository repository;
   final ClinicMembership member;
   final String? initialDraft;
+  final bool canManageWorkspace;
   @override
   State<AiScreen> createState() => _AiScreenState();
 }
@@ -148,7 +150,7 @@ class _AiScreenState extends State<AiScreen> {
                     ],
                     onChanged: (v) => set(() => provider = v!),
                   ),
-                  if (widget.member.role == ClinicRole.admin &&
+                  if (widget.canManageWorkspace &&
                       !widget.member.isPersonal)
                     DropdownButtonFormField<String>(
                       isExpanded: true,
