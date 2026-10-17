@@ -4,6 +4,16 @@ create function pg_temp.expect_error(sql text,expected text) returns void langua
 
 select id as clinic from public.clinics where name='Synthetic clinical permission A' \gset
 select id as case_id from public.clinical_cases where clinic_id=:'clinic' and title='Synthetic case' \gset
+select v.id as profile_version
+from private.professional_profile_versions v
+join public.professional_profiles p on p.id=v.profile_id
+where p.clinic_id=:'clinic' and p.user_id='00000000-0000-0000-0000-000000000111'
+order by v.version desc limit 1 \gset
+select private.professional_record_external(
+ :'profile_version','00000000-0000-0000-0000-000000000114',
+ clock_timestamp(),repeat('f',64),'Synthetic vitals verification',
+ clock_timestamp()+interval '1 day'
+);
 
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000111',false);
 set role authenticated;
