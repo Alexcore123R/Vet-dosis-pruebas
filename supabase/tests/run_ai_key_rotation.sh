@@ -45,13 +45,29 @@ for sql_file in \
  supabase/proposed/13A_permission_patient_registration.sql \
  supabase/proposed/13B_permission_agenda.sql \
  supabase/proposed/13C_permission_clinical.sql \
- supabase/tests/permission_clinical.sql \
- supabase/proposed/13Y_ai_key_rotation.sql \
- supabase/tests/ai_key_rotation.sql;do
+ supabase/tests/permission_clinical.sql;do
  docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 < "$sql_file" > "$work_dir/test.log" 2>&1 || {
   echo "FAILED: $sql_file"
   tail -c 10000 "$work_dir/test.log"
   exit 1
  }
 done
-echo 'AI key rotation synthetic authorization passed.'
+# Exercise the rotation contract after every initial-beta permission candidate,
+# not only against the earlier clinical foundation.
+while IFS= read -r sql_file;do
+ docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 < "$sql_file" > "$work_dir/test.log" 2>&1 || {
+  echo "FAILED: $sql_file"
+  tail -c 10000 "$work_dir/test.log"
+  exit 1
+ }
+done < <(python3 - <<'PY'
+import sys
+sys.path.insert(0, 'scripts/supabase')
+from integration_preflight import BETA_FILES
+for name in BETA_FILES[3:]:
+    print('supabase/proposed/' + name)
+print('supabase/proposed/13Y_ai_key_rotation.sql')
+print('supabase/tests/ai_key_rotation.sql')
+PY
+)
+echo 'AI key rotation authorization passed after the complete beta permission cutover.'

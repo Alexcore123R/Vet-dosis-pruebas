@@ -4,7 +4,9 @@ on:
   push:
     branches: [main]
     paths:
-      - 'supabase/proposed/13Y_ai_key_rotation.sql'
+      - 'supabase/proposed/**'
+      - 'supabase/adaptations/**'
+      - 'scripts/supabase/integration_preflight.py'
       - 'supabase/tests/ai_key_rotation.sql'
       - 'supabase/tests/run_ai_key_rotation.sh'
       - '.github/workflows/test-ai-key-rotation.yml'

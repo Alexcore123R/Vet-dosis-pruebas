@@ -30,6 +30,15 @@ begin
  end if;
 end$$;
 
+-- Client roles cannot call the service-only mutation even if its UUID is known.
+do $$
+begin
+ if has_function_privilege('anon','public.ai_key_rotate_server(uuid,uuid,text,text)','EXECUTE')
+    or has_function_privilege('authenticated','public.ai_key_rotate_server(uuid,uuid,text,text)','EXECUTE') then
+  raise exception 'rotation exposed to client roles';
+ end if;
+end$$;
+
 -- Claim a synthetic request at version 2, then rotate to version 3.
 -- Finishing its response must not insert an assistant message.
 select id as clinic from public.clinics where name='Synthetic clinical permission A' \gset
@@ -71,6 +80,29 @@ begin
            where chat_id=current_setting('test.ai_chat')::uuid
            and role='assistant') then
   raise exception 'stale assistant reply was saved';
+ end if;
+end$$;
+
+-- With unchanged credentials, the same completion path must still save an answer.
+insert into public.ai_requests(
+ clinic_id,chat_id,user_id,connection_id,model,operation,
+ personal_context,team_context,input_message_id
+)
+select clinic_id,chat_id,user_id,connection_id,model,
+ 'synthetic-operation-current-key-002',false,false,input_message_id
+from public.ai_requests where id=current_setting('test.ai_request')::uuid
+returning id as current_request \gset
+select set_config('test.ai_current_request',:'current_request',true);
+update public.ai_requests set state='processing' where id=:'current_request';
+select public.ai_finish_server(:'current_request',
+ '00000000-0000-0000-0000-000000000111','current synthetic answer',true);
+do $$
+begin
+ if not exists(select 1 from public.ai_requests r
+   join public.ai_messages m on m.id=r.output_message_id
+   where r.id=current_setting('test.ai_current_request')::uuid
+     and r.state='done' and m.body='current synthetic answer') then
+  raise exception 'unchanged credential completion rejected';
  end if;
 end$$;
 rollback;

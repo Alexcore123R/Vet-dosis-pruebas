@@ -4,6 +4,10 @@ Fecha: 2026-10-17. Responsable de integración: Sol 6.1.
 
 ## Validación posterior por integración
 
+Actualización tras `675a48e`: se incorporaron la renovación y sus pruebas. El ensayo local de `run_ai_key_rotation.sh` pasó después de aplicar todos los candidatos del paquete inicial de permisos, incluido 13P. Cubre incremento de versión, rechazo de usuario ajeno, bloqueo de acceso RPC directo para `anon`/`authenticated`, descarte de respuesta obsoleta y guardado de respuesta con versión vigente. Los pendientes históricos de abajo sobre ausencia de incremento quedan superados por 13Y; la carrera HTTP real sigue pendiente.
+
+Orden para el cliente nuevo: base IA → paquete de permisos → 13Y → Edge compatible → cliente con renovación. 13Y sigue separado del manifiesto de 23 candidatos: aplicar únicamente ese manifiesto no habilita el botón Renovar del nuevo cliente. No se ejecutó ninguna migración remota ni se compiló APK en esta revisión.
+
 - Incorporado `73b2fd4`: el gateway compara `key_version` tras consultar modelos. El RPC `ai_key_get_server` incluye ese campo mediante `to_jsonb(k)`. Las 11 pruebas Node de proveedores/cifrado/facturación pasan. Estas pruebas no simulan aún la carrera de rotación en el gateway.
 - Condición pendiente del issue #1: el esquema da a `key_version` un valor inicial de 1; los caminos actuales de guardado crean una conexión nueva y no muestran renovación del mismo ID ni incremento de versión. La comparación es compatible con el contrato, pero no demuestra protección frente a una actualización de credencial que conserve la versión. Requiere prueba de rotación concurrente y garantía de incremento antes de cerrar ese caso. No se desplegó.
 
