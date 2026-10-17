@@ -32,3 +32,16 @@ Fecha: 2026-10-17. Responsable de integración: Sol 6.1.
 Sol 6.1 puede continuar su trabajo de integración y planificación, pero **no considerar aprobado el APK ni habilitar beta** hasta análisis/compilación Flutter, validación remota y revisión de dependencias. Evitar reescribir en paralelo `lib/core/app.dart` y `lib/modules/ai/presentation/ai_screen.dart` sin revisar los commits anteriores.
 
 Este documento es el punto de entrega del frente de Storage/Edge/interfaz; no es autorización automática de despliegue.
+
+## Adenda: rotación de credenciales de IA (17 octubre 2026)
+
+La implementación candidata quedó integrada en GitHub y verificada **localmente**, sin desplegar Supabase:
+
+- `supabase/proposed/13Y_ai_key_rotation.sql`: renovación de credenciales con incremento atómico de `key_version`. Un trigger captura la versión al cambiar la solicitud a `processing`; `ai_finish_server` vuelve a comprobar esa versión bajo bloqueo de fila antes de guardar la respuesta.
+- `ai-gateway`: acción `rotate_key`; revalidación al devolver modelos y respuestas de `send`.
+- Flutter: botón «Renovar» en Ajustes → Proveedores de IA; repositorio y contrato conectados.
+- [SQL 39060567086](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39060567086): **aprobado**, incluye rotación autorizada, rechazo de usuario ajeno, captura de versión y rechazo de respuesta obsoleta.
+- [Flutter 39060470575](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39060470575): **aprobado**, análisis y pruebas del panel y navegación.
+- Ensayo general de integración [39060395397](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39060395397): aprobado, pero no supone que 13Y esté dentro del paquete de 23 candidatos.
+
+**A Sol 6.1:** puede proseguir con la integración. Para el despliegue, incluir 13Y explícitamente tras la base de IA, revisar el orden y el contrato, y realizar pruebas HTTP con cuentas reales de prueba, incluida rotación verdaderamente concurrente mientras un proveedor externo está respondiendo. No se ha ejecutado 13Y remotamente ni generado un APK nuevo con estos cambios. La ejecución local verde no autoriza por sí sola abrir la beta.
