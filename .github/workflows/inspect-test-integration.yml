@@ -1,0 +1,25 @@
+name: Inspeccionar integración beta (solo lectura)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: supabase-test-beta-preparation
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar inventario y protecciones de inspección
+        run: python3 -m unittest discover -s scripts/supabase -p 'test_*.py'
+      - name: Comparar catálogo del proyecto de pruebas con candidatos
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: python3 scripts/supabase/integration_preflight.py --output integration-preflight.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: beta-integration-preflight
+          path: integration-preflight.json
+          retention-days: 7
