@@ -12,6 +12,11 @@ APK, firma, restauración, corte de permisos y preparación/despliegue tenían u
 última ejecución exitosa. Los fallos antiguos permanecen en el historial.
 No se relanzaron workflows de despliegue ni se generó un APK para esta revisión.
 
+Al ejecutar el corte completo actual apareció otro fallo en `workspace-management`:
+Docker rechazó `vetdosis-workspace-manage-$` (salida 125). El script tenía un dólar
+literal en lugar de `$$` para el ID del proceso. Se corrigió el nombre y se probó
+la cadena de administración por separado antes de repetir el corte completo.
+
 La revisión también corrigió autorización por sección en estadísticas, rechazo
 de NULL en restauración y aplicación restringida a destinos de prueba temporales.
 Las migraciones son candidatos: requieren aplicación coordinada y no se publican
