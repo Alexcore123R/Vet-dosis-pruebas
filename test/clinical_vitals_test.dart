@@ -4,6 +4,7 @@ import 'package:vetdosis_pro/modules/auth/domain/clinic_membership.dart';
 import 'package:vetdosis_pro/modules/forms/clinical/clinical_models.dart';
 import 'package:vetdosis_pro/modules/forms/clinical/clinical_repository.dart';
 import 'package:vetdosis_pro/modules/forms/clinical/clinical_vitals_screen.dart';
+import 'package:vetdosis_pro/modules/forms/clinical/vital_reference_catalog.dart';
 import 'package:vetdosis_pro/modules/forms/clinical/vitals_models.dart';
 
 class VitalsFake implements ClinicalRepository {
@@ -91,6 +92,98 @@ void main() {
     expect(speciesLabel('Gato'), 'Felino');
     expect(speciesLabel('bovino'), 'Bovino');
     expect(speciesLabel('ave'), 'Aves');
+  });
+
+
+  test('versioned vital references classify only verified matching entries', () {
+    final catalog = VitalReferenceCatalog.parse(r'''
+{
+  "schema_version": 1,
+  "catalog_version": "synthetic-2026-10",
+  "references": [
+    {
+      "id": "canine-fc",
+      "species": "canino",
+      "parameter": "fc",
+      "unit": "lpm",
+      "min": "60",
+      "max": "120",
+      "status": "verified",
+      "source": "Synthetic source for tests only",
+      "reviewed_at": "2026-10-17T00:00:00Z"
+    },
+    {
+      "id": "canine-fr-unverified",
+      "species": "canino",
+      "parameter": "fr",
+      "unit": "rpm",
+      "min": "10",
+      "max": "30",
+      "status": "unverified",
+      "source": "Synthetic source for tests only",
+      "reviewed_at": "2026-10-17T00:00:00Z"
+    }
+  ]
+}
+''');
+
+    expect(
+      catalog.evaluate(
+        species: 'Canino',
+        parameter: 'fc',
+        rawValue: '85',
+      )?.state,
+      VitalReferenceState.within,
+    );
+    expect(
+      catalog.evaluate(
+        species: 'canino',
+        parameter: 'fc',
+        rawValue: '130',
+      )?.state,
+      VitalReferenceState.above,
+    );
+    expect(
+      catalog.evaluate(
+        species: 'canino',
+        parameter: 'fr',
+        rawValue: '22',
+      ),
+      isNull,
+    );
+    expect(
+      catalog.evaluate(
+        species: 'felino',
+        parameter: 'fc',
+        rawValue: '85',
+      ),
+      isNull,
+    );
+  });
+
+  test('vital reference catalog rejects inverted ranges and bad review dates', () {
+    expect(
+      () => VitalReferenceCatalog.parse(r'''
+{
+  "schema_version": 1,
+  "catalog_version": "bad",
+  "references": [
+    {
+      "id": "bad-range",
+      "species": "canino",
+      "parameter": "fc",
+      "unit": "lpm",
+      "min": "120",
+      "max": "60",
+      "status": "verified",
+      "source": "Synthetic source",
+      "reviewed_at": "2026-10-17T00:00:00Z"
+    }
+  ]
+}
+'''),
+      throwsFormatException,
+    );
   });
 
   testWidgets('vital monitor shows patient context and avoids unverified triage', (
