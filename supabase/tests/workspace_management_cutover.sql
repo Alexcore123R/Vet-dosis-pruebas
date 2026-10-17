@@ -14,7 +14,6 @@ on conflict(clinic_id,user_id) do nothing;
 
 -- Visual admin is not workspace-management authority.
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000190',false);set role authenticated;
-select pg_temp.assert_true(not private.workspace_management_authorized(:'clinic',auth.uid()),'visual admin unexpectedly manages workspace');
 select pg_temp.expect_error(format('select public.clinic_team_snapshot(%L)',:'clinic'),'workspace_manage_required');
 select pg_temp.expect_error(format($q$select public.att_settings_save(%L,'{"latitude":20.7,"longitude":-103.4,"radius_m":100,"max_accuracy_m":50,"privacy_notice":"Aviso sintético de ubicación para pruebas."}'::jsonb)$q$,:'clinic'),'workspace_manage_required');
 select pg_temp.expect_error(format('select public.plan_payment_history(%L)',:'clinic'),'payment_history_denied');
@@ -31,7 +30,6 @@ select public.permission_grant(:'clinic','00000000-0000-0000-0000-000000000190',
 reset role;
 
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000190',false);set role authenticated;
-select pg_temp.assert_true(private.workspace_management_authorized(:'clinic',auth.uid()),'explicit workspace manager rejected');
 select pg_temp.assert_true(jsonb_array_length(public.clinic_team_snapshot(:'clinic')->'members')>0,'manager cannot read team');
 select public.att_settings_save(:'clinic','{"latitude":20.7,"longitude":-103.4,"radius_m":100,"max_accuracy_m":50,"privacy_notice":"Aviso sintético de ubicación para pruebas."}'::jsonb);
 select pg_temp.assert_true(public.att_qr(:'clinic') ? 'token','manager cannot issue attendance QR');
@@ -50,7 +48,10 @@ select public.ai_key_store_server('00000000-0000-0000-0000-000000000190','clinic
 reset role;
 
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000190',false);set role authenticated;
-select pg_temp.assert_true(private.ai_key_allowed(:'connection',auth.uid(),true),'explicit manager cannot manage clinic AI key');
+select pg_temp.assert_true(exists(
+ select 1 from jsonb_array_elements(public.ai_dashboard(:'clinic')->'connections') x
+ where x->>'id'=:'connection' and (x->>'can_manage')::boolean
+),'explicit manager cannot manage clinic AI key');
 reset role;
 
 -- Revocation closes management on the next call, while ordinary shared-key membership remains separate.
@@ -59,8 +60,10 @@ select public.permission_revoke(:'manage_grant','Synthetic workspace management 
 reset role;
 
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000190',false);set role authenticated;
-select pg_temp.assert_true(not private.workspace_management_authorized(:'clinic',auth.uid()),'revoked workspace manager remained active');
-select pg_temp.assert_true(private.ai_key_allowed(:'connection',auth.uid(),false),'management revocation incorrectly removed ordinary shared-key membership');
+select pg_temp.assert_true(exists(
+ select 1 from jsonb_array_elements(public.ai_dashboard(:'clinic')->'connections') x
+ where x->>'id'=:'connection' and not (x->>'can_manage')::boolean
+),'revoked manager retained AI management or lost ordinary shared-key membership');
 select pg_temp.expect_error(format('select public.clinic_team_snapshot(%L)',:'clinic'),'workspace_manage_required');
 select pg_temp.expect_error(format('select public.ai_connection_disable(%L)',:'connection'),'owner_required');
 select pg_temp.expect_error(format('select public.plan_payment_history(%L)',:'clinic'),'payment_history_denied');
@@ -69,6 +72,5 @@ reset role;
 -- Personal workspace ownership is its own management authority; no self-grant is required.
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000191',false);set role authenticated;
 select public.personal_workspace_create() as personal \gset
-select pg_temp.assert_true(private.workspace_management_authorized(:'personal',auth.uid()),'personal owner lacks management authority');
 select public.plan_request(:'personal','individual','monthly',repeat('i',24));
 reset role;
