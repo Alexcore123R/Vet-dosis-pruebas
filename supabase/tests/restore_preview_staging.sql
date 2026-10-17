@@ -13,6 +13,7 @@ values(:'clinic','00000000-0000-0000-0000-000000000193','admin')
 on conflict(clinic_id,user_id) do nothing;
 
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000193',false);set role authenticated;
+select pg_temp.assert_true((public.backup_workspace(:'clinic')->>'restore_preview')::boolean=false,'visual admin received restore preview');
 select pg_temp.expect_error(
  format($q$select public.restore_preview_stage(%L,'vetdosis-operational-backup',1,repeat('a',64),clock_timestamp(),'{"vet_patients":2}'::jsonb)$q$,:'clinic'),
  'backup_restore_required'
@@ -36,6 +37,7 @@ select public.permission_grant(:'clinic','00000000-0000-0000-0000-000000000193',
 reset role;
 
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000193',false);set role authenticated;
+select pg_temp.assert_true((public.backup_workspace(:'clinic')->>'restore_preview')::boolean,'restore preview capability not projected');
 select public.restore_preview_stage(
  :'clinic','vetdosis-operational-backup',1,repeat('a',64),
  clock_timestamp()-interval '1 day',
