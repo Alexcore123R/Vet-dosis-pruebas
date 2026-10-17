@@ -121,6 +121,7 @@ class FakeBackup implements BackupRepository {
       'create_candidate': create,
       'keep_existing': 0,
       'blocked_missing_dependency': 0,
+      'blocked_foreign_identity': 0,
       'manual_review': 0,
       'tables': {
         for (final entry in dependencies.entries)
@@ -129,6 +130,7 @@ class FakeBackup implements BackupRepository {
             'create_candidate': entry.value.length,
             'keep_existing': 0,
             'blocked_missing_dependency': 0,
+            'blocked_foreign_identity': 0,
             'manual_review': 0,
             'samples': const {},
           },
@@ -137,6 +139,7 @@ class FakeBackup implements BackupRepository {
         'existing': 'keep_current',
         'new': 'candidate_only',
         'missing_dependency': 'block',
+        'foreign_identity': 'block',
         'staff_reference': 'manual_review',
         'overwrite': false,
         'merge': false,
