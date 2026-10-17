@@ -67,6 +67,39 @@ class FakeBackup implements BackupRepository {
   };
 
   @override
+  Future<Map<String, dynamic>> previewRestoreConflicts(
+    String clinic, {
+    required String stageId,
+    required String archiveSha256,
+    required String manifestSha256,
+    required Map<String, List<String>> manifest,
+  }) async {
+    var incoming = 0;
+    for (final ids in manifest.values) {
+      incoming += ids.length;
+    }
+    return {
+      'schema_version': 1,
+      'mode': 'restore_conflicts',
+      'archive_sha256': archiveSha256,
+      'manifest_sha256': manifestSha256,
+      'incoming': incoming,
+      'existing': 0,
+      'new': incoming,
+      'tables': {
+        for (final entry in manifest.entries)
+          entry.key: {
+            'incoming': entry.value.length,
+            'existing': 0,
+            'new': entry.value.length,
+            'conflict_ids': <String>[],
+          },
+      },
+      'imports_applied': false,
+    };
+  }
+
+  @override
   Future<void> discardRestorePreview(String clinic, String stageId) async {}
 }
 
