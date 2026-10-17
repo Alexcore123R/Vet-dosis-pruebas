@@ -176,10 +176,8 @@ class BackupRecoveryReport {
             'phone': textField('phone'),
             'email': textField('email'),
             'address': textField('address'),
-            if (sourceCreatedBy != null)
-              'source_created_by': sourceCreatedBy,
-            if (sourceCreatedAt != null)
-              'source_created_at': sourceCreatedAt,
+            ?'source_created_by': sourceCreatedBy,
+            ?'source_created_at': sourceCreatedAt,
           });
         }
         if (!conflictTables.contains(name)) continue;
