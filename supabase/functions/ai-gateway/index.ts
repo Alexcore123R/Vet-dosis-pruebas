@@ -213,6 +213,22 @@ Deno.serve(async (req) => {
     });
     if (!response.ok) throw new Error("provider_request_failed");
     const output = providerText(k.provider, await response.json());
+    const { data: currentCredential, error: credentialError } = await server.rpc(
+      "ai_key_get_server",
+      { p_user: actor, p_connection: r.connection_id ?? input.connection },
+    );
+    if (credentialError || !currentCredential ||
+        currentCredential.key_version !== k.key_version ||
+        currentCredential.provider !== k.provider ||
+        currentCredential.scope !== k.scope ||
+        currentCredential.owner_id !== k.owner_id ||
+        currentCredential.clinic_id !== k.clinic_id) {
+      await server.rpc("ai_finish_server", {
+        p_id: r.id, p_user: actor, p_body: "", p_success: false,
+      });
+      claimed = null;
+      return reply({ error: "key_access_changed" }, 403);
+    }
     if (!await betaAccess(user, true, r.clinic_id)) {
       await server.rpc("ai_finish_server", {
         p_id: r.id,
