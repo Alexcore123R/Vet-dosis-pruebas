@@ -71,7 +71,7 @@ create function public.ai_prepare(p_chat uuid,p_connection uuid,p_model text,p_m
  insert into public.ai_messages(clinic_id,chat_id,role,body,created_by) values(c.clinic_id,c.id,'user',p_message,auth.uid()) returning id into v_msg;
  insert into public.ai_requests(clinic_id,chat_id,user_id,connection_id,model,operation,personal_context,team_context,input_message_id) values(c.clinic_id,c.id,auth.uid(),p_connection,p_model,p_operation,p_personal,p_team,v_msg) returning * into r;
  return jsonb_build_object('id',r.id,'state',r.state,'clinic_id',c.clinic_id);
-end$;
+end$$;
 -- Gateway-only storage of AES-GCM ciphertext.
 create function public.ai_key_store_server(p_user uuid,p_scope text,p_clinic uuid,p_provider text,p_cipher text,p_nonce text) returns uuid language plpgsql security definer set search_path='' as $$declare v_id uuid;begin
  if not exists(select 1 from auth.users where id=p_user and email_confirmed_at is not null) then raise exception 'verified_user_required';end if;
