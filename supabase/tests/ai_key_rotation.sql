@@ -49,7 +49,7 @@ insert into public.ai_requests(
 select set_config('test.ai_request',:'request',true);
 select set_config('test.ai_chat',:'chat',true);
 update public.ai_requests set state='processing' where id=:'request';
-do $
+do $$
 declare v_request uuid=current_setting('test.ai_request')::uuid;
 begin
  if (select credential_version from public.ai_requests where id=v_request)<>2 then
@@ -72,5 +72,5 @@ begin
            and role='assistant') then
   raise exception 'stale assistant reply was saved';
  end if;
-end$;
+end$$;
 rollback;
