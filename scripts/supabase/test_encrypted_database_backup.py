@@ -1,10 +1,18 @@
 import unittest
 
-from encrypted_database_backup import configuration_status, connection_environment, validate_passphrase
+from encrypted_database_backup import configuration_status, connection_environment, export_error_code, validate_passphrase
 from identity_schema import PROJECT
 
 
 class EncryptedBackupTests(unittest.TestCase):
+    def test_diagnostics_only_return_fixed_codes_not_private_connection_text(self):
+        self.assertEqual(export_error_code('private-host: certificate verify failed'),
+                         'database_tls_verification_failed')
+        self.assertEqual(export_error_code('password authentication failed: synthetic-secret'),
+                         'database_authentication_failed')
+        self.assertEqual(export_error_code('synthetic-secret unknown problem'),
+                         'database_export_unclassified_failure')
+
     def test_configuration_check_never_returns_credentials_or_claims_a_backup(self):
         report = configuration_status({})
         self.assertFalse(report['configuration_valid'])

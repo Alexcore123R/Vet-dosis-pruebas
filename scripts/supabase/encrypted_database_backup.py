@@ -15,6 +15,25 @@ from identity_schema import PROJECT
 IMAGE = 'postgres:17-alpine'
 
 
+def export_error_code(stderr):
+    """Classify privately captured diagnostics; never return any original text."""
+    text = stderr.lower()
+    categories = (
+        ('database_tls_verification_failed', ('certificate verify failed', 'root certificate', 'self-signed certificate', 'does not match host name')),
+        ('database_authentication_failed', ('password authentication failed', 'sasl authentication failed')),
+        ('database_pooler_user_not_found', ('tenant or user not found',)),
+        ('pg_dump_version_incompatible', ('server version mismatch',)),
+        ('database_export_permission_denied', ('permission denied', 'must be owner')),
+        ('database_dns_failed', ('could not translate host name',)),
+        ('database_connection_unavailable', ('network is unreachable', 'connection refused', 'connection timed out', 'timeout expired')),
+        ('container_image_unavailable', ('pull access denied', 'failed to resolve reference')),
+    )
+    for code, fragments in categories:
+        if any(fragment in text for fragment in fragments):
+            return code
+    return 'database_export_unclassified_failure'
+
+
 def connection_environment(url):
     try:
         parsed = urlsplit(url)
@@ -185,6 +204,9 @@ def main():
                 if dump.poll() is None:
                     dump.kill()
                     dump.wait()
+                if dump.returncode != 0:
+                    errors.seek(0)
+                    print('Backup diagnostic:', export_error_code(errors.read().decode('utf-8', errors='replace')))
         manifest = {'project_ref': PROJECT, 'created_at_utc': stamp, 'format': 'pg_dump custom + OpenPGP AES256',
                     'file': target.name, **evidence,
                     'scope': 'Database schemas/data/ACLs exported by pg_dump, without original ownership. '
