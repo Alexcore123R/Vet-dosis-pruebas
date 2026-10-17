@@ -472,6 +472,25 @@ class _BackupScreenState extends State<BackupScreen> {
         );
       }
     }
+
+    Map<String, dynamic>? patientPayload;
+    final ownerCreates =
+        (ownerPayload?['create_candidate'] as num?)?.toInt() ?? 0;
+    if (report.restorePatients.isNotEmpty && ownerCreates == 0) {
+      patientPayload = await widget.repository.prepareRestorePatients(
+        widget.member.clinicId,
+        stageId: stageId,
+        archiveSha256: report.archiveSha256,
+        patients: report.restorePatients,
+      );
+      if (patientPayload['mode'] != 'restore_patient_payload' ||
+          patientPayload['imports_applied'] != false ||
+          patientPayload['archive_sha256'] != report.archiveSha256) {
+        throw const FormatException(
+          'La preparación de pacientes no coincide con el respaldo.',
+        );
+      }
+    }
     final preflight = report.conflictManifest.isEmpty
         ? <String, dynamic>{
             'schema_version': 1,
@@ -506,8 +525,10 @@ class _BackupScreenState extends State<BackupScreen> {
         restoreConflicts = conflicts;
         restorePlan = plan;
         restoreOwnerPayload = ownerPayload;
+        restorePatientPayload = patientPayload;
         restorePreflight = preflight;
         restoreOwnerApply = null;
+        restorePatientApply = null;
         result = preflight['applicable'] == true
             ? 'Preflight aprobado para este estado actual. Sigue sin existir una importación activa.'
             : 'Preflight bloqueado: hay decisiones o cambios que deben resolverse. No se importó ningún registro.';
@@ -582,11 +603,81 @@ class _BackupScreenState extends State<BackupScreen> {
     }
   }
 
+  Future<void> applyPatientRestore() async {
+    final stage = restoreStage;
+    final payload = restorePatientPayload;
+    final preflight = restorePreflight;
+    if (stage == null ||
+        payload == null ||
+        preflight?['applicable'] != true ||
+        restorePatientApply != null) {
+      return;
+    }
+    final stageId = stage['stage_id'];
+    final preflightId = preflight?['preflight_id'];
+    final payloadSha = payload['payload_sha256'];
+    if (stageId is! String || preflightId is! String || payloadSha is! String) {
+      throw const FormatException(
+        'La restauración de pacientes no tiene identificadores válidos.',
+      );
+    }
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Restaurar pacientes nuevos'),
+            content: Text(
+              'Se crearán únicamente ${payload['create_candidate'] ?? 0} pacientes '
+              'que no existen actualmente. Los pacientes existentes no se modificarán '
+              'y cada tutor debe seguir existiendo en esta clínica. '
+              'La operación es atómica: si algo cambia, no se crea ninguno.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Restaurar pacientes'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed) return;
+
+    final applied = await widget.repository.applyRestorePatients(
+      widget.member.clinicId,
+      stageId: stageId,
+      preflightId: preflightId,
+      patientPayloadSha256: payloadSha,
+    );
+    if (applied['mode'] != 'restore_apply_patients' ||
+        applied['imports_applied'] != true ||
+        applied['overwrite'] != false ||
+        applied['merge'] != false) {
+      throw const FormatException(
+        'El servidor no confirmó una restauración limitada de pacientes.',
+      );
+    }
+    if (mounted) {
+      setState(() {
+        restorePatientApply = applied;
+        result =
+            'Pacientes restaurados: ${applied['created'] ?? 0}. '
+            'Existentes conservados: ${applied['kept_existing'] ?? 0}.';
+      });
+    }
+  }
+
   Future<void> discardRestorePreview() async {
     final stage = restoreStage;
     final id = stage?['stage_id'];
     if (id is! String) return;
-    final importsApplied = restoreOwnerApply?['imports_applied'] == true;
+    final importsApplied =
+        restoreOwnerApply?['imports_applied'] == true ||
+        restorePatientApply?['imports_applied'] == true;
     await widget.repository.discardRestorePreview(widget.member.clinicId, id);
     if (mounted) {
       setState(() {
@@ -594,8 +685,10 @@ class _BackupScreenState extends State<BackupScreen> {
         restoreConflicts = null;
         restorePlan = null;
         restoreOwnerPayload = null;
+        restorePatientPayload = null;
         restorePreflight = null;
         restoreOwnerApply = null;
+        restorePatientApply = null;
         result = restorePreviewCloseMessage(importsApplied);
       });
     }
