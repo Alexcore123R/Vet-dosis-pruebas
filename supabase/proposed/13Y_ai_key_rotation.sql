@@ -37,7 +37,7 @@ begin
   if new.credential_version is null then raise exception 'credential_missing';end if;
  end if;
  return new;
-end$;
+end$$;
 create trigger ai_capture_credential_version
 before update of state on public.ai_requests
 for each row execute function private.ai_capture_credential_version();
@@ -77,5 +77,5 @@ begin
  insert into public.ai_messages(clinic_id,chat_id,role,body,created_by)
  values(r.clinic_id,r.chat_id,'assistant',p_body,p_user) returning id into v_msg;
  update public.ai_requests set state='done',output_message_id=v_msg where id=r.id;
-end$;
+end$$;
 commit;
