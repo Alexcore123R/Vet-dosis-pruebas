@@ -11,6 +11,7 @@ import '../../hospital/domain/hospital_repository.dart';
 import '../../hospital/domain/hospital_models.dart';
 import '../../patients/domain/patient_repository.dart';
 import '../../backup/domain/backup_repository.dart';
+import '../../core/domain/module_access.dart';
 
 class DashboardViewModel extends ChangeNotifier {
   DashboardViewModel({
@@ -20,6 +21,7 @@ class DashboardViewModel extends ChangeNotifier {
     this.hospital,
     this.patients,
     this.backup,
+    this.moduleAccess,
     DateTime Function()? now,
   }) : now = now ?? DateTime.now;
   final ClinicMembership? member;
@@ -28,7 +30,16 @@ class DashboardViewModel extends ChangeNotifier {
   final HospitalRepository? hospital;
   final PatientRepository? patients;
   final BackupRepository? backup;
+  final ModuleAccess? moduleAccess;
   final DateTime Function() now;
+  bool get canSeeClinicSales => moduleAccess == null
+      ? member?.role == ClinicRole.admin
+      : moduleAccess!.summary('sales');
+  bool get canSeePatients => moduleAccess == null
+      ? member?.role != ClinicRole.estilista
+      : moduleAccess!.summary('patients');
+  bool canSummarize(String name) =>
+      moduleAccess == null || moduleAccess!.summary(name);
   final Map<String, String> errors = {};
   Map<String, dynamic>? agenda, stock, statistics;
   HospitalSnapshot? ward;
@@ -58,22 +69,22 @@ class DashboardViewModel extends ChangeNotifier {
 
     final m = member!;
     await Future.wait([
-      if (operations != null)
+      if (operations != null && canSummarize('agenda'))
         section('Agenda', () async {
           agenda = await operations!.dashboard(m.clinicId);
         }),
-      if (inventory != null && navigationAllowed('Inventario', m))
+      if (inventory != null && canSummarize('inventory'))
         section('Inventario', () async {
           stock = Map<String, dynamic>.from(
             await inventory!.read('inv_dashboard', {'p_clinic': m.clinicId})
                 as Map,
           );
         }),
-      if (hospital != null && navigationAllowed('Hospitalización', m))
+      if (hospital != null && canSummarize('hospital'))
         section('Hospitalización', () async {
           ward = await hospital!.load(m.clinicId);
         }),
-      if (patients != null && m.role != ClinicRole.estilista)
+      if (patients != null && canSeePatients)
         section('Pacientes', () async {
           patientCount = (await patients!.patients(m.clinicId)).length;
         }),

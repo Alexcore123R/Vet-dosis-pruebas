@@ -180,3 +180,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Probar constatación con permiso y firma propios
         run: bash supabase/tests/run_death_attestation.sh
+
+  module-navigation-dashboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar navegación y consultas del dashboard por permisos
+        run: bash supabase/tests/run_module_navigation_dashboard.sh

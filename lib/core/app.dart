@@ -7,6 +7,8 @@ import 'widgets/workspace_panel.dart';
 import '../modules/dashboard/presentation/dashboard_screen.dart';
 import '../modules/dashboard/presentation/dashboard_view_model.dart';
 import '../modules/core/domain/navigation_access.dart';
+import '../modules/core/domain/module_access.dart';
+import '../modules/core/presentation/module_access_boundary.dart';
 import '../modules/inventory/presentation/quick_scan_screen.dart';
 import '../modules/support/domain/support_repository.dart';
 import '../modules/support/presentation/support_screen.dart';
@@ -76,6 +78,7 @@ class VetDosisApp extends StatelessWidget {
     this.ai,
     this.subscriptions,
     this.support,
+    this.moduleAccess,
   });
   final CoreViewModel model;
   final AuthViewModel? auth;
@@ -96,6 +99,7 @@ class VetDosisApp extends StatelessWidget {
   final AiRepository? ai;
   final SubscriptionRepository? subscriptions;
   final SupportRepository? support;
+  final ModuleAccessRepository? moduleAccess;
   ThemeData theme(Brightness brightness) {
     final dark = brightness == Brightness.dark;
     return ThemeData(
@@ -166,24 +170,30 @@ class VetDosisApp extends StatelessWidget {
               auth!.recoveringPassword ||
               auth!.active == null)
       ? AuthScreen(model: auth, configured: auth != null)
-      : CoreShell(
-          model: model,
-          auth: auth,
-          personalDoses: personalDoses,
-          patients: patients,
-          hospital: hospital,
-          hospitalAlerts: hospitalAlerts,
-          forms: forms,
-          identity: identity,
-          clinical: clinical,
-          prescribing: prescribing,
-          inventory: inventory,
-          operations: operations,
-          attendance: attendance,
-          backup: backup,
-          ai: ai,
-          subscriptions: subscriptions,
-          support: support,
+      : ModuleAccessBoundary(
+          member: auth?.active,
+          repository: moduleAccess,
+          revision: auth?.accessRevision ?? 0,
+          builder: (access) => CoreShell(
+            model: model,
+            auth: auth,
+            moduleAccess: access,
+            personalDoses: personalDoses,
+            patients: patients,
+            hospital: hospital,
+            hospitalAlerts: hospitalAlerts,
+            forms: forms,
+            identity: identity,
+            clinical: clinical,
+            prescribing: prescribing,
+            inventory: inventory,
+            operations: operations,
+            attendance: attendance,
+            backup: backup,
+            ai: ai,
+            subscriptions: subscriptions,
+            support: support,
+          ),
         );
 }
 
@@ -207,6 +217,7 @@ class CoreShell extends StatelessWidget {
     this.ai,
     this.subscriptions,
     this.support,
+    this.moduleAccess,
   });
   final CoreViewModel model;
   final AuthViewModel? auth;
@@ -225,6 +236,10 @@ class CoreShell extends StatelessWidget {
   final AiRepository? ai;
   final SubscriptionRepository? subscriptions;
   final SupportRepository? support;
+  final ModuleAccess? moduleAccess;
+
+  bool allowed(String page) =>
+      navigationAllowed(page, auth?.active, moduleAccess);
   @override
   Widget build(BuildContext context) => PopScope(
     canPop: model.screen == 'Inicio',
@@ -313,8 +328,7 @@ class CoreShell extends StatelessWidget {
                   },
                 ),
               const Divider(),
-              if (navigationAllowed('Cálculo rápido', auth?.active) ||
-                  navigationAllowed('Cálculos clínicos', auth?.active))
+              if (allowed('Cálculo rápido') || allowed('Cálculos clínicos'))
                 ExpansionTile(
                   leading: const Icon(Icons.calculate_outlined),
                   title: const Text('Cálculos'),
@@ -324,7 +338,7 @@ class CoreShell extends StatelessWidget {
                   ].contains(model.screen),
                   children: [
                     for (final page in ['Cálculo rápido', 'Cálculos clínicos'])
-                      if (navigationAllowed(page, auth?.active))
+                      if (allowed(page))
                         ListTile(
                           leading: Icon(sectionIcon(page)),
                           title: Text(page),
@@ -352,7 +366,7 @@ class CoreShell extends StatelessWidget {
                 'Inventario',
                 'Ajustes',
               ])
-                if (navigationAllowed(page, auth?.active))
+                if (allowed(page))
                   ListTile(
                     leading: Icon(sectionIcon(page)),
                     title: Text(page),
@@ -369,7 +383,7 @@ class CoreShell extends StatelessWidget {
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (navigationAllowed('Escanear producto', auth?.active)) ...[
+          if (allowed('Escanear producto')) ...[
             FloatingActionButton.small(
               heroTag: 'scanner',
               tooltip: 'Escáner',
@@ -440,7 +454,13 @@ class CoreShell extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 28),
-                if (model.screen == 'Inicio')
+                if (auth?.active != null &&
+                    moduleAccess != null &&
+                    !allowed(model.screen))
+                  const Text(
+                    'Este apartado no está disponible con tus permisos actuales.',
+                  )
+                else if (model.screen == 'Inicio')
                   ...home(context)
                 else if (model.screen == 'Cálculo rápido')
                   auth == null ||
@@ -621,7 +641,7 @@ class CoreShell extends StatelessWidget {
                   inventory != null &&
                           auth?.active != null &&
                           auth?.offline != true &&
-                          navigationAllowed('Escanear producto', auth?.active)
+                          allowed('Escanear producto')
                       ? QuickScanScreen(
                           repository: inventory!,
                           member: auth!.active!,
@@ -663,8 +683,7 @@ class CoreShell extends StatelessWidget {
                           repository: operations!,
                           member: auth!.active!,
                           onOpenPatient:
-                              patients != null &&
-                                  auth!.active!.role != ClinicRole.estilista
+                              patients != null && allowed('Pacientes')
                               ? (id) async {
                                   final member = auth!.active!;
                                   await Navigator.push(
@@ -711,9 +730,7 @@ class CoreShell extends StatelessWidget {
                     ),
                     model: DashboardViewModel(
                       member: auth?.active,
-                      backup: navigationAllowed('Estadísticas', auth?.active)
-                          ? backup
-                          : null,
+                      backup: allowed('Estadísticas') ? backup : null,
                     ),
                     offline: auth?.offline ?? false,
                     statisticsOnly: true,
@@ -819,7 +836,11 @@ class CoreShell extends StatelessWidget {
         repository: forms,
         identity: identity,
       ),
-    _ModuleSearch(member: auth?.active, onNavigate: model.navigate),
+    _ModuleSearch(
+      member: auth?.active,
+      moduleAccess: moduleAccess,
+      onNavigate: model.navigate,
+    ),
     DashboardScreen(
       key: ValueKey(
         'dashboard:${auth?.active?.userId}:${auth?.active?.clinicId}:${auth?.active?.role}:${auth?.offline}',
@@ -831,6 +852,7 @@ class CoreShell extends StatelessWidget {
         hospital: hospital,
         patients: patients,
         backup: backup,
+        moduleAccess: moduleAccess,
       ),
       offline: auth?.offline ?? false,
       alerts: hospitalAlerts,
@@ -968,7 +990,7 @@ class CoreShell extends StatelessWidget {
       ),
       ('Primeros pasos', 'Retoma la guía de configuración.', 'Inicio guiado'),
     ])
-      if (navigationAllowed(option.$3, auth?.active))
+      if (allowed(option.$3))
         ListTile(
           leading: Icon(sectionIcon(option.$3)),
           title: Text(option.$1),
@@ -976,7 +998,7 @@ class CoreShell extends StatelessWidget {
           trailing: const Icon(Icons.chevron_right),
           onTap: () => model.navigate(option.$3),
         ),
-    if (navigationAllowed('Hospitalización', auth?.active)) ...[
+    if (allowed('Hospitalización')) ...[
       const Divider(),
       Text(
         'Alertas y recordatorios',
@@ -1037,8 +1059,13 @@ class SoftPanel extends StatelessWidget {
 }
 
 class _ModuleSearch extends StatefulWidget {
-  const _ModuleSearch({required this.member, required this.onNavigate});
+  const _ModuleSearch({
+    required this.member,
+    required this.moduleAccess,
+    required this.onNavigate,
+  });
   final ClinicMembership? member;
+  final ModuleAccess? moduleAccess;
   final ValueChanged<String> onNavigate;
   @override
   State<_ModuleSearch> createState() => _ModuleSearchState();
@@ -1077,7 +1104,7 @@ class _ModuleSearchState extends State<_ModuleSearch> {
     final results = pages
         .where(
           (p) =>
-              navigationAllowed(p, widget.member) &&
+              navigationAllowed(p, widget.member, widget.moduleAccess) &&
               normalize(p).contains(normalize(query.trim())),
         )
         .toList();

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/widgets/workspace_panel.dart';
 import '../../core/domain/navigation_access.dart';
-import '../../auth/domain/clinic_membership.dart';
 import '../../auth/domain/staff_labels.dart';
 import '../../inventory/domain/inventory_models.dart';
 import '../../hospital/application/hospital_alerts.dart';
@@ -244,7 +243,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           if (m.updated != null) Text('Última consulta: ${time(m.updated!)}'),
           if (m.busy) const LinearProgressIndicator(),
-          if (navigationAllowed('Estadísticas', m.member)) statisticsPanel,
+          if (navigationAllowed('Estadísticas', m.member, m.moduleAccess))
+            statisticsPanel,
           if (!widget.statisticsOnly) ...[
             const SizedBox(height: 16),
             Wrap(
@@ -263,7 +263,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ('Cálculos clínicos', 'Cálculos clínicos'),
                   ('Escáner', 'Escanear producto'),
                 ])
-                  if (navigationAllowed(action.$2, m.member))
+                  if (navigationAllowed(action.$2, m.member, m.moduleAccess))
                     ConstrainedBox(
                       constraints: BoxConstraints(
                         maxWidth: MediaQuery.sizeOf(context).width - 48,
@@ -292,11 +292,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             panel(
               'Alertas y recordatorios',
-              navigationAllowed('Hospitalización', m.member)
+              navigationAllowed('Hospitalización', m.member, m.moduleAccess)
                   ? 'Hospitalización'
                   : 'Agenda',
               [
-                if (navigationAllowed('Hospitalización', m.member))
+                if (m.canSummarize('hospital'))
                   unavailable(
                     'Hospitalización',
                     m.ward != null,
@@ -317,7 +317,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                   ),
-                if (navigationAllowed('Inventario', m.member) &&
+                if (m.canSummarize('inventory') &&
                     widget.alerts?.stockWarnings != false)
                   unavailable(
                     'Inventario',
@@ -339,7 +339,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                   ),
-                if ((widget.alerts?.leadMinutes ?? 0) > 0)
+                if (m.canSummarize('hospital') &&
+                    (widget.alerts?.leadMinutes ?? 0) > 0)
                   for (final t
                       in m.nextDoses
                           .where(
@@ -355,7 +356,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       subtitle: Text(time(m.effectiveTime(t))),
                       onTap: () => widget.onNavigate('Hospitalización'),
                     ),
-                if (navigationAllowed('Hospitalización', m.member))
+                if (navigationAllowed(
+                  'Hospitalización',
+                  m.member,
+                  m.moduleAccess,
+                ))
                   ExpansionTile(
                     title: const Text('Configurar avisos en este dispositivo'),
                     children: [
@@ -375,50 +380,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
               ],
             ),
-            panel('Próximas citas de hoy', 'Agenda', [
-              Text(
-                m.clinicTimezone == null
-                    ? 'Día y horas del teléfono'
-                    : 'Zona de la clínica: ${m.clinicTimezone}',
-              ),
-              unavailable(
-                'Agenda',
-                m.agenda != null,
-                Column(
-                  children: [
-                    if (m.todayAppointments.isEmpty)
-                      const Text('No hay citas futuras agendadas para hoy.'),
-                    for (final a in m.todayAppointments)
-                      ListTile(
-                        title: Text('${a['patient_name']}'),
-                        subtitle: Text('${time(m.starts(a)!)} · ${a['kind']}'),
-                        onTap: () => widget.onNavigate('Agenda'),
-                      ),
-                  ],
+            if (m.canSummarize('agenda')) ...[
+              panel('Próximas citas de hoy', 'Agenda', [
+                Text(
+                  m.clinicTimezone == null
+                      ? 'Día y horas del teléfono'
+                      : 'Zona de la clínica: ${m.clinicTimezone}',
                 ),
-              ),
-            ]),
-            panel('Citas recientes', 'Agenda', [
-              unavailable(
-                'Agenda',
-                m.agenda != null,
-                Column(
-                  children: [
-                    if (m.recent.isEmpty)
-                      const Text(
-                        'No hay citas recientes en los datos consultados.',
-                      ),
-                    for (final a in m.recent.take(3))
-                      ListTile(
-                        title: Text('${a['patient_name']}'),
-                        subtitle: Text('${time(m.starts(a)!)} · ${a['state']}'),
-                        onTap: () => widget.onNavigate('Agenda'),
-                      ),
-                  ],
+                unavailable(
+                  'Agenda',
+                  m.agenda != null,
+                  Column(
+                    children: [
+                      if (m.todayAppointments.isEmpty)
+                        const Text('No hay citas futuras agendadas para hoy.'),
+                      for (final a in m.todayAppointments)
+                        ListTile(
+                          title: Text('${a['patient_name']}'),
+                          subtitle: Text(
+                            '${time(m.starts(a)!)} · ${a['kind']}',
+                          ),
+                          onTap: () => widget.onNavigate('Agenda'),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-            ]),
-            if (navigationAllowed('Inventario', m.member)) ...[
+              ]),
+              panel('Citas recientes', 'Agenda', [
+                unavailable(
+                  'Agenda',
+                  m.agenda != null,
+                  Column(
+                    children: [
+                      if (m.recent.isEmpty)
+                        const Text(
+                          'No hay citas recientes en los datos consultados.',
+                        ),
+                      for (final a in m.recent.take(3))
+                        ListTile(
+                          title: Text('${a['patient_name']}'),
+                          subtitle: Text(
+                            '${time(m.starts(a)!)} · ${a['state']}',
+                          ),
+                          onTap: () => widget.onNavigate('Agenda'),
+                        ),
+                    ],
+                  ),
+                ),
+              ]),
+            ],
+            if (m.canSummarize('inventory')) ...[
               panel('Inventario', 'Inventario', [
                 unavailable(
                   'Inventario',
@@ -429,7 +440,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Text(
                         '${m.products.length} artículos activos · ${m.lowStock.length} por revisar',
                       ),
-                      if (m.member?.role == ClinicRole.admin)
+                      if (m.canSeeClinicSales)
                         metrics([
                           (
                             'Valor a costo',
@@ -532,7 +543,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
               ]),
-              if (m.member?.role == ClinicRole.admin)
+              if (m.canSeeClinicSales)
                 panel('Ventas de hoy', 'Caja', [
                   unavailable(
                     'Inventario',
@@ -574,7 +585,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ]),
             ],
-            if (navigationAllowed('Hospitalización', m.member))
+            if (m.canSummarize('hospital'))
               panel('Próximas dosis', 'Hospitalización', [
                 unavailable(
                   'Hospitalización',

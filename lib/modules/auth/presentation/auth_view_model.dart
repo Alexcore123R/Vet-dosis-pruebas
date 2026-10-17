@@ -34,6 +34,7 @@ class AuthViewModel extends ChangeNotifier {
   String? invitation;
   bool _disposed = false;
   int _revision = 0;
+  int get accessRevision => _revision;
   bool get signedIn => repository.userId != null;
   Future<void> start() async {
     _subscription = repository.changes.listen((_) => refresh());

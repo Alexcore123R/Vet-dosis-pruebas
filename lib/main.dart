@@ -3,6 +3,8 @@ import 'modules/beta/data/supabase_beta_repository.dart';
 import 'modules/identity/domain/identity_repository.dart';
 import 'modules/identity/data/supabase_identity_repository.dart';
 import 'modules/core/domain/build_channel.dart';
+import 'modules/core/domain/module_access.dart';
+import 'modules/core/data/supabase_module_access_repository.dart';
 import 'modules/support/domain/support_repository.dart';
 import 'modules/support/data/supabase_support_repository.dart';
 import 'modules/ai/domain/ai_repository.dart';
@@ -74,6 +76,7 @@ Future<void> main() async {
   AiRepository? ai;
   SubscriptionRepository? subscriptions;
   SupportRepository? support;
+  ModuleAccessRepository? moduleAccess;
   if (url.isNotEmpty && key.isNotEmpty) {
     const build = int.fromEnvironment('BETA_BUILD');
     await Supabase.initialize(
@@ -98,6 +101,7 @@ Future<void> main() async {
     ai = SupabaseAiRepository(Supabase.instance.client);
     support = SupabaseSupportRepository(Supabase.instance.client);
     subscriptions = SupabaseSubscriptionRepository(Supabase.instance.client);
+    moduleAccess = SupabaseModuleAccessRepository(Supabase.instance.client);
     final localStore = LocalStore(await openOfflineDatabase());
     final authRepository = SupabaseAuthRepository(
       Supabase.instance.client,
@@ -164,6 +168,7 @@ Future<void> main() async {
       ai: ai,
       subscriptions: subscriptions,
       support: support,
+      moduleAccess: moduleAccess,
       hospitalAlerts: alerts,
       requireAuth: true,
     ),

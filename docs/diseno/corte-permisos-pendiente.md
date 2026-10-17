@@ -97,3 +97,7 @@ El [candidato 13H2](../permisos-etapa2b9-recetas.md) conecta firma de consulta c
 ## Avance 2B-19, 16-oct-2026
 
 [13M](../permisos-etapa2b19-constatacion.md) prepara constatación posterior con permiso por procedimiento, habilitación y firma propia del responsable, sin valores clínicos preseleccionados. Conserva correcciones anexas y consentimiento firmado. Sin despliegue; continúan pendientes las dependencias transversales y la validación real del conjunto.
+
+## Avance 2B-20, 16-oct-2026
+
+[13N](../permisos-etapa2b20-navegacion-dashboard.md) prepara el contrato transversal para navegación y consultas del dashboard de ocho módulos ya revisados. La visibilidad deja de depender del puesto, se limpia al cambiar identidad y no consulta módulos ausentes. Estadísticas/respaldos, Storage/Edge, plataforma/MFA y cola offline continúan pendientes; no desplegar aisladamente ni abrir beta.
