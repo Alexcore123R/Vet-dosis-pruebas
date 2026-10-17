@@ -170,6 +170,44 @@ class FakeBackup implements BackupRepository {
   };
 
   @override
+  Future<Map<String, dynamic>> prepareRestoreOwners(
+    String clinic, {
+    required String stageId,
+    required String archiveSha256,
+    required List<Map<String, dynamic>> owners,
+  }) async => {
+    'schema_version': 1,
+    'mode': 'restore_owner_payload',
+    'stage_id': stageId,
+    'archive_sha256': archiveSha256,
+    'payload_sha256': 'owner-payload',
+    'rows': owners.length,
+    'create_candidate': owners.length,
+    'keep_existing': 0,
+    'imports_applied': false,
+  };
+
+  @override
+  Future<Map<String, dynamic>> applyRestoreOwners(
+    String clinic, {
+    required String stageId,
+    required String preflightId,
+    required String ownerPayloadSha256,
+  }) async => {
+    'schema_version': 1,
+    'mode': 'restore_apply_owners',
+    'stage_id': stageId,
+    'preflight_id': preflightId,
+    'payload_sha256': ownerPayloadSha256,
+    'created': 1,
+    'kept_existing': 0,
+    'scope': 'vet_owners',
+    'overwrite': false,
+    'merge': false,
+    'imports_applied': true,
+  };
+
+  @override
   Future<void> discardRestorePreview(String clinic, String stageId) async {}
 }
 
