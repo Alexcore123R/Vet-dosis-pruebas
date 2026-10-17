@@ -858,7 +858,8 @@ class _BackupScreenState extends State<BackupScreen> {
                   'vence ${restoreStage!['expires_at'] ?? 'según el servidor'}',
                 ),
                 Text(
-                  restoreOwnerApply?['imports_applied'] == true
+                  restoreOwnerApply?['imports_applied'] == true ||
+                          restorePatientApply?['imports_applied'] == true
                       ? 'Esta vista ya aplicó una restauración limitada. Cerrarla no revierte los registros creados.'
                       : 'Para continuar con esta vista previa, revisa de nuevo el mismo archivo de respaldo.',
                 ),
@@ -871,7 +872,8 @@ class _BackupScreenState extends State<BackupScreen> {
                         ),
                   child: Text(
                     restorePreviewCloseLabel(
-                      restoreOwnerApply?['imports_applied'] == true,
+                      restoreOwnerApply?['imports_applied'] == true ||
+                          restorePatientApply?['imports_applied'] == true,
                     ),
                   ),
                 ),
@@ -881,7 +883,7 @@ class _BackupScreenState extends State<BackupScreen> {
                   'Clínica: ${inspection!.clinic} · ${inspection!.serverAt}',
                 ),
                 const Text(
-                  'Resumen del archivo: no se ha restaurado ni importado ningún registro.',
+                  'Resumen del archivo verificado. Las acciones de restauración y su estado se muestran abajo.',
                 ),
                 for (final table
                     in (inspection!.tables.entries.toList()
@@ -1022,6 +1024,58 @@ class _BackupScreenState extends State<BackupScreen> {
                             const Text(
                               'Cerrar esta vista previa no deshace los tutores ya restaurados.',
                             ),
+                            if (inspection!.restorePatients.isNotEmpty &&
+                                restorePatientPayload == null)
+                              FilledButton.icon(
+                                onPressed: working
+                                    ? null
+                                    : () => run(
+                                        stageRestorePreview,
+                                        clearInspection: false,
+                                      ),
+                                icon: const Icon(Icons.sync_outlined),
+                                label: const Text(
+                                  'Continuar con pacientes',
+                                ),
+                              ),
+                            if (inspection!.restorePatients.isNotEmpty &&
+                                restorePatientPayload == null)
+                              const Text(
+                                'Se preparará una vista previa nueva del mismo respaldo para revalidar los tutores antes de crear pacientes.',
+                              ),
+                          ],
+                        ],
+                        if (restorePatientPayload != null) ...[
+                          const Divider(),
+                          Text(
+                            'Pacientes preparados: ${restorePatientPayload!['rows'] ?? 0} · '
+                            'nuevos: ${restorePatientPayload!['create_candidate'] ?? 0} · '
+                            'existentes: ${restorePatientPayload!['keep_existing'] ?? 0}',
+                          ),
+                          if (restorePreflight!['applicable'] == true &&
+                              (restorePatientPayload!['create_candidate'] as num? ?? 0) >
+                                  0 &&
+                              restorePatientApply == null)
+                            FilledButton.icon(
+                              onPressed: working
+                                  ? null
+                                  : () => run(
+                                      applyPatientRestore,
+                                      clearInspection: false,
+                                    ),
+                              icon: const Icon(Icons.pets_outlined),
+                              label: const Text(
+                                'Restaurar solo pacientes nuevos',
+                              ),
+                            ),
+                          if (restorePatientApply != null) ...[
+                            Text(
+                              'Pacientes restaurados · creados: ${restorePatientApply!['created'] ?? 0} · '
+                              'conservados: ${restorePatientApply!['kept_existing'] ?? 0}',
+                            ),
+                            const Text(
+                              'Cerrar esta vista previa no deshace los pacientes ya restaurados.',
+                            ),
                           ],
                         ],
                       ],
@@ -1038,7 +1092,8 @@ class _BackupScreenState extends State<BackupScreen> {
                             ),
                       child: Text(
                         restorePreviewCloseLabel(
-                          restoreOwnerApply?['imports_applied'] == true,
+                          restoreOwnerApply?['imports_applied'] == true ||
+                              restorePatientApply?['imports_applied'] == true,
                         ),
                       ),
                     ),
