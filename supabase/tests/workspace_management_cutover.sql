@@ -15,10 +15,16 @@ reset role;
 
 insert into auth.users(id,email,email_confirmed_at)
 values('00000000-0000-0000-0000-000000000190','synthetic-workspace-manager@example.test',now()),
-      ('00000000-0000-0000-0000-000000000191','synthetic-personal-manager@example.test',now())
+      ('00000000-0000-0000-0000-000000000191','synthetic-personal-manager@example.test',now()),
+      ('00000000-0000-0000-0000-000000000192','synthetic-capability-manager@example.test',now()),
+      ('00000000-0000-0000-0000-000000000193','synthetic-managed-member@example.test',now()),
+      ('00000000-0000-0000-0000-000000000194','synthetic-admin-target@example.test',now())
 on conflict(id) do nothing;
 insert into public.clinic_members(clinic_id,user_id,role)
-values(:'clinic','00000000-0000-0000-0000-000000000190','admin')
+values(:'clinic','00000000-0000-0000-0000-000000000190','admin'),
+      (:'clinic','00000000-0000-0000-0000-000000000192','auxiliar'),
+      (:'clinic','00000000-0000-0000-0000-000000000193','auxiliar'),
+      (:'clinic','00000000-0000-0000-0000-000000000194','auxiliar')
 on conflict(clinic_id,user_id) do nothing;
 
 -- Visual admin is not workspace-management authority.
@@ -37,6 +43,27 @@ reset role;
 -- Existing permission administrator grants the explicit management capability.
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000150',false);set role authenticated;
 select public.permission_grant(:'clinic','00000000-0000-0000-0000-000000000190','workspace.manage',null,clock_timestamp()+interval '1 day','Synthetic workspace management') as manage_grant \gset
+select public.permission_grant(:'clinic','00000000-0000-0000-0000-000000000192','workspace.manage',null,clock_timestamp()+interval '1 day','Synthetic capability-only workspace management') as capability_manage_grant \gset
+reset role;
+
+-- workspace.manage can manage ordinary team state but cannot manufacture or destroy admin authority.
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000192',false);set role authenticated;
+select pg_temp.assert_true(public.workspace_management_status(:'clinic'),'capability-only manager not projected');
+select pg_temp.expect_error(format($q$select public.create_clinic_invitation(%L,'synthetic-admin-invite@example.test','admin')$q$,:'clinic'),'admin_required');
+select pg_temp.expect_error(format($q$select public.set_clinic_member_role(%L,'00000000-0000-0000-0000-000000000193','admin')$q$,:'clinic'),'admin_required');
+select pg_temp.expect_error(format($q$select public.remove_clinic_member(%L,'00000000-0000-0000-0000-000000000150')$q$,:'clinic'),'admin_required');
+select pg_temp.assert_true(length(public.create_clinic_invitation(:'clinic','synthetic-aux-invite@example.test','auxiliar'))>0,'workspace manager cannot create non-admin invitation');
+select public.set_clinic_member_role(:'clinic','00000000-0000-0000-0000-000000000193','recepcion');
+select public.remove_clinic_member(:'clinic','00000000-0000-0000-0000-000000000193');
+reset role;
+
+-- A real permission administrator retains authority over admin invitations and admin membership.
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000150',false);set role authenticated;
+select pg_temp.assert_true(length(public.create_clinic_invitation(:'clinic','synthetic-real-admin-invite@example.test','admin'))>0,'permission admin cannot create admin invitation');
+select public.set_clinic_member_role(:'clinic','00000000-0000-0000-0000-000000000194','admin');
+select pg_temp.assert_true((select role from public.clinic_members where clinic_id=:'clinic' and user_id='00000000-0000-0000-0000-000000000194')='admin','permission admin cannot promote admin');
+select public.remove_clinic_member(:'clinic','00000000-0000-0000-0000-000000000194');
+select pg_temp.assert_true(not exists(select 1 from public.clinic_members where clinic_id=:'clinic' and user_id='00000000-0000-0000-0000-000000000194'),'permission admin cannot remove admin');
 reset role;
 
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000190',false);set role authenticated;
