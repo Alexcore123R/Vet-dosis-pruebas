@@ -28,6 +28,8 @@ class AiScreen extends StatefulWidget {
 
 class _AiScreenState extends State<AiScreen> {
   late final vm = AiViewModel(widget.repository, widget.member.clinicId);
+  bool get canManageWorkspace =>
+      widget.canManageWorkspace || vm.data['can_manage'] == true;
   final composer = TextEditingController();
   String? connection, model;
   List<Map<String, dynamic>> modelOptions = [];
@@ -150,7 +152,7 @@ class _AiScreenState extends State<AiScreen> {
                     ],
                     onChanged: (v) => set(() => provider = v!),
                   ),
-                  if (widget.canManageWorkspace &&
+                  if (canManageWorkspace &&
                       !widget.member.isPersonal)
                     DropdownButtonFormField<String>(
                       isExpanded: true,
