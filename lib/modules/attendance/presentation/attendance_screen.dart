@@ -276,7 +276,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
         ),
         if (model.busy || working) const LinearProgressIndicator(),
         if (model.error != null) Text(model.error!),
-        if (widget.canManageWorkspace)
+        if (canManageWorkspace)
           Wrap(
             spacing: 8,
             children: [
@@ -350,7 +350,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
             subtitle: Text(
               'Servidor: ${e['server_at']}\nEfectiva: ${e['effective_at']}',
             ),
-            trailing: widget.canManageWorkspace
+            trailing: canManageWorkspace
                 ? IconButton(
                     icon: const Icon(Icons.edit_note),
                     onPressed: () async {
