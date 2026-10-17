@@ -148,7 +148,7 @@ void main() {
     () async {
       final repo = FakeBackup()
         ..rawSnapshot =
-            '{"format":"vetdosis-operational-backup","version":1,"clinic_id":"clinic","tables":{"vet_patients":[{"id":"p1","clinic_id":"clinic","name":"Prueba"}]}}';
+            '{"format":"vetdosis-operational-backup","version":1,"clinic_id":"clinic","tables":{"vet_patients":[{"id":"00000000-0000-0000-0000-000000000201","clinic_id":"clinic","name":"Prueba"}]}}';
       final archive = await BackupArchive.create(repo, 'clinic');
       final report = BackupRecoveryReport.inspect(archive, 'clinic');
       expect(report.records, 1);
@@ -160,7 +160,7 @@ void main() {
         throwsFormatException,
       );
       repo.rawSnapshot =
-          '{"format":"vetdosis-operational-backup","version":1,"clinic_id":"clinic","tables":{"vet_patients":[{"id":"p1","clinic_id":"other"}]}}';
+          '{"format":"vetdosis-operational-backup","version":1,"clinic_id":"clinic","tables":{"vet_patients":[{"id":"00000000-0000-0000-0000-000000000201","clinic_id":"other"}]}}';
       final mixed = await BackupArchive.create(repo, 'clinic');
       expect(
         () => BackupRecoveryReport.inspect(mixed, 'clinic'),
