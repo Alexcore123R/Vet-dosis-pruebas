@@ -157,6 +157,21 @@ class SupabaseAuthRepository
   @override
   bool get teamManagementAvailable => existingSchema;
   @override
+  Future<bool?> canManageWorkspace(String clinicId) async {
+    if (!existingSchema) return null;
+    try {
+      return await client.rpc(
+            'workspace_management_status',
+            params: {'p_clinic': clinicId},
+          )
+          as bool;
+    } on PostgrestException catch (error) {
+      if (error.code == 'PGRST202') return null;
+      rethrow;
+    }
+  }
+
+  @override
   Future<Map<String, dynamic>> team(String clinicId) async {
     if (!existingSchema) throw StateError('team_schema_required');
     return Map<String, dynamic>.from(
