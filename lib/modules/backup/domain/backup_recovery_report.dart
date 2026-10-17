@@ -133,36 +133,44 @@ class BackupRecoveryReport {
         switch (name) {
           case 'vet_patients':
             dependency(rowDependencies, 'vet_owners', row['owner_id'], name, 'owner_id');
+            break;
           case 'form_templates':
             dependency(rowDependencies, 'clinic_members', row['responsible_id'], name, 'responsible_id', optional: true);
             dependency(rowDependencies, 'clinic_members', row['created_by'], name, 'created_by', optional: true);
+            break;
           case 'form_template_versions':
             dependency(rowDependencies, 'form_templates', row['template_id'], name, 'template_id');
             dependency(rowDependencies, 'form_template_versions', row['base_version_id'], name, 'base_version_id', optional: true);
             dependency(rowDependencies, 'clinic_members', row['responsible_id'], name, 'responsible_id', optional: true);
             dependency(rowDependencies, 'clinic_members', row['created_by'], name, 'created_by', optional: true);
+            break;
           case 'form_documents':
             dependency(rowDependencies, 'vet_patients', row['patient_id'], name, 'patient_id');
             dependency(rowDependencies, 'form_template_versions', row['version_id'], name, 'version_id');
             dependency(rowDependencies, 'clinic_members', row['responsible_id'], name, 'responsible_id');
             dependency(rowDependencies, 'clinic_members', row['assigned_aux_id'], name, 'assigned_aux_id', optional: true);
             dependency(rowDependencies, 'clinic_members', row['created_by'], name, 'created_by');
+            break;
           case 'professional_profiles':
             dependency(rowDependencies, 'clinic_members', row['user_id'], name, 'user_id');
+            break;
           case 'professional_delegations':
             dependency(rowDependencies, 'professional_profiles', row['profile_id'], name, 'profile_id');
             dependency(rowDependencies, 'clinic_members', row['recipient_id'], name, 'recipient_id');
             dependency(rowDependencies, 'clinical_cases', row['case_id'], name, 'case_id', optional: true);
             dependency(rowDependencies, 'clinic_members', row['created_by'], name, 'created_by');
+            break;
           case 'clinical_cases':
             dependency(rowDependencies, 'vet_patients', row['patient_id'], name, 'patient_id');
             dependency(rowDependencies, 'form_documents', row['document_id'], name, 'document_id');
             dependency(rowDependencies, 'form_documents', row['consent_id'], name, 'consent_id', optional: true);
             dependency(rowDependencies, 'clinic_members', row['responsible_id'], name, 'responsible_id');
+            break;
           case 'hospital_stays':
             dependency(rowDependencies, 'vet_patients', row['patient_id'], name, 'patient_id');
             dependency(rowDependencies, 'clinic_members', row['admitted_by'], name, 'admitted_by');
             dependency(rowDependencies, 'clinic_members', row['discharged_by'], name, 'discharged_by', optional: true);
+            break;
           case 'prescriptions':
             dependency(rowDependencies, 'clinical_cases', row['case_id'], name, 'case_id');
             dependency(rowDependencies, 'vet_patients', row['patient_id'], name, 'patient_id');
@@ -170,25 +178,32 @@ class BackupRecoveryReport {
             dependency(rowDependencies, 'clinic_members', row['created_by'], name, 'created_by');
             dependency(rowDependencies, 'professional_profiles', row['profile_id'], name, 'profile_id', optional: true);
             dependency(rowDependencies, 'professional_delegations', row['delegation_id'], name, 'delegation_id', optional: true);
+            break;
           case 'medication_vials':
             dependency(rowDependencies, 'inventario', row['inventory_id'], name, 'inventory_id', optional: true);
             dependency(rowDependencies, 'lotes_inventario', row['inventory_lot_id'], name, 'inventory_lot_id', optional: true);
             dependency(rowDependencies, 'medication_product_versions', row['product_version_id'], name, 'product_version_id');
             dependency(rowDependencies, 'clinic_members', row['responsible_id'], name, 'responsible_id');
+            break;
           case 'inventario':
             dependency(rowDependencies, 'medication_product_versions', row['medication_version_id'], name, 'medication_version_id', optional: true);
+            break;
           case 'lotes_inventario':
             dependency(rowDependencies, 'inventario', row['item_id'], name, 'item_id');
+            break;
           case 'clinic_appointments':
             dependency(rowDependencies, 'vet_patients', row['patient_id'], name, 'patient_id', optional: true);
             dependency(rowDependencies, 'clinic_members', row['professional_id'], name, 'professional_id');
             dependency(rowDependencies, 'clinic_members', row['created_by'], name, 'created_by');
+            break;
           case 'clinic_tasks':
             dependency(rowDependencies, 'clinic_members', row['assigned_to'], name, 'assigned_to', optional: true);
             dependency(rowDependencies, 'clinic_members', row['completed_by'], name, 'completed_by', optional: true);
             dependency(rowDependencies, 'clinic_members', row['created_by'], name, 'created_by');
+            break;
           case 'clinic_messages':
             dependency(rowDependencies, 'clinic_members', row['author_id'], name, 'author_id');
+            break;
         }
         rowDependencies.sort((a, b) {
           final table = a['table']!.compareTo(b['table']!);
