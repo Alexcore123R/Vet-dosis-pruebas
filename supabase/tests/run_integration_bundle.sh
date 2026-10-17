@@ -22,6 +22,14 @@ if [ "${1:-}" = '--catalog-baseline' ];then
  echo 'Isolated baseline catalog written; no remote connection.'
  exit 0
 fi
+if [ "${1:-}" = '--observed-catalog-rehearsal' ];then
+ docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/observed_beta_catalog_20261017.sql > "$work_dir/catalog-adjustments.log" 2>&1 || {
+  tail -c 6000 "$work_dir/catalog-adjustments.log";exit 1;
+ }
+ echo 'Rehearsing selected remote catalog differences in isolated PostgreSQL only.'
+elif [ "$#" -ne 0 ];then
+ echo 'Unknown rehearsal option';exit 1
+fi
 docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 <<'SQL'
 create function auth.jwt() returns jsonb language sql stable as $$select '{}'::jsonb$$;
 insert into auth.users(id,email,email_confirmed_at) values('90000000-0000-0000-0000-000000000900','integration-synthetic@example.test',now());

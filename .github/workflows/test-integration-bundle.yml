@@ -8,6 +8,7 @@ on:
       - 'scripts/supabase/test_integration_*.py'
       - 'supabase/proposed/13*.sql'
       - 'supabase/tests/run_integration_bundle.sh'
+      - 'supabase/tests/observed_beta_catalog_20261017.sql'
       - '.github/workflows/test-integration-bundle.yml'
 permissions:
   contents: read
@@ -21,6 +22,8 @@ jobs:
         run: python3 -m unittest discover -s scripts/supabase -p 'test_*.py'
       - name: Ensayar rollback, aplicación atómica y rechazo de repetición
         run: bash supabase/tests/run_integration_bundle.sh
+      - name: Repetir ensayo con diferencias observadas del catálogo remoto
+        run: bash supabase/tests/run_integration_bundle.sh --observed-catalog-rehearsal
       - name: Preparar SQL y orden de archivos para revisión
         run: |
           python3 scripts/supabase/integration_bundle.py --output beta-integration-rehearse.sql

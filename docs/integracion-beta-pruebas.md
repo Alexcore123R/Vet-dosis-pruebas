@@ -129,3 +129,34 @@ de aplicación y manifiesto de archivos/hashes. No contiene datos exportados ni
 credenciales. No se ejecutó el SQL candidato en Supabase remoto.
 Faltan el respaldo previo verificado, el ensayo sobre el esquema real y la
 coordinación con cliente/Edge y cuentas de prueba antes de aplicar y abrir beta.
+
+## Comparación ampliada del catálogo remoto (17 octubre)
+
+[Inspección 39061277899](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39061277899)
+aprobada. Las 45 pruebas Python pasaron. No se ejecutó DDL remoto ni se consultaron
+filas de pacientes, tutores, cuentas o credenciales.
+
+Se compararon columnas, tipos y nulabilidad de 33 relaciones, sus indicadores RLS,
+y los cuerpos por hash/indicadores security-definer de cuatro funciones prerrequisito.
+No hubo diferencias de columnas en las 32 relaciones de aplicación incluidas ni
+diferencias en esas cuatro funciones. Esto no cubre todo el esquema.
+
+Diferencias observadas y conservadas como revisión explícita:
+
+- `storage.objects`: `name` y `metadata` admiten NULL en remoto; el simulador las
+  declaraba NOT NULL. Hay once columnas adicionales gestionadas por Storage.
+- `private.rx_artifacts`, `private.form_artifacts` y
+  `private.professional_profile_versions`: RLS está activado en remoto, mientras
+  que el esquema local base lo deja desactivado. No se propone desactivarlo remoto.
+
+`run_integration_bundle.sh --observed-catalog-rehearsal` reproduce solo estas
+diferencias de nulabilidad/RLS en PostgreSQL efímero antes del ensayo atómico.
+El ensayo local aprobó aplicación de los 23 candidatos, rollback ante error,
+rechazo de instalación parcial/repetida, conteos sin cambios y hashes finales.
+Las columnas adicionales de Storage no se recrean: este ensayo no consume sus
+valores y no equivale a restaurar el esquema completo del servicio.
+
+Sigue pendiente revisar constraints, políticas completas, grants y triggers,
+disponer de respaldo verificable y probar las sesiones reales. Los informes
+conservan `deploy_ready=false`. La migración adicional 13Y de renovación IA sigue
+fuera del paquete de 23 candidatos y necesita despliegue coordinado con Edge/cliente.
