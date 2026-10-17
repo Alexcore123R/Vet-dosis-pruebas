@@ -106,6 +106,10 @@ class ClinicalCase {
   String get kind => data['kind'];
   String get title => data['title'];
   String get patientName => data['patient_name'];
+  String get patientSpecies => data['patient_species'] as String? ?? '';
+  String get patientBreed => data['patient_breed'] as String? ?? '';
+  String get patientSex => data['patient_sex'] as String? ?? 'sin especificar';
+  String? get patientBirthDate => data['patient_birth_date']?.toString();
   DateTime get createdAt => DateTime.parse(data['created_at']);
 }
 
@@ -114,16 +118,20 @@ class ClinicalBundle {
     this.caseData,
     this.staff,
     this.observations,
+    this.vitals,
     this.acts,
     this.authorizations,
   );
   final ClinicalCase caseData;
-  final List<Map<String, dynamic>> staff, observations, acts, authorizations;
+  final List<Map<String, dynamic>> staff, observations, vitals, acts, authorizations;
   factory ClinicalBundle.read(Map<String, dynamic> raw) => ClinicalBundle(
     ClinicalCase(Map<String, dynamic>.from(raw['case'])),
     (raw['staff'] as List).map((r) => Map<String, dynamic>.from(r)).toList(),
     (raw['observations'] as List)
         .map((r) => Map<String, dynamic>.from(r))
+        .toList(),
+    (raw['vitals'] as List? ?? const [])
+        .map((r) => Map<String, dynamic>.from(r as Map))
         .toList(),
     (raw['acts'] as List).map((r) => Map<String, dynamic>.from(r)).toList(),
     (raw['authorizations'] as List)
