@@ -88,7 +88,10 @@ select pg_temp.expect_error(
  format(
   $q$select public.clinical_vitals_add(%L::uuid,%L::jsonb,%L)$q$,
   :'case_id',
-  '{"observed_at":"2026-10-17T00:00:00Z","performed_by":"00000000-0000-0000-0000-000000000112"}',
+  jsonb_build_object(
+   'observed_at',current_setting('test.vitals')::jsonb->>'observed_at',
+   'performed_by',current_setting('test.vitals')::jsonb->>'performed_by'
+  )::text,
   repeat('a',48)
  ),
  'empty_vital_set'
