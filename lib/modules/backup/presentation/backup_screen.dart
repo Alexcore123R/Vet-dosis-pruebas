@@ -39,6 +39,7 @@ class _BackupScreenState extends State<BackupScreen> {
   Map<String, dynamic>? restoreStage;
   Map<String, dynamic>? restoreConflicts;
   Map<String, dynamic>? restorePlan;
+  Map<String, dynamic>? restorePreflight;
   String? result;
   @override
   void initState() {
@@ -232,6 +233,7 @@ class _BackupScreenState extends State<BackupScreen> {
         restoreStage = null;
         restoreConflicts = null;
         restorePlan = null;
+        restorePreflight = null;
         result =
             '${encrypted ? 'Contraseña y cifrado comprobados. ' : ''}Integridad verificada · ${report.records} registros. No se modificó la base de datos ni se acreditó el origen del archivo.';
       });
@@ -315,13 +317,43 @@ class _BackupScreenState extends State<BackupScreen> {
         plan['dependency_manifest_sha256'] != report.dependencyManifestSha256) {
       throw const FormatException('La simulación de restauración no coincide con el respaldo.');
     }
+    final preflight = report.conflictManifest.isEmpty
+        ? <String, dynamic>{
+            'schema_version': 1,
+            'mode': 'restore_preflight',
+            'stage_id': stageId,
+            'archive_sha256': report.archiveSha256,
+            'conflict_manifest_sha256': report.conflictManifestSha256,
+            'dependency_manifest_sha256': report.dependencyManifestSha256,
+            'checked_entries': 0,
+            'applicable': true,
+            'blockers': <dynamic>[],
+            'imports_applied': false,
+          }
+        : await widget.repository.preflightRestore(
+            widget.member.clinicId,
+            stageId: stageId,
+            archiveSha256: report.archiveSha256,
+            conflictManifestSha256: report.conflictManifestSha256,
+            dependencyManifestSha256: report.dependencyManifestSha256,
+          );
+    if (preflight['mode'] != 'restore_preflight' ||
+        preflight['imports_applied'] != false ||
+        preflight['archive_sha256'] != report.archiveSha256 ||
+        preflight['conflict_manifest_sha256'] != report.conflictManifestSha256 ||
+        preflight['dependency_manifest_sha256'] !=
+            report.dependencyManifestSha256) {
+      throw const FormatException('El preflight no coincide con el respaldo revisado.');
+    }
     if (mounted) {
       setState(() {
         restoreStage = staged;
         restoreConflicts = conflicts;
         restorePlan = plan;
-        result =
-            'Vista previa, conflictos y decisiones simuladas. No se importó ningún registro.';
+        restorePreflight = preflight;
+        result = preflight['applicable'] == true
+            ? 'Preflight aprobado para este estado actual. Sigue sin existir una importación activa.'
+            : 'Preflight bloqueado: hay decisiones o cambios que deben resolverse. No se importó ningún registro.';
       });
     }
   }
@@ -336,6 +368,7 @@ class _BackupScreenState extends State<BackupScreen> {
         restoreStage = null;
         restoreConflicts = null;
         restorePlan = null;
+        restorePreflight = null;
         result = 'Vista previa descartada. No se modificó ningún registro.';
       });
     }
@@ -579,6 +612,36 @@ class _BackupScreenState extends State<BackupScreen> {
                       const Text(
                         'Todavía no se aplican reemplazos, fusiones ni inserciones. Las referencias a personal faltante requieren revisión manual.',
                       ),
+                      if (restorePreflight != null) ...[
+                        const Divider(),
+                        ListTile(
+                          leading: Icon(
+                            restorePreflight!['applicable'] == true
+                                ? Icons.verified_outlined
+                                : Icons.block_outlined,
+                          ),
+                          title: Text(
+                            restorePreflight!['applicable'] == true
+                                ? 'Preflight: aplicable en el estado actual'
+                                : 'Preflight: no aplicable',
+                          ),
+                          subtitle: Text(
+                            'Registros revalidados: ${restorePreflight!['checked_entries'] ?? 0}'
+                            '${restorePreflight!['valid_until'] == null ? '' : ' · válido hasta ${restorePreflight!['valid_until']}'}',
+                          ),
+                        ),
+                        if ((restorePreflight!['blockers'] as List? ?? const [])
+                            .isNotEmpty)
+                          for (final blocker
+                              in (restorePreflight!['blockers'] as List))
+                            Text(
+                              'Bloqueo: ${(blocker as Map)['code']}'
+                              '${blocker['count'] == null ? '' : ' (${blocker['count']})'}',
+                            ),
+                        const Text(
+                          'El preflight solo verifica que el plan siga siendo coherente. No ejecuta la restauración.',
+                        ),
+                      ],
                     ] else
                       const Text(
                         'Esta revisión compara identificadores de tablas principales. Aún no decide reemplazos, fusiones ni inserciones.',
