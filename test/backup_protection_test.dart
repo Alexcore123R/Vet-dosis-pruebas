@@ -89,6 +89,10 @@ void main() {
               'create_candidate': 2,
               'keep_existing': 1,
             },
+            'vet_patients': {
+              'create_candidate': 3,
+              'keep_existing': 2,
+            },
           },
         },
         'owner_payload': {
@@ -100,6 +104,15 @@ void main() {
             'imports_applied': true,
           },
         },
+        'patient_payload': {
+          'payload_sha256': 'c' * 64,
+          'rows': 5,
+          'apply_report': {
+            'created': 3,
+            'kept_existing': 2,
+            'imports_applied': true,
+          },
+        },
       },
       'imports_applied': true,
     });
@@ -107,6 +120,9 @@ void main() {
     expect((state['owner_payload'] as Map)['create_candidate'], 2);
     expect((state['owner_payload'] as Map)['keep_existing'], 1);
     expect((state['owner_apply'] as Map)['created'], 2);
+    expect((state['patient_payload'] as Map)['create_candidate'], 3);
+    expect((state['patient_payload'] as Map)['keep_existing'], 2);
+    expect((state['patient_apply'] as Map)['created'], 3);
     expect(state['imports_applied'], true);
   });
 
@@ -267,7 +283,7 @@ void main() {
     () async {
       final repo = FakeBackup()
         ..rawSnapshot =
-            '{"format":"vetdosis-operational-backup","version":1,"clinic_id":"clinic","tables":{"vet_owners":[{"id":"00000000-0000-0000-0000-000000000200","clinic_id":"clinic","name":"Tutor"}],"vet_patients":[{"id":"00000000-0000-0000-0000-000000000201","clinic_id":"clinic","owner_id":"00000000-0000-0000-0000-000000000200","name":"Prueba"}]}}';
+            '{"format":"vetdosis-operational-backup","version":1,"clinic_id":"clinic","tables":{"vet_owners":[{"id":"00000000-0000-0000-0000-000000000200","clinic_id":"clinic","name":"Tutor"}],"vet_patients":[{"id":"00000000-0000-0000-0000-000000000201","clinic_id":"clinic","owner_id":"00000000-0000-0000-0000-000000000200","name":"Prueba","species":"felino","breed":"doméstico","sex":"hembra","birth_date":"2021-02-03"}]}}';
       final archive = await BackupArchive.create(repo, 'clinic');
       final report = BackupRecoveryReport.inspect(archive, 'clinic');
       expect(report.records, 2);
@@ -295,6 +311,20 @@ void main() {
         '00000000-0000-0000-0000-000000000200',
       );
       expect(report.restoreOwners.single['name'], 'Tutor');
+      expect(report.restorePatients, hasLength(1));
+      expect(
+        report.restorePatients.single['id'],
+        '00000000-0000-0000-0000-000000000201',
+      );
+      expect(report.restorePatients.single['species'], 'felino');
+      expect(
+        report.restorePatients.single['owner_id'],
+        '00000000-0000-0000-0000-000000000200',
+      );
+      expect(
+        jsonDecode(report.toJson())['restore_patient_candidates'],
+        1,
+      );
       expect(jsonDecode(report.toJson())['restored'], false);
       expect(
         () => BackupRecoveryReport.inspect(archive, 'other'),
