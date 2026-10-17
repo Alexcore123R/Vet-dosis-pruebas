@@ -37,9 +37,11 @@ void main() {
       'workspace_kind': 'personal',
       'exports': {'clinic': false, 'personal': true},
       'statistics': false,
+      'restore_preview': true,
     });
     expect(access.personal, true);
     expect(access.clinic, false);
+    expect(access.restorePreview, true);
     expect(
       () => BackupAccess.read({
         'schema_version': 1,
@@ -150,6 +152,8 @@ void main() {
       final archive = await BackupArchive.create(repo, 'clinic');
       final report = BackupRecoveryReport.inspect(archive, 'clinic');
       expect(report.records, 1);
+      expect(report.clinicBackup, true);
+      expect(report.archiveSha256, hasLength(64));
       expect(jsonDecode(report.toJson())['restored'], false);
       expect(
         () => BackupRecoveryReport.inspect(archive, 'other'),
