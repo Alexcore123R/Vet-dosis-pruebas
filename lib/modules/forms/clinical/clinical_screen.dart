@@ -10,6 +10,8 @@ import '../presentation/form_pdf_screen.dart';
 import 'clinical_models.dart';
 import 'clinical_repository.dart';
 import 'clinical_view_model.dart';
+import 'clinical_vitals_screen.dart';
+import 'vitals_models.dart';
 
 class ClinicalScreen extends StatefulWidget {
   const ClinicalScreen({
@@ -389,6 +391,41 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
     }
   }
 
+  String? latestWeight(ClinicalBundle bundle) {
+    for (final row in bundle.observations.reversed) {
+      if (row['kind'] == 'weight' && row['value'] != null) {
+        return row['value'].toString();
+      }
+    }
+    return null;
+  }
+
+  Future<void> openVitals() async {
+    final selected = model.selected;
+    if (selected == null) return;
+    await model.load(caseId: selected.caseData.id);
+    if (!mounted || model.selected == null) return;
+    if (model.permissionsKnown && !model.can('observe')) {
+      message('La autorización cambió. Actualiza antes de continuar.');
+      return;
+    }
+    final bundle = model.selected!;
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ClinicalVitalsScreen(
+          repository: widget.repository,
+          member: widget.member,
+          caseData: bundle.caseData,
+          latestWeight: latestWeight(bundle),
+        ),
+      ),
+    );
+    if (saved == true && mounted) {
+      await model.load(caseId: bundle.caseData.id);
+    }
+  }
+
   Future<void> revoke(Map<String, dynamic> grant) async {
     final controller = TextEditingController();
     final reason = await showDialog<String>(
@@ -505,11 +542,17 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
                   spacing: 8,
                   children: [
                     if (!model.permissionsKnown || model.can('observe'))
+                      FilledButton.icon(
+                        onPressed: model.busy ? null : openVitals,
+                        icon: const Icon(Icons.monitor_heart_outlined),
+                        label: const Text('Registrar constantes'),
+                      ),
+                    if (!model.permissionsKnown || model.can('observe'))
                       OutlinedButton(
                         onPressed: model.busy
                             ? null
                             : () => append('observation'),
-                        child: const Text('Anexar medición'),
+                        child: const Text('Anexar medición individual'),
                       ),
                     if (!model.permissionsKnown || model.can('act'))
                       OutlinedButton(
@@ -552,7 +595,38 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Mediciones',
+                'Constantes estructuradas',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              if (b.vitals.isEmpty)
+                const Text('Todavía no hay conjuntos de constantes registrados.'),
+              for (final v in b.vitals.reversed.take(10))
+                ListTile(
+                  leading: const Icon(Icons.monitor_heart_outlined),
+                  title: Text(
+                    [
+                      if (v['fc'] != null) 'FC ${v['fc']} lpm',
+                      if (v['fr'] != null) 'FR ${v['fr']} rpm',
+                      if (v['temperature'] != null) 'Temp ${v['temperature']} °C',
+                      if (v['tllc'] != null) 'TLLC ${v['tllc']} s',
+                    ].join(' · '),
+                  ),
+                  subtitle: Text(
+                    [
+                      if (v['bp_systolic'] != null)
+                        'PA ${v['bp_systolic']}/${v['bp_diastolic']} mmHg · PAM ${v['pam']} mmHg',
+                      if (v['mucosa_color'] != null)
+                        'Mucosas: ${vitalMucosaColors[v['mucosa_color']] ?? v['mucosa_color']}',
+                      if (v['mucosa_humidity'] != null)
+                        'Humedad: ${vitalMucosaHumidity[v['mucosa_humidity']] ?? v['mucosa_humidity']}',
+                      '${v['observed_at']}',
+                      if ((v['notes']?.toString() ?? '').isNotEmpty) '${v['notes']}',
+                    ].join('\n'),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              Text(
+                'Mediciones individuales',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               for (final o in b.observations)
