@@ -48,6 +48,41 @@ select pg_temp.assert_true(exists(select 1 from public.vet_owners where id='0000
 select public.restore_apply_owners(:'clinic',(:'stage'::jsonb->>'stage_id')::uuid,(:'preflight'::jsonb->>'preflight_id')::uuid,:'prepared'::jsonb->>'payload_sha256') as retry \gset
 select pg_temp.assert_true(:'retry'::jsonb=:'applied'::jsonb,'idempotent retry changed result');
 
+-- Drift is checked for every owner before the first insert, so failure is atomic.
+select public.restore_preview_stage(:'clinic','vetdosis-operational-backup',1,repeat('4',64),'2026-01-02T00:00:00Z','{"vet_owners":2}'::jsonb) as drift_stage \gset
+select public.restore_preview_conflicts(
+ :'clinic',(:'drift_stage'::jsonb->>'stage_id')::uuid,repeat('4',64),repeat('5',64),
+ '{"vet_owners":["00000000-0000-0000-0000-000000000502","00000000-0000-0000-0000-000000000503"]}'::jsonb
+);
+select public.restore_preview_plan(
+ :'clinic',(:'drift_stage'::jsonb->>'stage_id')::uuid,repeat('4',64),repeat('5',64),repeat('6',64),
+ '{"vet_owners":{"00000000-0000-0000-0000-000000000502":[],"00000000-0000-0000-0000-000000000503":[]}}'::jsonb
+);
+select public.restore_prepare_owners(
+ :'clinic',(:'drift_stage'::jsonb->>'stage_id')::uuid,repeat('4',64),
+ jsonb_build_array(
+  jsonb_build_object('id','00000000-0000-0000-0000-000000000502','clinic_id',:'clinic','name','Atomic A'),
+  jsonb_build_object('id','00000000-0000-0000-0000-000000000503','clinic_id',:'clinic','name','Atomic B')
+ )
+) as drift_prepared \gset
+select public.restore_preview_preflight(:'clinic',(:'drift_stage'::jsonb->>'stage_id')::uuid,repeat('4',64),repeat('5',64),repeat('6',64)) as drift_preflight \gset
+reset role;
+insert into public.vet_owners(id,clinic_id,name,created_by)
+values('00000000-0000-0000-0000-000000000503',:'clinic','Concurrent owner','00000000-0000-0000-0000-000000000150');
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000197',false);set role authenticated;
+select pg_temp.expect_error(
+ format($q$select public.restore_apply_owners(%L,%L::uuid,%L::uuid,%L)$q$,
+  :'clinic',:'drift_stage'::jsonb->>'stage_id',:'drift_preflight'::jsonb->>'preflight_id',:'drift_prepared'::jsonb->>'payload_sha256'),
+ 'restore_owner_state_drift'
+);
+select pg_temp.assert_true(
+ not exists(select 1 from public.vet_owners where id='00000000-0000-0000-0000-000000000502'),
+ 'owner restore partially committed before drift failure'
+);
+reset role;
+delete from public.vet_owners where id='00000000-0000-0000-0000-000000000503';
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000197',false);set role authenticated;
+
 -- Payload IDs cannot diverge from the verified manifest.
 select pg_temp.expect_error(
  format($q$select public.restore_prepare_owners(%L,%L::uuid,%L,'[{"id":"00000000-0000-0000-0000-000000000599","clinic_id":%L,"name":"Wrong"}]'::jsonb)$q$,
