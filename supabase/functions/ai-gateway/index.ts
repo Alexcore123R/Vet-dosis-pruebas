@@ -105,7 +105,17 @@ Deno.serve(async (req) => {
         aes,
         label(key.provider, key.scope, key.owner_id ?? key.clinic_id),
       );
-      return reply({ models: await listModels(key.provider, plaintext) });
+      const models = await listModels(key.provider, plaintext);
+      // Provider calls are external; authorization may change while awaiting them.
+      if (!await betaAccess(user, true, key.scope === "clinic" ? key.clinic_id : null)) {
+        return reply({ error: "beta_write_denied" }, 403);
+      }
+      const { error: currentKeyError, data: currentKey } = await server.rpc("ai_key_get_server", {
+        p_user: actor,
+        p_connection: input.connection,
+      });
+      if (currentKeyError || !currentKey) return reply({ error: "key_access_denied" }, 403);
+      return reply({ models });
     }
     if (input.action !== "send") return reply({ error: "invalid_action" }, 400);
     const { data: r, error: prepareError } = await user.rpc("ai_prepare", {
