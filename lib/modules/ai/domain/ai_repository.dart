@@ -17,6 +17,7 @@ abstract interface class AiRepository {
     String clinic,
     String key,
   );
+  Future<void> rotateKey(String connection, String key);
   Future<void> disableKey(String connection);
   Future<List<Map<String, dynamic>>> models(String connection);
   Future<void> send(
