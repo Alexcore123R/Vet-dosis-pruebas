@@ -47,6 +47,8 @@ Map<String, dynamic> readRestorePreviewState(Map<String, dynamic> value) {
       'preflight': null,
       'owner_payload': null,
       'owner_apply': null,
+      'patient_payload': null,
+      'patient_apply': null,
       'imports_applied': false,
     };
   }
@@ -61,24 +63,44 @@ Map<String, dynamic> readRestorePreviewState(Map<String, dynamic> value) {
   final conflicts = readMap(stage['conflicts'], 'conflicts');
   final plan = readMap(stage['decisions'], 'decisions');
   final preflight = readMap(stage['preflight'], 'preflight');
-  final ownerSummary = readMap(stage['owner_payload'], 'owner_payload');
-  Map<String, dynamic>? ownerPayload;
-  Map<String, dynamic>? ownerApply;
-  if (ownerSummary != null) {
-    ownerApply = readMap(ownerSummary['apply_report'], 'apply_report');
-    Map<String, dynamic>? ownerDecision;
-    final decisionTables = readMap(plan?['tables'], 'decision tables');
-    if (decisionTables != null) {
-      ownerDecision = readMap(decisionTables['vet_owners'], 'vet_owners decision');
-    }
-    ownerPayload = {
-      ...ownerSummary,
+  final decisionTables = readMap(plan?['tables'], 'decision tables');
+
+  Map<String, dynamic>? normalizePayload(
+    String field,
+    String table,
+    String applyField,
+  ) {
+    final summary = readMap(stage[field], field);
+    if (summary == null) return null;
+    final apply = readMap(summary['apply_report'], applyField);
+    final decision = decisionTables == null
+        ? null
+        : readMap(decisionTables[table], '$table decision');
+    return {
+      ...summary,
       'create_candidate':
-          ownerDecision?['create_candidate'] ?? ownerApply?['created'] ?? 0,
+          decision?['create_candidate'] ?? apply?['created'] ?? 0,
       'keep_existing':
-          ownerDecision?['keep_existing'] ?? ownerApply?['kept_existing'] ?? 0,
+          decision?['keep_existing'] ?? apply?['kept_existing'] ?? 0,
     };
   }
+
+  final ownerPayload = normalizePayload(
+    'owner_payload',
+    'vet_owners',
+    'owner apply report',
+  );
+  final patientPayload = normalizePayload(
+    'patient_payload',
+    'vet_patients',
+    'patient apply report',
+  );
+  final ownerApply = ownerPayload == null
+      ? null
+      : readMap(ownerPayload['apply_report'], 'owner apply report');
+  final patientApply = patientPayload == null
+      ? null
+      : readMap(patientPayload['apply_report'], 'patient apply report');
 
   return {
     'stage': stage,
@@ -87,6 +109,8 @@ Map<String, dynamic> readRestorePreviewState(Map<String, dynamic> value) {
     'preflight': preflight,
     'owner_payload': ownerPayload,
     'owner_apply': ownerApply,
+    'patient_payload': patientPayload,
+    'patient_apply': patientApply,
     'imports_applied': value['imports_applied'] as bool,
   };
 }
@@ -117,8 +141,10 @@ class _BackupScreenState extends State<BackupScreen> {
   Map<String, dynamic>? restoreConflicts;
   Map<String, dynamic>? restorePlan;
   Map<String, dynamic>? restoreOwnerPayload;
+  Map<String, dynamic>? restorePatientPayload;
   Map<String, dynamic>? restorePreflight;
   Map<String, dynamic>? restoreOwnerApply;
+  Map<String, dynamic>? restorePatientApply;
   String? result;
   @override
   void initState() {
@@ -168,8 +194,11 @@ class _BackupScreenState extends State<BackupScreen> {
       restoreConflicts = state['conflicts'] as Map<String, dynamic>?;
       restorePlan = state['plan'] as Map<String, dynamic>?;
       restoreOwnerPayload = state['owner_payload'] as Map<String, dynamic>?;
+      restorePatientPayload =
+          state['patient_payload'] as Map<String, dynamic>?;
       restorePreflight = state['preflight'] as Map<String, dynamic>?;
       restoreOwnerApply = state['owner_apply'] as Map<String, dynamic>?;
+      restorePatientApply = state['patient_apply'] as Map<String, dynamic>?;
     });
   }
 
