@@ -78,6 +78,28 @@ class SupabaseBackupRepository implements BackupRepository {
   );
 
   @override
+  Future<Map<String, dynamic>> previewRestorePlan(
+    String clinic, {
+    required String stageId,
+    required String archiveSha256,
+    required String conflictManifestSha256,
+    required String dependencyManifestSha256,
+    required Map<String, Map<String, List<Map<String, String>>>> dependencies,
+  }) async => Map<String, dynamic>.from(
+    await client.rpc(
+      'restore_preview_plan',
+      params: {
+        'p_clinic': clinic,
+        'p_stage': stageId,
+        'p_archive_sha256': archiveSha256,
+        'p_conflict_manifest_sha256': conflictManifestSha256,
+        'p_dependency_manifest_sha256': dependencyManifestSha256,
+        'p_dependencies': dependencies,
+      },
+    ) as Map,
+  );
+
+  @override
   Future<void> discardRestorePreview(String clinic, String stageId) async {
     await client.rpc(
       'restore_preview_discard',
