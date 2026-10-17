@@ -32,6 +32,9 @@ create function public.support_message(p_ticket uuid,p_body text,p_operation tex
 create function public.support_attachment_reserve(p_ticket uuid,p_name text,p_mime text,p_size bigint,p_token text,p_extension text) returns text language plpgsql security definer set search_path='' as $$declare v_path text;begin
  if not private.support_access(p_ticket) or p_token !~ '^[a-zA-Z0-9-]{16,100}$' or (p_mime,p_extension) not in (('image/jpeg','jpg'),('image/png','png'),('application/pdf','pdf'),('text/plain','txt')) then raise exception 'support_attachment_denied';end if;
  perform 1 from public.support_tickets where id=p_ticket for update;
+ -- A failed client upload must not reserve one of the five attachment slots forever.
+ delete from public.support_attachments
+  where ticket_id=p_ticket and not ready and created_at<clock_timestamp()-interval '1 hour';
  if(select count(*) from public.support_attachments where ticket_id=p_ticket)>=5 then raise exception 'support_attachment_limit';end if;
  v_path=auth.uid()::text||'/'||p_ticket::text||'/'||p_token||'.'||p_extension;
  insert into public.support_attachments(ticket_id,name,path,mime,size) values(p_ticket,p_name,v_path,p_mime,p_size);return v_path;end $$;
