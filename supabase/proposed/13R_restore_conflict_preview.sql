@@ -13,8 +13,9 @@ create function private.restore_conflict_table_allowed(p_table text)
 returns boolean language sql immutable set search_path='' as $$
  select p_table=any(array[
   'vet_owners','vet_patients','clinical_cases','hospital_stays',
-  'form_documents','prescriptions','medication_vials',
-  'inventario','lotes_inventario',
+  'form_templates','form_template_versions','form_documents',
+  'professional_profiles','professional_delegations',
+  'prescriptions','medication_vials','inventario','lotes_inventario',
   'clinic_appointments','clinic_tasks','clinic_messages'
  ]::text[]);
 $$;
