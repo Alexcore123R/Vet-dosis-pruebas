@@ -110,3 +110,24 @@ Además vuelve a consultar el estado actual del servidor para detectar deriva oc
 El resultado es únicamente `applicable=true/false`, una lista de bloqueos y un identificador de preflight. Cuando es aplicable, la ventana informativa es de 15 minutos; una futura operación real deberá volver a validar el estado y no puede tratar esta ventana como autorización permanente.
 
 Cualquier `blocked_missing_dependency`, `blocked_foreign_identity`, `manual_review`, política de overwrite/merge o deriva detectada produce `applicable=false`. El reporte conserva `imports_applied=false`.
+
+
+## Primera restauración real: tutores solamente (13U)
+
+El candidato `13U_restore_owners_apply.sql` habilita la primera escritura real de recuperación, limitada exclusivamente a `vet_owners`.
+
+La app extrae las filas de tutores únicamente después de verificar el archivo localmente. El servidor prepara ese payload contra el `stage_id`, el hash del respaldo, el manifiesto de IDs y el plan de decisiones. Preparar el payload invalida cualquier preflight anterior, por lo que el preflight debe ejecutarse después de la preparación.
+
+La aplicación exige un preflight vigente y aplicable. Dentro de la misma transacción vuelve a comprobar **todos** los tutores antes de insertar el primero:
+
+- `keep_existing` debe seguir existiendo y nunca se modifica;
+- `create_candidate` debe seguir sin existir en ninguna clínica;
+- cualquier deriva cancela la función completa;
+- no hay `UPDATE`, `UPSERT` ni merge;
+- la operación es idempotente para el mismo payload después de un éxito.
+
+Los tutores nuevos conservan nombre, teléfono, correo, dirección y fecha histórica de creación cuando es válida. `created_by` se atribuye al usuario que ejecuta la restauración para no falsificar una autoría activa; el autor original, cuando existe en el respaldo, se conserva solo en la auditoría como `source_created_by`.
+
+Cada fila creada genera `owner_restored_from_backup` y la operación completa genera `backup_restore_owners_applied`. El reporte usa `imports_applied=true` por primera vez, pero con `scope=vet_owners`, `overwrite=false` y `merge=false`.
+
+Pacientes, expedientes, hospitalización, recetas, inventario, documentos y cualquier otra tabla siguen sin una ruta de aplicación real.
