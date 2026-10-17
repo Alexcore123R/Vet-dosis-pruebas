@@ -1,0 +1,20 @@
+name: Validar rotacion de claves IA
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/proposed/13Y_ai_key_rotation.sql'
+      - 'supabase/tests/ai_key_rotation.sql'
+      - 'supabase/tests/run_ai_key_rotation.sh'
+      - '.github/workflows/test-ai-key-rotation.yml'
+permissions:
+  contents: read
+jobs:
+  postgres-ai-rotation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar renovación de claves y permisos
+        run: bash supabase/tests/run_ai_key_rotation.sh
