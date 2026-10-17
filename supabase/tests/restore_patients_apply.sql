@@ -62,6 +62,15 @@ select public.restore_prepare_patients(
  )
 ) as prepared \gset
 select public.restore_preview_preflight(:'clinic',(:'stage'::jsonb->>'stage_id')::uuid,repeat('7',64),repeat('8',64),repeat('9',64)) as preflight \gset
+select pg_temp.expect_error(format('select public.restore_apply_patients(%L,%L::uuid,null,%L)',:'clinic',:'stage'::jsonb->>'stage_id',:'prepared'::jsonb->>'payload_sha256'),'restore_preflight_required');
+select pg_temp.expect_error(format('select public.restore_apply_patients(%L,%L::uuid,%L::uuid,null)',:'clinic',:'stage'::jsonb->>'stage_id',:'preflight'::jsonb->>'preflight_id'),'restore_patient_payload_changed');
+reset role;
+delete from private.backup_restore_test_targets where clinic_id=:'clinic';
+set role authenticated;
+select pg_temp.expect_error(format('select public.restore_apply_patients(%L,%L::uuid,%L::uuid,%L)',:'clinic',:'stage'::jsonb->>'stage_id',:'preflight'::jsonb->>'preflight_id',:'prepared'::jsonb->>'payload_sha256'),'restore_test_target_required');
+reset role;
+insert into private.backup_restore_test_targets(clinic_id,expires_at) values(:'clinic',clock_timestamp()+interval '1 day');
+set role authenticated;
 select public.restore_apply_patients(
  :'clinic',(:'stage'::jsonb->>'stage_id')::uuid,
  (:'preflight'::jsonb->>'preflight_id')::uuid,

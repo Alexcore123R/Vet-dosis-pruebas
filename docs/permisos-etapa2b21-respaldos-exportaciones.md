@@ -2,6 +2,26 @@
 
 Estado: candidato local, sin aplicar a Supabase remoto.
 
+## Corrección de revisión del 17 de octubre de 2026
+
+Los apartados históricos que dicen que no existe importación quedaron superados
+por 13U/13V: sí existen funciones que crean tutores y pacientes. Ahora ambas
+exigen un destino de prueba registrado en `private.backup_restore_test_targets`,
+con vencimiento máximo de 14 días. La lista se crea vacía y las cuentas de la app
+no pueden modificarla. Permisos de restauración y administración siguen siendo
+obligatorios. La interfaz oculta las acciones de aplicación sin esa habilitación.
+Ninguna clínica operativa se habilita automáticamente.
+
+Esta restricción bloquea la restauración directa en clínicas ordinarias. El flujo
+completo de recuperación a un espacio de prueba independiente y posterior
+transferencia elegida sigue pendiente; no se considera terminado por tener una
+tabla de staging. Las pruebas registran exclusivamente su clínica sintética.
+
+Las verificaciones de formato, clínica, archivo, manifiestos, preflight y payload
+usan comparaciones que rechazan valores NULL. Las estadísticas financieras
+devuelven `species: null` sin `appointment.read` y `low_stock: null` sin
+`inventory.read`, evitando que `sales.read` amplíe esos accesos.
+
 ## Alcances
 
 - **Clínica:** exige membresía vigente, `backup.export` y además `workspace.manage` o ser el MVZ responsable vigente. La etiqueta visual `admin` no concede acceso.

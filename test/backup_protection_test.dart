@@ -177,6 +177,7 @@ void main() {
     expect(access.personal, true);
     expect(access.clinic, false);
     expect(access.restorePreview, true);
+    expect(access.restoreApplyTest, false);
     expect(
       () => BackupAccess.read({
         'schema_version': 1,

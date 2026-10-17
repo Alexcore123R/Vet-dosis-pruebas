@@ -31,15 +31,15 @@ begin
   where clinic_id=p_clinic and stage_id=p_stage and expires_at>clock_timestamp()
   for update;
  if not found then raise exception 'restore_stage_not_found';end if;
- if s.archive_sha256<>p_archive_sha256 then raise exception 'restore_archive_changed';end if;
+ if s.archive_sha256 is distinct from p_archive_sha256 then raise exception 'restore_archive_changed';end if;
  if s.conflict_manifest_sha256 is null or s.conflict_manifest is null or
-    s.conflict_manifest_sha256<>p_conflict_manifest_sha256 then raise exception 'restore_conflicts_changed';end if;
+    s.conflict_manifest_sha256 is distinct from p_conflict_manifest_sha256 then raise exception 'restore_conflicts_changed';end if;
  if s.dependency_manifest_sha256 is null or s.dependency_manifest is null or
-    s.dependency_manifest_sha256<>p_dependency_manifest_sha256 then raise exception 'restore_dependencies_changed';end if;
+    s.dependency_manifest_sha256 is distinct from p_dependency_manifest_sha256 then raise exception 'restore_dependencies_changed';end if;
  if s.decision_plan is null or s.decision_report is null then raise exception 'restore_decision_preview_required';end if;
- if s.decision_report->>'archive_sha256'<>p_archive_sha256 or
-    s.decision_report->>'conflict_manifest_sha256'<>p_conflict_manifest_sha256 or
-    s.decision_report->>'dependency_manifest_sha256'<>p_dependency_manifest_sha256 then
+ if s.decision_report->>'archive_sha256' is distinct from p_archive_sha256 or
+    s.decision_report->>'conflict_manifest_sha256' is distinct from p_conflict_manifest_sha256 or
+    s.decision_report->>'dependency_manifest_sha256' is distinct from p_dependency_manifest_sha256 then
    raise exception 'restore_decision_preview_changed';
  end if;
 

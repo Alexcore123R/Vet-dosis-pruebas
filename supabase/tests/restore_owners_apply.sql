@@ -35,7 +35,16 @@ select public.restore_prepare_owners(
   jsonb_build_object('id','00000000-0000-0000-0000-000000000501','clinic_id',:'clinic','name','Restored synthetic owner','source_created_at','2025-02-03T04:05:06Z')
  )
 ) as prepared \gset
+select pg_temp.expect_error(format('select public.restore_preview_preflight(%L,%L::uuid,null,%L,%L)',:'clinic',:'stage'::jsonb->>'stage_id',repeat('2',64),repeat('3',64)),'restore_archive_changed');
+select pg_temp.expect_error(format('select public.restore_preview_preflight(%L,%L::uuid,%L,null,%L)',:'clinic',:'stage'::jsonb->>'stage_id',repeat('1',64),repeat('3',64)),'restore_conflicts_changed');
+select pg_temp.expect_error(format('select public.restore_preview_preflight(%L,%L::uuid,%L,%L,null)',:'clinic',:'stage'::jsonb->>'stage_id',repeat('1',64),repeat('2',64)),'restore_dependencies_changed');
 select public.restore_preview_preflight(:'clinic',(:'stage'::jsonb->>'stage_id')::uuid,repeat('1',64),repeat('2',64),repeat('3',64)) as preflight \gset
+select pg_temp.expect_error(format('select public.restore_apply_owners(%L,%L::uuid,%L::uuid,%L)',:'clinic',:'stage'::jsonb->>'stage_id',:'preflight'::jsonb->>'preflight_id',:'prepared'::jsonb->>'payload_sha256'),'restore_test_target_required');
+reset role;
+insert into private.backup_restore_test_targets(clinic_id,expires_at) values(:'clinic',clock_timestamp()+interval '1 day');
+set role authenticated;
+select pg_temp.expect_error(format('select public.restore_apply_owners(%L,%L::uuid,null,%L)',:'clinic',:'stage'::jsonb->>'stage_id',:'prepared'::jsonb->>'payload_sha256'),'restore_preflight_required');
+select pg_temp.expect_error(format('select public.restore_apply_owners(%L,%L::uuid,%L::uuid,null)',:'clinic',:'stage'::jsonb->>'stage_id',:'preflight'::jsonb->>'preflight_id'),'restore_owner_payload_changed');
 select public.restore_apply_owners(:'clinic',(:'stage'::jsonb->>'stage_id')::uuid,(:'preflight'::jsonb->>'preflight_id')::uuid,:'prepared'::jsonb->>'payload_sha256') as applied \gset
 
 select pg_temp.assert_true((:'applied'::jsonb->>'imports_applied')::boolean,'owner restore not applied');

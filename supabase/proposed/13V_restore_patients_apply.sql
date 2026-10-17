@@ -27,7 +27,7 @@ begin
  perform public.beta_access_check(true,p_clinic);
  perform 1 from public.clinics where id=p_clinic for update;
  if not private.restore_preview_authorized(p_clinic,auth.uid()) then raise exception 'backup_restore_required';end if;
- if p_format<>'vetdosis-operational-backup' or p_version<>1 then raise exception 'restore_format_unsupported';end if;
+ if p_format is distinct from 'vetdosis-operational-backup' or p_version is distinct from 1 then raise exception 'restore_format_unsupported';end if;
  if p_archive_sha256 is null or p_archive_sha256 !~ '^[a-f0-9]{64}$' then raise exception 'restore_hash_required';end if;
  if p_source_server_at is not null and p_source_server_at>clock_timestamp()+interval '5 minutes' then raise exception 'restore_source_time_invalid';end if;
  if not private.restore_counts_valid(p_table_counts) then raise exception 'restore_counts_invalid';end if;
@@ -88,7 +88,7 @@ begin
  if not found then raise exception 'restore_stage_not_found';end if;
  if s.owner_applied_at is not null then raise exception 'restore_patient_restage_required';end if;
  if s.patient_applied_at is not null then raise exception 'restore_patient_already_applied';end if;
- if s.archive_sha256<>p_archive_sha256 then raise exception 'restore_archive_changed';end if;
+ if s.archive_sha256 is distinct from p_archive_sha256 then raise exception 'restore_archive_changed';end if;
  if s.conflict_manifest is null or s.decision_plan is null then raise exception 'restore_decision_preview_required';end if;
  if not (s.conflict_manifest ? 'vet_patients') then raise exception 'restore_patient_scope_absent';end if;
  if p_patients is null or jsonb_typeof(p_patients)<>'array' or jsonb_array_length(p_patients) not between 1 and 10000 then
@@ -111,7 +111,7 @@ begin
    end if;
   end loop;
   begin row_id=(row->>'id')::uuid;exception when others then raise exception 'restore_patient_payload_invalid';end;
-  if row->>'clinic_id'<>p_clinic::text then raise exception 'restore_patient_wrong_clinic';end if;
+  if row->>'clinic_id' is distinct from p_clinic::text then raise exception 'restore_patient_wrong_clinic';end if;
   if jsonb_typeof(row->'name')<>'string' or length(btrim(row->>'name')) not between 1 and 120 then raise exception 'restore_patient_payload_invalid';end if;
   if jsonb_typeof(row->'species')<>'string' or length(btrim(row->>'species')) not between 1 and 120 then raise exception 'restore_patient_payload_invalid';end if;
   if row->'breed' is not null and jsonb_typeof(row->'breed')<>'string' then raise exception 'restore_patient_payload_invalid';end if;
@@ -181,6 +181,7 @@ begin
  perform 1 from public.clinics where id=p_clinic for update;
  if not found then raise exception 'restore_clinic_not_found';end if;
  if not private.restore_preview_authorized(p_clinic,auth.uid()) then raise exception 'backup_restore_required';end if;
+ if not private.restore_apply_test_target(p_clinic) then raise exception 'restore_test_target_required';end if;
 
  select * into s from private.backup_restore_staging
   where clinic_id=p_clinic and stage_id=p_stage and expires_at>clock_timestamp()
@@ -192,10 +193,10 @@ begin
   if s.patient_payload_sha256=p_patient_payload_sha256 then return s.patient_apply_report;end if;
   raise exception 'restore_patient_already_applied';
  end if;
- if s.patient_payload is null or s.patient_payload_sha256 is null or s.patient_payload_sha256<>p_patient_payload_sha256 then
+ if s.patient_payload is null or s.patient_payload_sha256 is null or s.patient_payload_sha256 is distinct from p_patient_payload_sha256 then
   raise exception 'restore_patient_payload_changed';
  end if;
- if s.preflight_id is null or s.preflight_id<>p_preflight or s.preflight_report is null then
+ if s.preflight_id is null or s.preflight_id is distinct from p_preflight or s.preflight_report is null then
   raise exception 'restore_preflight_required';
  end if;
  if coalesce((s.preflight_report->>'applicable')::boolean,false) is not true then raise exception 'restore_preflight_blocked';end if;

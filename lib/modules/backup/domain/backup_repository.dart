@@ -72,9 +72,10 @@ class BackupAccess {
     required this.statistics,
     required this.workspaceKind,
     this.restorePreview = false,
+    this.restoreApplyTest = false,
   });
 
-  final bool clinic, personal, statistics, restorePreview;
+  final bool clinic, personal, statistics, restorePreview, restoreApplyTest;
   final String workspaceKind;
 
   factory BackupAccess.read(Map<String, dynamic> value) {
@@ -94,6 +95,7 @@ class BackupAccess {
       statistics: value['statistics'] as bool,
       workspaceKind: value['workspace_kind'] as String,
       restorePreview: value['restore_preview'] == true,
+      restoreApplyTest: value['restore_apply_test'] == true,
     );
   }
 }

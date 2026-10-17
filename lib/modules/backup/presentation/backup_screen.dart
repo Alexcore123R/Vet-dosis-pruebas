@@ -897,6 +897,10 @@ class _BackupScreenState extends State<BackupScreen> {
                     'El archivo declara exclusiones. Una recuperación completa requiere el respaldo del servidor.',
                   ),
                 if (inspection!.clinicBackup && access!.restorePreview) ...[
+                  if (!access!.restoreApplyTest)
+                    const Text(
+                      'Puedes revisar conflictos y dependencias. La importación requiere un espacio de prueba habilitado.',
+                    ),
                   FilledButton.icon(
                     onPressed: working || restoreStage != null
                         ? null
@@ -1003,7 +1007,8 @@ class _BackupScreenState extends State<BackupScreen> {
                           ),
                           if (restorePreflight!['applicable'] == true &&
                               (restoreOwnerPayload!['create_candidate'] as num? ?? 0) > 0 &&
-                              restoreOwnerApply == null)
+                              restoreOwnerApply == null &&
+                              access!.restoreApplyTest)
                             FilledButton.icon(
                               onPressed: working
                                   ? null
@@ -1055,7 +1060,8 @@ class _BackupScreenState extends State<BackupScreen> {
                           if (restorePreflight!['applicable'] == true &&
                               (restorePatientPayload!['create_candidate'] as num? ?? 0) >
                                   0 &&
-                              restorePatientApply == null)
+                              restorePatientApply == null &&
+                              access!.restoreApplyTest)
                             FilledButton.icon(
                               onPressed: working
                                   ? null

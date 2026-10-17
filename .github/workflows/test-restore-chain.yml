@@ -5,6 +5,8 @@ on:
   push:
     branches: [main]
     paths:
+      - 'supabase/proposed/13O_permission_backups_exports.sql'
+      - 'supabase/tests/permission_backups_exports.sql'
       - 'supabase/adaptations/existing_ai_m12.sql'
       - 'supabase/proposed/13P_workspace_management_cutover.sql'
       - 'supabase/proposed/13Q_restore_preview_staging.sql'

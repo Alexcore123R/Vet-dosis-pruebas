@@ -31,7 +31,18 @@ select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000150'
 select public.permission_grant(:'clinic','00000000-0000-0000-0000-000000000180','sales.read',null,clock_timestamp()+interval '1 day','Synthetic statistics read');reset role;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000180',false);set role authenticated;
 select pg_temp.assert_true((public.backup_workspace(:'clinic')->>'statistics')::boolean,'sales read did not open statistics');
-select pg_temp.assert_true(public.clinic_statistics(:'clinic') ? 'sales','statistics payload missing');reset role;
+select pg_temp.assert_true(public.clinic_statistics(:'clinic') ? 'sales','statistics payload missing');
+select pg_temp.assert_true(public.clinic_statistics(:'clinic')->'species'='null'::jsonb,'sales grant exposed agenda aggregates');
+select pg_temp.assert_true(public.clinic_statistics(:'clinic')->'low_stock'='null'::jsonb,'sales grant exposed inventory');
+reset role;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000150',false);set role authenticated;
+select public.permission_grant(:'clinic','00000000-0000-0000-0000-000000000180','appointment.read',null,clock_timestamp()+interval '1 day','Synthetic agenda summary');
+select public.permission_grant(:'clinic','00000000-0000-0000-0000-000000000180','inventory.read',null,clock_timestamp()+interval '1 day','Synthetic stock summary');
+reset role;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000180',false);set role authenticated;
+select pg_temp.assert_true(jsonb_typeof(public.clinic_statistics(:'clinic')->'species')='array','agenda read did not open aggregate');
+select pg_temp.assert_true(jsonb_typeof(public.clinic_statistics(:'clinic')->'low_stock')='array','inventory read did not open aggregate');
+reset role;
 
 -- A personal export belongs only to its owner and contains an allowlist.
 insert into auth.users(id,email,email_confirmed_at) values('00000000-0000-0000-0000-000000000181','synthetic-personal-owner@example.test',now());

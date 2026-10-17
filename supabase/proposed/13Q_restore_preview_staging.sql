@@ -2,6 +2,23 @@
 -- Stores metadata/counts for one clinic backup preview. It NEVER imports backup rows.
 begin;
 
+-- Empty by default. Only an isolated test workspace may be registered by the
+-- trusted deployment operator; application users cannot enable a live clinic.
+create table private.backup_restore_test_targets(
+ clinic_id uuid primary key references public.clinics(id) on delete cascade,
+ created_at timestamptz not null default clock_timestamp(),
+ expires_at timestamptz not null,
+ check(expires_at>created_at and expires_at<=created_at+interval '14 days')
+);
+alter table private.backup_restore_test_targets enable row level security;
+revoke all on private.backup_restore_test_targets from public,anon,authenticated,service_role;
+create function private.restore_apply_test_target(p_clinic uuid) returns boolean
+language sql stable security definer set search_path='' as $$
+ select exists(select 1 from private.backup_restore_test_targets
+ where clinic_id=p_clinic and expires_at>statement_timestamp());
+$$;
+revoke all on function private.restore_apply_test_target(uuid) from public,anon,authenticated,service_role;
+
 create table private.backup_restore_staging(
  clinic_id uuid primary key references public.clinics(id) on delete cascade,
  stage_id uuid not null unique default gen_random_uuid(),
@@ -58,7 +75,8 @@ begin
   'schema_version',1,'mode','explicit_backup','workspace_kind',kind,
   'exports',jsonb_build_object('clinic',private.backup_clinic_authorized(p_clinic),'personal',private.backup_personal_authorized(p_clinic)),
   'statistics',private.permission_effective(p_clinic,auth.uid(),'sales.read') is not null,
-  'restore_preview',private.restore_preview_authorized(p_clinic,auth.uid())
+  'restore_preview',private.restore_preview_authorized(p_clinic,auth.uid()),
+  'restore_apply_test',private.restore_preview_authorized(p_clinic,auth.uid()) and private.restore_apply_test_target(p_clinic)
  );
 end$$;
 
@@ -76,7 +94,7 @@ begin
  perform public.beta_access_check(true,p_clinic);
  perform 1 from public.clinics where id=p_clinic for update;
  if not private.restore_preview_authorized(p_clinic,auth.uid()) then raise exception 'backup_restore_required';end if;
- if p_format<>'vetdosis-operational-backup' or p_version<>1 then raise exception 'restore_format_unsupported';end if;
+ if p_format is distinct from 'vetdosis-operational-backup' or p_version is distinct from 1 then raise exception 'restore_format_unsupported';end if;
  if p_archive_sha256 is null or p_archive_sha256 !~ '^[a-f0-9]{64}$' then raise exception 'restore_hash_required';end if;
  if p_source_server_at is not null and p_source_server_at>clock_timestamp()+interval '5 minutes' then raise exception 'restore_source_time_invalid';end if;
  if not private.restore_counts_valid(p_table_counts) then raise exception 'restore_counts_invalid';end if;

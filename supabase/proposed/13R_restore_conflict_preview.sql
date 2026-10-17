@@ -55,7 +55,7 @@ begin
   where clinic_id=p_clinic and stage_id=p_stage and expires_at>clock_timestamp()
   for update;
  if not found then raise exception 'restore_stage_not_found';end if;
- if s.archive_sha256<>p_archive_sha256 then raise exception 'restore_archive_changed';end if;
+ if s.archive_sha256 is distinct from p_archive_sha256 then raise exception 'restore_archive_changed';end if;
  if p_manifest_sha256 is null or p_manifest_sha256 !~ '^[a-f0-9]{64}$' then raise exception 'restore_manifest_hash_required';end if;
  if not private.restore_manifest_valid(p_manifest) then raise exception 'restore_manifest_invalid';end if;
 
