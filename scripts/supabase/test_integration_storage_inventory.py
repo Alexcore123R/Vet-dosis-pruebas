@@ -5,6 +5,10 @@ from integration_storage_inventory import inspect
 
 
 class StorageInventoryTests(unittest.TestCase):
+    def test_exact_postgres_numeric_strings_are_normalized_without_float_rounding(self):
+        report=inspect(Mock(return_value=[{'buckets':'3','objects':'2','known_bytes':'9007199254740993','unknown_size_objects':'0'}]))
+        self.assertEqual(report['known_bytes'],9007199254740993)
+
     def test_counts_never_claim_binary_backup_or_export_paths(self):
         read=Mock(return_value=[{'buckets':3,'objects':2,'known_bytes':100,'unknown_size_objects':0}])
         report=inspect(read)

@@ -2,6 +2,7 @@
 import argparse
 import json
 from pathlib import Path
+import re
 
 from identity_schema import PROJECT, query
 
@@ -19,9 +20,15 @@ def inspect(read=query):
     rows = read(SQL)
     if len(rows) != 1 or set(rows[0]) != {'buckets','objects','known_bytes','unknown_size_objects'}:
         raise ValueError('Incomplete Storage aggregate inventory.')
-    values = rows[0]
-    if any(type(value) not in (int, float) or value < 0 for value in values.values()):
-        raise ValueError('Invalid Storage aggregate inventory.')
+    values = {}
+    for key,value in rows[0].items():
+        if type(value) is int and value>=0:
+            values[key]=value
+        elif isinstance(value,str) and re.fullmatch('[0-9]{1,30}',value):
+            # PostgreSQL bigint/numeric may arrive as exact decimal strings.
+            values[key]=int(value)
+        else:
+            raise ValueError('Invalid Storage aggregate inventory.')
     return {'project_ref': PROJECT, 'read_only': True, **values,
             'binary_backup_created': False,
             'scope': 'Aggregate live inventory, not the database backup snapshot. No file contents or paths exported.'}
