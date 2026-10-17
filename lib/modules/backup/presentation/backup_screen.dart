@@ -38,6 +38,7 @@ class _BackupScreenState extends State<BackupScreen> {
   BackupRecoveryReport? inspection;
   Map<String, dynamic>? restoreStage;
   Map<String, dynamic>? restoreConflicts;
+  Map<String, dynamic>? restorePlan;
   String? result;
   @override
   void initState() {
@@ -230,6 +231,7 @@ class _BackupScreenState extends State<BackupScreen> {
         inspection = report;
         restoreStage = null;
         restoreConflicts = null;
+        restorePlan = null;
         result =
             '${encrypted ? 'Contraseña y cifrado comprobados. ' : ''}Integridad verificada · ${report.records} registros. No se modificó la base de datos ni se acreditó el origen del archivo.';
       });
@@ -283,12 +285,28 @@ class _BackupScreenState extends State<BackupScreen> {
         conflicts['manifest_sha256'] != report.conflictManifestSha256) {
       throw const FormatException('La revisión de conflictos no coincide con el respaldo.');
     }
+    final plan = await widget.repository.previewRestorePlan(
+      widget.member.clinicId,
+      stageId: stageId,
+      archiveSha256: report.archiveSha256,
+      conflictManifestSha256: report.conflictManifestSha256,
+      dependencyManifestSha256: report.dependencyManifestSha256,
+      dependencies: report.dependencyManifest,
+    );
+    if (plan['mode'] != 'restore_decision_preview' ||
+        plan['imports_applied'] != false ||
+        plan['archive_sha256'] != report.archiveSha256 ||
+        plan['conflict_manifest_sha256'] != report.conflictManifestSha256 ||
+        plan['dependency_manifest_sha256'] != report.dependencyManifestSha256) {
+      throw const FormatException('La simulación de restauración no coincide con el respaldo.');
+    }
     if (mounted) {
       setState(() {
         restoreStage = staged;
         restoreConflicts = conflicts;
+        restorePlan = plan;
         result =
-            'Vista previa y conflictos revisados en servidor. No se importó ningún registro.';
+            'Vista previa, conflictos y decisiones simuladas. No se importó ningún registro.';
       });
     }
   }
@@ -302,6 +320,7 @@ class _BackupScreenState extends State<BackupScreen> {
       setState(() {
         restoreStage = null;
         restoreConflicts = null;
+        restorePlan = null;
         result = 'Vista previa descartada. No se modificó ningún registro.';
       });
     }
@@ -512,9 +531,39 @@ class _BackupScreenState extends State<BackupScreen> {
                           ),
                         ),
                     ],
-                    const Text(
-                      'Esta revisión compara identificadores de tablas principales. Aún no decide reemplazos, fusiones ni inserciones.',
-                    ),
+                    if (restorePlan != null) ...[
+                      const Divider(),
+                      const Text(
+                        'Simulación de decisiones: los registros existentes se conservan y nunca se sobrescriben.',
+                      ),
+                      Text(
+                        'Candidatos a crear: ${restorePlan!['create_candidate'] ?? 0} · '
+                        'conservar actuales: ${restorePlan!['keep_existing'] ?? 0} · '
+                        'bloqueados: ${restorePlan!['blocked_missing_dependency'] ?? 0} · '
+                        'revisión manual: ${restorePlan!['manual_review'] ?? 0}',
+                      ),
+                      for (final entry
+                          in (Map<String, dynamic>.from(
+                            restorePlan!['tables'] as Map? ?? const {},
+                          ).entries.toList()
+                            ..sort((a, b) => a.key.compareTo(b.key))))
+                        ListTile(
+                          dense: true,
+                          title: Text(entry.key),
+                          subtitle: Text(
+                            'Crear: ${(entry.value as Map)['create_candidate']} · '
+                            'conservar: ${(entry.value as Map)['keep_existing']} · '
+                            'bloqueados: ${(entry.value as Map)['blocked_missing_dependency']} · '
+                            'manual: ${(entry.value as Map)['manual_review']}',
+                          ),
+                        ),
+                      const Text(
+                        'Todavía no se aplican reemplazos, fusiones ni inserciones. Las referencias a personal faltante requieren revisión manual.',
+                      ),
+                    ] else
+                      const Text(
+                        'Esta revisión compara identificadores de tablas principales. Aún no decide reemplazos, fusiones ni inserciones.',
+                      ),
                     TextButton(
                       onPressed: working
                           ? null
