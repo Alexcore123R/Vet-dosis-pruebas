@@ -7,11 +7,19 @@ select public.create_clinic('Support ficticio') as clinic \gset
 select public.support_create(:'clinic','error','Fallo ficticio','Descripción ficticia sin datos reales',repeat('a',24)) as ticket \gset
 select set_config('test.support_ticket',:'ticket',true);
 select set_config('test.support_clinic',:'clinic',true);
-do $$begin
+reset role;
+insert into public.support_attachments(ticket_id,name,path,mime,size,ready,created_at)
+values(:'ticket','stale.txt','00000000-0000-0000-0000-000000000081/'||:'ticket'||'/stale.txt','text/plain',10,false,clock_timestamp()-interval '2 hours');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000081',true);
+do $begin
  if public.support_create(current_setting('test.support_clinic')::uuid,'error','Fallo ficticio','Descripción ficticia sin datos reales',repeat('a',24))<>current_setting('test.support_ticket')::uuid then raise exception 'not_idempotent';end if;
  begin perform public.support_reply_server(current_setting('test.support_ticket')::uuid,'Respuesta','resolved','reply');raise exception 'client_replied';exception when insufficient_privilege then null;end;
 end $$;
 select public.support_attachment_reserve(:'ticket','prueba.txt','text/plain',20,repeat('b',24),'txt') as path \gset
+do $begin
+ if exists(select 1 from public.support_attachments where ticket_id=current_setting('test.support_ticket')::uuid and path like '%/stale.txt') then raise exception 'stale_attachment_reservation_not_cleaned';end if;
+end $;
 insert into storage.objects(bucket_id,name)values('support-files',:'path');
 select public.support_attachment_finish(:'ticket',:'path');
 reset role;
