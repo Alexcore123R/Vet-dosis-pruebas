@@ -111,3 +111,21 @@ se conservó al integrar Git. 5.6 sol corrigió un residuo SQL posterior a COMMI
 amplió las pruebas. [Storage 39029205418 aprobado](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39029205418).
 Permanece como candidato adicional fuera del manifiesto inicial; su aprobación
 aislada no acredita instalación remota ni un flujo de adjuntos en la interfaz.
+
+## Ensayo y dependencias del paquete atómico
+
+- Las 42 pruebas Python de herramientas administrativas aprobaron.
+- [Inspección remota 39030003970](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39030003970):
+  todas las relaciones/funciones exigidas están presentes (`missing=[]`). Esto no
+  acredita todavía compatibilidad de definiciones y datos.
+- [Ensayo aislado 39030086535](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39030086535):
+  aplicación de 23 candidatos, error deliberado y rollback, rechazo de instalación
+  parcial/repetida, conteos conservados y hashes finales aprobados.
+- La primera ejecución del ensayo falló porque el runner no incluía ripgrep;
+  el script usa ahora grep para comprobar sus logs de error esperados.
+
+El artefacto `beta-integration-review-only` contiene SQL de ensayo, SQL candidato
+de aplicación y manifiesto de archivos/hashes. No contiene datos exportados ni
+credenciales. No se ejecutó el SQL candidato en Supabase remoto.
+Faltan el respaldo previo verificado, el ensayo sobre el esquema real y la
+coordinación con cliente/Edge y cuentas de prueba antes de aplicar y abrir beta.
