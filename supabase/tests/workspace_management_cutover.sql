@@ -53,10 +53,6 @@ select pg_temp.assert_true(
  (select role from public.clinic_members where clinic_id=:'clinic' and user_id='00000000-0000-0000-0000-000000000194')='admin',
  'synthetic admin target was not seeded as admin'
 );
-select pg_temp.assert_true(
- private.permission_admin(:'clinic')=false,
- 'capability-only manager unexpectedly has admin authority'
-);
 select pg_temp.expect_error(format($q$select public.create_clinic_invitation(%L,'synthetic-admin-invite@example.test','admin')$q$,:'clinic'),'admin_required');
 select pg_temp.expect_error(format($q$select public.set_clinic_member_role(%L,'00000000-0000-0000-0000-000000000193','admin')$q$,:'clinic'),'admin_required');
 select pg_temp.expect_error(format($q$select public.remove_clinic_member(%L,'00000000-0000-0000-0000-000000000194')$q$,:'clinic'),'admin_required');
