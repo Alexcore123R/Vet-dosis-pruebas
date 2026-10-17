@@ -1,0 +1,47 @@
+name: Instalar contrato inicial en pruebas (beta cerrada)
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Instalar tras ensayos; false solo ensaya con ROLLBACK
+        type: boolean
+        default: false
+        required: true
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: supabase-test-beta-preparation
+  cancel-in-progress: false
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Exigir los mismos candidatos que pasaron los ensayos
+        run: git diff --exit-code fc56791 HEAD -- supabase/proposed scripts/supabase/integration_bundle.py scripts/supabase/integration_preflight.py
+      - name: Exigir ensayos aprobados antes de ejecutar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json, subprocess
+          for run_id in ('39080817606','39080925135'):
+              run=json.loads(subprocess.check_output(['gh','run','view',run_id,'--json','conclusion']))
+              if run['conclusion']!='success':raise SystemExit('Required rehearsal has not passed.')
+          PY
+      - run: python3 -m unittest discover -s scripts/supabase -p 'test_*.py'
+      - name: Ejecutar solo en proyecto fijo conservando beta cerrada
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          APPLY_OPTION: ${{ inputs.apply && '--apply' || '' }}
+        run: python3 scripts/supabase/integration_apply_test.py $APPLY_OPTION
+      - uses: actions/upload-artifact@v4
+        if: inputs.apply
+        with:
+          name: initial-module-install
+          path: initial-module-install.json
+          retention-days: 7
