@@ -117,7 +117,8 @@ Deno.serve(async (req) => {
       if (currentKeyError || !currentKey ||
         currentKey.id !== key.id || currentKey.provider !== key.provider ||
         currentKey.scope !== key.scope || currentKey.clinic_id !== key.clinic_id ||
-        currentKey.owner_id !== key.owner_id) {
+        currentKey.owner_id !== key.owner_id ||
+        currentKey.key_version !== key.key_version) {
         return reply({ error: "key_access_changed" }, 403);
       }
       return reply({ models });
