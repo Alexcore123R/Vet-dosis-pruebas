@@ -46,7 +46,7 @@ for sql_file in \
  supabase/proposed/13B_permission_agenda.sql \
  supabase/proposed/13C_permission_clinical.sql \
  supabase/tests/permission_clinical.sql \
- supabase/proposed/13X_ai_key_rotation.sql \
+ supabase/proposed/13Y_ai_key_rotation.sql \
  supabase/tests/ai_key_rotation.sql;do
  docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 < "$sql_file" > "$work_dir/test.log" 2>&1 || {
   echo "FAILED: $sql_file"
