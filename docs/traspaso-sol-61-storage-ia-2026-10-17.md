@@ -2,6 +2,12 @@
 
 Fecha: 2026-10-17. Responsable de integración: Sol 6.1.
 
+## Validación posterior por integración
+
+- Cambios integrados hasta `e0c0d0c`. Flutter analyze de `app.dart`, módulo IA y pruebas pasó en [39059203487](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39059203487).
+- Pasaron las pruebas de configuración separada, revocación con actualización de lista, chat, planes, revisión de plataforma y navegación. El simulador de planes declara ahora `can_manage` explícitamente; no se modificaron permisos de producción.
+- La sección siguiente conserva el estado del traspaso original. La validación automatizada de Flutter queda cubierta por esta ronda; siguen pendientes compilación Android, revisión visual en dispositivo, pruebas remotas y el issue #1 de rotación de credenciales. No hubo despliegue en Supabase ni apertura de beta.
+
 ## Confirmado en el repositorio
 
 - Storage clínico 13X: candidato local, **no desplegado** y fuera del paquete esencial de 23 migraciones.
