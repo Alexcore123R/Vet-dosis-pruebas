@@ -153,7 +153,10 @@ def main():
     args.output.write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps({**report, 'differences': report['differences'][:25],
                       'difference_index': [{'object': d['object'], 'kind': d['kind'],
-                                            'changed_fields': d.get('changed_fields', [])}
+                                            'changed_fields': d.get('changed_fields', []),
+                                            **({'remote_body_sha256': d['actual']['body_sha256']}
+                                               if 'body_sha256' in d.get('changed_fields', [])
+                                               and d.get('actual') else {})}
                                            for d in report['differences']],
                       'total_differences': len(report['differences']),
                       'full_report_in_artifact': True}, indent=2))
