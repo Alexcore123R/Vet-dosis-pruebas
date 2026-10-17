@@ -150,6 +150,21 @@ select pg_temp.assert_true(
   where bucket_id='clinical-attachments' and name=current_setting('test.attachment')),
  'revoked retry/upsert changed an existing attachment'
 );
+-- Revoked actors cannot remove existing files through DELETE, either.
+with deleted as (
+ delete from storage.objects
+ where bucket_id='clinical-attachments' and name=current_setting('test.attachment')
+ returning id
+)
+select pg_temp.assert_true((select count(*)=0 from deleted),
+ 'revoked clinical.attach deleted an existing attachment');
+
+with deleted as (
+ delete from storage.objects where bucket_id='patient-photos' returning id
+)
+select pg_temp.assert_true((select count(*)=0 from deleted),
+ 'revoked patient.write deleted an existing photo');
+
 reset role;
 
 set role anon;
