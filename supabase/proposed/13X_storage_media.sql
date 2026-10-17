@@ -66,7 +66,65 @@ begin
  clinic=private.storage_safe_uuid(parts[1]);
  case_id=private.storage_safe_uuid(parts[2]);
  object_name=parts[3];
- if clinic is null or case_id is null or object_name !~ '^[0-9a-fA-F-]{36}\\.[A-Za-z0-9]+$' then return false;end if;
+ if clinic is null or case_id is null or object_name !~ '^[0-9a-fA-F-]{36}[.][A-Za-z0-9]+ then return false;end if;
+ object_id=private.storage_safe_uuid(split_part(object_name,'.',1));
+ extension=lower(split_part(object_name,'.',2));
+ if object_id is null or extension not in ('png','jpg','jpeg','webp','pdf') then return false;end if;
+ select * into c from public.clinical_cases where id=case_id and clinic_id=clinic;
+ if not found or not private.clinical_readable(c) then return false;end if;
+ if not p_write then return true;end if;
+ grant_id=private.permission_effective(clinic,auth.uid(),'clinical.attach');
+ return grant_id is not null and exists(
+  select 1 from private.member_permission_grants g
+  where g.id=grant_id and g.valid_until>clock_timestamp()
+ );
+end$$;
+
+revoke all on function private.storage_safe_uuid(text) from public,anon,authenticated,service_role;
+revoke all on function private.storage_patient_photo_allowed(text,boolean),
+ private.storage_clinical_attachment_allowed(text,boolean)
+from public,anon,service_role;
+grant execute on function private.storage_patient_photo_allowed(text,boolean),
+ private.storage_clinical_attachment_allowed(text,boolean)
+to authenticated;
+
+create policy patient_photo_read on storage.objects
+for select to authenticated
+using(bucket_id='patient-photos' and private.storage_patient_photo_allowed(name,false));
+
+create policy patient_photo_insert on storage.objects
+for insert to authenticated
+with check(bucket_id='patient-photos' and private.storage_patient_photo_allowed(name,true));
+
+create policy patient_photo_update on storage.objects
+for update to authenticated
+using(bucket_id='patient-photos' and private.storage_patient_photo_allowed(name,true))
+with check(bucket_id='patient-photos' and private.storage_patient_photo_allowed(name,true));
+
+create policy patient_photo_delete on storage.objects
+for delete to authenticated
+using(bucket_id='patient-photos' and private.storage_patient_photo_allowed(name,true));
+
+create policy clinical_attachment_read on storage.objects
+for select to authenticated
+using(bucket_id='clinical-attachments' and private.storage_clinical_attachment_allowed(name,false));
+
+create policy clinical_attachment_insert on storage.objects
+for insert to authenticated
+with check(bucket_id='clinical-attachments' and private.storage_clinical_attachment_allowed(name,true));
+
+create policy clinical_attachment_update on storage.objects
+for update to authenticated
+using(bucket_id='clinical-attachments' and private.storage_clinical_attachment_allowed(name,true))
+with check(bucket_id='clinical-attachments' and private.storage_clinical_attachment_allowed(name,true));
+
+create policy clinical_attachment_delete on storage.objects
+for delete to authenticated
+using(bucket_id='clinical-attachments' and private.storage_clinical_attachment_allowed(name,true));
+
+notify pgrst,'reload schema';
+commit;
+ then return false;end if;
  object_id=private.storage_safe_uuid(split_part(object_name,'.',1));
  extension=lower(split_part(object_name,'.',2));
  if object_id is null or extension not in ('png','jpg','jpeg','webp','pdf') then return false;end if;
