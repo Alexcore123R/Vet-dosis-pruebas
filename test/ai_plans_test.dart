@@ -71,6 +71,8 @@ class AiFake implements AiRepository {
     String key,
   ) async {}
   @override
+  Future<void> rotateKey(String connection, String key) async {}
+  @override
   Future<void> disableKey(String connection) async {}
   @override
   Future<List<Map<String, dynamic>>> models(String connection) async => [];
