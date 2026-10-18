@@ -1,0 +1,21 @@
+name: Verificar acceso anónimo por HTTP (solo lectura)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  anonymous:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s scripts/supabase -p 'test_integration_anonymous_http.py'
+      - name: Comprobar rechazo de anónimo sin leer registros
+        env:
+          SUPABASE_TEST_PUBLISHABLE_KEY: ${{ vars.SUPABASE_TEST_PUBLISHABLE_KEY || secrets.SUPABASE_TEST_PUBLISHABLE_KEY }}
+        run: python3 scripts/supabase/integration_anonymous_http.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anonymous-http-report
+          path: anonymous-http-report.json
+          retention-days: 7
