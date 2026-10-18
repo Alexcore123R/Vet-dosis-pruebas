@@ -45,6 +45,10 @@ begin
    'passed',ok,'sqlstate',err_code,'message',err_message));
  end loop;
  return jsonb_build_object('project_ref',{literal(PROJECT)},'probes',results,
+  'patients_available',(select count(*) from public.vet_patients where clinic_id=space),
+  'template_permissions',public.form_template_permissions(space),
+  'templates_available',case when private.permission_effective(space,subject,'form.template.read') is not null
+     then jsonb_array_length(public.form_templates_list(space)) else null end,
   'all_probe_writes_rolled_back',true,'scope','Administrative SQL context, not an Auth HTTP session. No clinical/contact rows retained.');
 end $probe$;
 select pg_temp.vd_beta_write_probe() as diagnostic;
