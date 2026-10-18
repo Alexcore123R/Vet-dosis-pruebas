@@ -1,0 +1,80 @@
+name: Auditar permisos de cuentas beta (solo lectura)
+on:
+  workflow_dispatch:
+    inputs:
+      clinic_email:
+        description: Correo de la cuenta de clínica
+        required: true
+        type: string
+      platform_email:
+        description: Correo de la cuenta administradora de plataforma
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: supabase-test-beta-preparation
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Revisar membresías, habilitaciones y catálogo de permisos (sin cambios)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          CLINIC_EMAIL: ${{ inputs.clinic_email }}
+          PLATFORM_EMAIL: ${{ inputs.platform_email }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          sys.path.insert(0, 'scripts/supabase')
+          from identity_schema import query
+
+          def email_value(env_name):
+              value = os.environ[env_name].strip().lower()
+              if not value or len(value) > 254 or '@' not in value or any(ch in value for ch in '\r\n'):
+                  raise SystemExit('Correo inválido.')
+              return value.replace("'", "''")
+
+          clinic = email_value('CLINIC_EMAIL')
+          platform = email_value('PLATFORM_EMAIL')
+          if clinic == platform:
+              raise SystemExit('Deben ser dos cuentas diferentes.')
+
+          catalog = query("""
+            select n.nspname as schema, c.relname as objeto,
+                   c.relkind as tipo, c.relrowsecurity as rls,
+                   (select array_agg(a.attname order by a.attnum)
+                    from pg_attribute a where a.attrelid=c.oid and a.attnum>0
+                    and not a.attisdropped
+                    and (a.attname ~* 'role|permission|grant|professional|module|user_id|clinic_id|enabled|verified')) as columnas_relevantes
+            from pg_class c join pg_namespace n on n.oid=c.relnamespace
+            where n.nspname in ('public','private')
+            and c.relkind in ('r','p','v')
+            and c.relname ~* '(permission|grant|professional|credential|platform_admin|clinic_member|module|delegat|capabilit)'
+            order by n.nspname,c.relname
+          """)
+          print('CATALOGO_PERMISOS:', json.dumps(catalog, ensure_ascii=False, sort_keys=True))
+          for label, email in [('CLINICA',clinic),('PLATAFORMA',platform)]:
+              rows = query(f"""
+                select c.name as clinica, coalesce(w.kind,'clinic') as tipo_espacio,
+                       to_jsonb(m)->>'role' as rol_membresia,
+                       to_jsonb(m)->>'status' as estado_membresia,
+                       c.created_by=u.id as titular_creador
+                from auth.users u join public.clinic_members m on m.user_id=u.id
+                join public.clinics c on c.id=m.clinic_id
+                left join public.account_workspaces w on w.clinic_id=c.id
+                where lower(btrim(u.email))='{email}'
+                order by c.name
+              """)
+              admin = query(f"""
+                select exists(select 1 from private.platform_admins p join auth.users u
+                  on u.id=p.user_id where lower(btrim(u.email))='{email}' and p.enabled)
+                  as admin_plataforma
+              """)[0]['admin_plataforma']
+              print(label+':', json.dumps({'admin_plataforma':admin,
+                   'membresias':rows},ensure_ascii=False,sort_keys=True))
+          print('Auditoría de catálogo y membresías completada: no hubo modificaciones.')
+          PY
