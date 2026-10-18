@@ -3,8 +3,8 @@
 La usuaria confirmó perfil/clínica, agenda, inventario y escáner. Caja,
 estadísticas, cálculos, equipo/avisos y exportaciones siguen sin verificar.
 Reportó buscador no visible, fallo al guardar paciente, selector vacío de ingreso,
-guardado de zona horaria y pantallas de formatos/receta. Faltan dos capturas que
-la usuaria anunció; no cerrar esos hallazgos sin revisarlas.
+guardado de zona horaria y pantallas de formatos/receta. Las dos capturas finales
+recibidas corresponden al membrete y a la configuración de checado.
 
 ## Causas y correcciones
 
@@ -22,12 +22,21 @@ la usuaria anunció; no cerrar esos hallazgos sin revisarlas.
   jaula, peso o temperatura.
 - Buscador: estaba en Inicio, pero la lista principal conservaba el desplazamiento
   del apartado anterior. Se reinicia al cambiar de apartado/rama. La regresión
-  comprueba que vuelve a quedar visible al regresar a Inicio. La captura pendiente
-  del dashboard puede revelar otro caso y todavía debe revisarse.
+  comprueba que vuelve a quedar visible al regresar a Inicio. No se recibió captura
+  del dashboard: confirmar en teléfono si había otra causa.
 - Formatos: al perfil operativo inicial le faltaban `form.template.read`,
   `form.template.edit` y `form.branding.manage`. Perfil v2 agrega solo esos tres,
   sin extender los 26 anteriores ni añadir aprobación profesional. Aplicación
   39123720217 aprobada. Can_approve permanece false.
+- Membrete: la entrada consulta `form_branding` y `form_templates_list`; faltaban
+  los permisos de plantillas indicados arriba. El diagnóstico posterior confirma
+  lectura, edición y membrete habilitados, con ocho plantillas disponibles. Falta
+  repetir la apertura y el guardado desde la sesión real del teléfono.
+- Checado: `att_qr` exige configuración previa y secreto de QR. La captura muestra
+  `attendance_settings_required`, una condición esperada antes de configurar.
+  Usar «Ubicación y aviso» con ubicación, radio, precisión y aviso reales de la
+  clínica; `workspace.manage` ya está concedido. No se inventaron esos datos ni
+  se generó consentimiento por la usuaria. Guardado y escaneo reales pendientes.
 - Receta/perfil: capturar una cédula no la verifica. El aviso de habilitación no
   vigente es el resultado esperado, no un permiso que deba eliminarse.
 
@@ -48,5 +57,5 @@ se corrigió la fixture, conservando los requisitos del servidor.
 
 Zona horaria y permisos de plantillas ya están corregidos en servidor. Los
 cambios de cliente todavía no están en un nuevo APK: el paquete anterior
-39082429107 carece de estas correcciones. Pendientes las otras dos capturas para
-completar la revisión y empaquetar una entrega conjunta; después repetir en teléfono.
+39082429107 carece de estas correcciones. Revisadas las siete capturas, se prepara
+una entrega conjunta; después repetir en teléfono, incluido membrete y checado.
