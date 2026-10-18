@@ -50,3 +50,25 @@ No se rebajan los controles del cliente para simular compatibilidad.
 El workflow registra únicamente la publicación del build verificado y su
 caducidad en el servidor; esto no abre admisiones ni instala migraciones clínicas.
 La prueba en teléfono real sigue siendo necesaria tras descargar el paquete.
+
+## APK corregido disponible — 18 octubre
+
+La interrupción del entorno se resolvió. La compilación
+[39082429107](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39082429107)
+terminó correctamente sobre `3b63292` (incluye la corrección `0859ff8` de recarga
+del dashboard al recibir/revocar permisos en la misma sesión).
+
+- Análisis Flutter sin incidencias y **365 pruebas aprobadas**.
+- VersionCode **214446065**, firma propia y verificaciones de ambos APK aprobadas.
+- [Artefacto 12120185046](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39082429107/artifacts/12120185046),
+  `vetdosis-pruebas-apks`, 31 271 742 bytes; disponible hasta el **1 noviembre,
+  00:36 UTC**. ARM64 32.5 MB y ARM32 29.2 MB. Extraer antes de instalar.
+- No hay cambios de código Flutter posteriores en las dos auditorías añadidas
+  por GPT-6 (`caa0382`, `b8761a3`); estas son workflows de solo lectura.
+
+El contrato de módulos y 14A/14B ya están instalados, según 39081043942.
+La auditoría 39110094504 confirma cuentas separadas, clínica `vet prueba1`,
+concesiones clínicas vacías y sin habilitación profesional vigente para la cuenta
+clínica indicada por la usuaria. Falta elegir/aplicar el alcance por persona;
+instalar este APK no concede permisos. IA 13Y/Edge, pruebas con dos sesiones
+reales y comprobación en teléfono continúan pendientes. Admisiones cerradas.

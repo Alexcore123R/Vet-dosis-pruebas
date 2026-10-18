@@ -82,3 +82,12 @@ El APK anterior no incluye esta corrección. Se canceló deliberadamente el buil
 no se confirmó una nueva ejecución del empaquetado; no anunciar un APK nuevo como
 listo hasta comprobar su build, firma y artefacto. Continúan pendientes el correo
 y nombre de clínica destinatarios de las concesiones explícitas y la prueba física.
+
+Actualización que supera el bloqueo de empaquetado anterior: el APK de
+[39082429107](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39082429107)
+ya está generado, firmado y verificado; 365 pruebas aprobadas. Véase
+`apk-beta-revision-20261017.md`. Las auditorías de cuentas de GPT-6 están integradas;
+no añaden cambios visuales al cliente. La consulta 39110094504 confirma que la
+cuenta clínica es creadora/admin de `vet prueba1`, no administradora de plataforma,
+y todavía no tiene concesiones ni habilitación profesional vigente. Pendiente la
+elección del alcance operativo de prueba; no hay permisos concedidos por deducción.
