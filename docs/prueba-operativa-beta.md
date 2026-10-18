@@ -60,3 +60,11 @@ esta configuración de servidor no exige otro APK. Se requiere ese APK corregido
 y recargar la sesión para consultar el contrato de módulos nuevo. La comprobación
 positiva con una sesión Auth real y la prueba en teléfono siguen pendientes: el
 éxito de la configuración administrativa no las sustituye.
+
+## Complemento de plantillas — 18 octubre
+
+39123720217 aplicó el perfil operativo v2: agrega consulta, edición de versiones y
+membrete de plantillas (29 códigos previstos en total). Conserva las concesiones
+anteriores sin extenderlas, y no concede `form.template.approve` ni habilitación.
+La revisión 39123859642 confirmó 8 plantillas consultables y aprobación false.
+Véase `revision-pruebas-telefono-20261018.md` para las incidencias y su validación.
