@@ -61,3 +61,24 @@ Actualización remota: 14A y contrato de módulos inicial instalados y verificad
 [39081043942](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39081043942).
 La cuenta necesita concesiones explícitas para mostrar cada módulo. No se crearon
 permisos por inferirlos del puesto; las pruebas con cuentas reales siguen pendientes.
+
+## Recarga de permisos en la misma sesión — 18 octubre
+
+Se corrigió un fallo adicional en `CoreShell`: la clave del dashboard no incluía
+el contrato de módulos y el estado conservaba su primer `DashboardViewModel`.
+Al llegar las capacidades desde el servidor podía seguir mostrando los permisos
+de la carga inicial. La identidad del contrato ahora invalida los modelos del
+inicio y de estadísticas; el modelo anterior se descarta junto con sus resúmenes.
+No se habilitan accesos por defecto.
+
+[39081863393](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39081863393)
+aprobó análisis completo y **26 pruebas**. La regresión usa el `CoreShell` real y
+verifica denegación → concesión de inventario → revocación en una misma sesión,
+incluyendo aparición/desaparición del escáner y ausencia de nuevas lecturas tras
+revocar. Código `0859ff8`. La interfaz IA también aprobó en 39081863470.
+
+El APK anterior no incluye esta corrección. Se canceló deliberadamente el build
+39081500672 antes de publicarlo. Tras el fallo de conexión del entorno de comandos,
+no se confirmó una nueva ejecución del empaquetado; no anunciar un APK nuevo como
+listo hasta comprobar su build, firma y artefacto. Continúan pendientes el correo
+y nombre de clínica destinatarios de las concesiones explícitas y la prueba física.
