@@ -76,5 +76,26 @@ jobs:
               """)[0]['admin_plataforma']
               print(label+':', json.dumps({'admin_plataforma':admin,
                    'membresias':rows},ensure_ascii=False,sort_keys=True))
+          grants = query(f"""
+            select c.name as clinica, g.code as permiso, g.valid_until as vence,
+                   pc.requires_professional as exige_habilitacion,
+                   private.permission_effective(m.clinic_id,u.id,g.code,g.procedure_id)=g.id as vigente,
+                   g.procedure_id is not null as limitado_a_procedimiento
+            from auth.users u join public.clinic_members m on m.user_id=u.id
+            join public.clinics c on c.id=m.clinic_id
+            join private.member_permission_grants g on g.clinic_id=m.clinic_id and g.user_id=u.id
+            join private.permission_catalog pc on pc.code=g.code
+            where lower(btrim(u.email))='{clinic}'
+            order by c.name,g.code,g.valid_until
+          """)
+          professional = query(f"""
+            select c.name as clinica,
+                   private.professional_current(m.clinic_id,u.id) as habilitacion_vigente
+            from auth.users u join public.clinic_members m on m.user_id=u.id
+            join public.clinics c on c.id=m.clinic_id
+            where lower(btrim(u.email))='{clinic}' order by c.name
+          """)
+          print('CONCESIONES_CLINICA:',json.dumps(grants,ensure_ascii=False,sort_keys=True))
+          print('HABILITACION_CLINICA:',json.dumps(professional,ensure_ascii=False,sort_keys=True))
           print('Auditoría de catálogo y membresías completada: no hubo modificaciones.')
           PY
