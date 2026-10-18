@@ -87,6 +87,8 @@ bool moduleNavigationAllowed(
   if (member == null || access == null) return true;
   return switch (page) {
     'Pacientes' => access.module('patients'),
+    'Servicios' ||
+    'Proveedores' ||
     'Agenda' ||
     'Equipo y avisos' ||
     'Pendientes del equipo' => access.module('agenda'),

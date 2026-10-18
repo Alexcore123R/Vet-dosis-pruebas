@@ -127,3 +127,11 @@ La usuaria propone una segunda selección de bovinos, ovinos/caprinos, aves
 [Menú por especie y actividad](produccion-menu-especies-propuesta-20261018.md),
 con enlaces conceptuales a los módulos avícolas existentes y ubicación de sus
 materiales de clase. Es una propuesta; no activa nuevos destinos ni referencias.
+
+## Primera implementación autorizada
+
+La usuaria pidió comenzar a implementar las secciones. La primera etapa conecta
+el menú agrupado, la barra inferior, Servicios/Proveedores y el submenú productivo
+con las herramientas avícolas existentes. Alcance, restricciones y pendientes en
+[Implementación de secciones, etapa 1](secciones-implementacion-etapa1-20261018.md).
+El mapa completo sigue distinguiendo funciones existentes de las futuras.

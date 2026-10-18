@@ -1,3 +1,5 @@
+import '../modules/core/presentation/section_menu.dart';
+import '../modules/production/presentation/production_menu.dart';
 import '../modules/dashboard/presentation/home_pilot.dart';
 import '../vet_ui/vet_theme.dart';
 import '../modules/beta/domain/beta_repository.dart';
@@ -291,6 +293,62 @@ class CoreShell extends StatelessWidget {
 
   bool allowed(String page) =>
       navigationAllowed(page, auth?.active, moduleAccess);
+  Future<void> openAccount(BuildContext context) async {
+    if (auth == null) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => ClinicAccountScreen(
+          model: auth!,
+          identityBuilder: (_) => Column(
+            children: [
+              if (auth!.repository.userId != null)
+                ProfileAppearance(
+                  key: ValueKey(auth!.repository.userId),
+                  userId: auth!.repository.userId!,
+                  repository: identity,
+                ),
+              if (auth!.active != null)
+                ClinicIdentity(
+                  key: ValueKey(
+                    '${auth!.active!.clinicId}:${auth!.active!.role}',
+                  ),
+                  member: auth!.active!,
+                  repository: forms,
+                  identity: identity,
+                  editable: true,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget bottomNavigation() {
+    final destinations = <(String, IconData)>[
+      ('Inicio', Icons.home_outlined),
+      if (allowed('Agenda')) ('Agenda', Icons.calendar_month_outlined),
+      if (allowed('Pacientes')) ('Pacientes', Icons.pets_outlined),
+      if (allowed('Cálculos')) ('Cálculos', Icons.calculate_outlined),
+      ('Más', Icons.grid_view_outlined),
+    ];
+    final page = switch (model.screen) {
+      'Cálculo rápido' || 'Cálculos clínicos' => 'Cálculos',
+      'Producción y grandes especies' => 'Inicio',
+      _ => model.screen,
+    };
+    final selected = destinations.indexWhere((entry) => entry.$1 == page);
+    return NavigationBar(
+      selectedIndex: selected < 0 ? destinations.length - 1 : selected,
+      onDestinationSelected: (index) => model.navigate(destinations[index].$1),
+      destinations: [
+        for (final entry in destinations)
+          NavigationDestination(icon: Icon(entry.$2), label: entry.$1),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) => model.screen == 'Inicio'
       ? Theme(
@@ -345,34 +403,7 @@ class CoreShell extends StatelessWidget {
                 userId: auth!.repository.userId ?? 'signed-out',
                 repository: identity,
               ),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => ClinicAccountScreen(
-                    model: auth!,
-                    identityBuilder: (_) => Column(
-                      children: [
-                        if (auth!.repository.userId != null)
-                          ProfileAppearance(
-                            key: ValueKey(auth!.repository.userId),
-                            userId: auth!.repository.userId!,
-                            repository: identity,
-                          ),
-                        if (auth!.active != null)
-                          ClinicIdentity(
-                            key: ValueKey(
-                              '${auth!.active!.clinicId}:${auth!.active!.role}',
-                            ),
-                            member: auth!.active!,
-                            repository: forms,
-                            identity: identity,
-                            editable: true,
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              onPressed: () => openAccount(context),
             ),
           IconButton(
             tooltip: 'Ajustes',
@@ -389,69 +420,71 @@ class CoreShell extends StatelessWidget {
                 title: Text('VetDosis Pro'),
                 subtitle: Text('Tu espacio veterinario'),
               ),
-              for (final branch in ClinicalBranch.values)
+              ListTile(
+                leading: const Icon(Icons.home_outlined),
+                title: const Text('Inicio'),
+                onTap: () {
+                  Navigator.pop(context);
+                  model.navigate('Inicio');
+                },
+              ),
+              if (allowed('Cálculos'))
+                ListTile(
+                  leading: const Icon(Icons.calculate_outlined),
+                  title: const Text('Cálculos'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    model.navigate('Cálculos');
+                  },
+                ),
+              const Divider(),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text('Área de trabajo'),
+              ),
+              for (final branch in ClinicalBranch.values.where(
+                (b) => b != ClinicalBranch.management,
+              ))
                 ListTile(
                   leading: Icon(branch.icon),
                   title: Text(branch.label),
                   selected: model.branch == branch,
                   onTap: () {
-                    model.selectBranch(branch);
                     Navigator.pop(context);
+                    model.selectBranch(branch);
                   },
                 ),
               const Divider(),
-              if (allowed('Cálculo rápido') || allowed('Cálculos clínicos'))
-                ExpansionTile(
-                  leading: const Icon(Icons.calculate_outlined),
-                  title: const Text('Cálculos'),
-                  initiallyExpanded: [
-                    'Cálculo rápido',
-                    'Cálculos clínicos',
-                  ].contains(model.screen),
-                  children: [
-                    for (final page in ['Cálculo rápido', 'Cálculos clínicos'])
-                      if (allowed(page))
-                        ListTile(
-                          leading: Icon(sectionIcon(page)),
-                          title: Text(page),
-                          selected: model.screen == page,
-                          onTap: () {
-                            model.navigate(page);
-                            Navigator.pop(context);
-                          },
-                        ),
-                  ],
+              ListTile(
+                leading: const Icon(Icons.business_outlined),
+                title: const Text('Gestión clínica'),
+                onTap: () {
+                  Navigator.pop(context);
+                  model.selectBranch(ClinicalBranch.management);
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: SectionMenu(
+                  member: auth?.active,
+                  access: moduleAccess,
+                  onNavigate: (page) {
+                    Navigator.pop(context);
+                    model.navigate(page);
+                  },
+                  onAccount: auth == null
+                      ? null
+                      : () {
+                          Navigator.pop(context);
+                          openAccount(context);
+                        },
                 ),
-              for (final page in [
-                'Inicio',
-                'Escanear producto',
-                'Hospitalización',
-                'Pacientes',
-                'Formatos',
-                'Receta',
-                'Agenda',
-                if (auth?.active?.isPersonal != true) 'Checado',
-
-                'Producto y costos',
-                'Inicio guiado',
-                'Estadísticas',
-                'Inventario',
-                'Ajustes',
-              ])
-                if (allowed(page))
-                  ListTile(
-                    leading: Icon(sectionIcon(page)),
-                    title: Text(page),
-                    selected: model.screen == page,
-                    onTap: () {
-                      model.navigate(page);
-                      Navigator.pop(context);
-                    },
-                  ),
+              ),
             ],
           ),
         ),
       ),
+      bottomNavigationBar: bottomNavigation(),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -512,7 +545,10 @@ class CoreShell extends StatelessWidget {
                     selected: model.branch,
                     onChanged: model.selectBranch,
                   )
-                else
+                else if (![
+                  'Más',
+                  'Producción y grandes especies',
+                ].contains(model.screen))
                   DropdownButtonFormField<ClinicalBranch>(
                     initialValue: model.branch,
                     key: ValueKey(model.branch),
@@ -546,6 +582,28 @@ class CoreShell extends StatelessWidget {
                   )
                 else if (model.screen == 'Inicio')
                   ...home(context)
+                else if (model.screen == 'Más')
+                  SectionMenu(
+                    member: auth?.active,
+                    access: moduleAccess,
+                    initialGroup: model.branch == ClinicalBranch.management
+                        ? 'Administración y finanzas'
+                        : null,
+                    onNavigate: model.navigate,
+                    onAccount: auth == null ? null : () => openAccount(context),
+                  )
+                else if (model.screen == 'Cálculos')
+                  CalculationMenu(
+                    member: auth?.active,
+                    access: moduleAccess,
+                    onNavigate: model.navigate,
+                  )
+                else if (model.screen == 'Producción y grandes especies')
+                  ProductionMenu(
+                    member: auth?.active,
+                    access: moduleAccess,
+                    onNavigate: model.navigate,
+                  )
                 else if (model.screen == 'Cálculo rápido')
                   auth == null ||
                           [
@@ -753,13 +811,19 @@ class CoreShell extends StatelessWidget {
                         )
                 else if (model.screen == 'Agenda' ||
                     model.screen == 'Equipo y avisos' ||
-                    model.screen == 'Pendientes del equipo')
+                    model.screen == 'Pendientes del equipo' ||
+                    model.screen == 'Servicios' ||
+                    model.screen == 'Proveedores')
                   operations != null &&
                           auth?.active != null &&
                           auth?.offline != true
                       ? OperationsScreen(
                           key: ValueKey('operations:${model.screen}'),
-                          initialSection: model.screen == 'Equipo y avisos'
+                          initialSection: model.screen == 'Servicios'
+                              ? 'services'
+                              : model.screen == 'Proveedores'
+                              ? 'suppliers'
+                              : model.screen == 'Equipo y avisos'
                               ? 'messages'
                               : model.screen == 'Pendientes del equipo'
                               ? 'tasks'
@@ -1224,6 +1288,11 @@ class _ModuleSearch extends StatefulWidget {
 class _ModuleSearchState extends State<_ModuleSearch> {
   String query = '';
   static const pages = [
+    'Más',
+    'Cálculos',
+    'Producción y grandes especies',
+    'Servicios',
+    'Proveedores',
     'Agenda',
     'Pacientes',
     'Hospitalización',

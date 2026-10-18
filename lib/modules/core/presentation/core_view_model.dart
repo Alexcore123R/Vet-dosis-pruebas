@@ -5,7 +5,7 @@ import '../../offline/application/sync_engine.dart';
 enum ClinicalBranch {
   small('Pequeñas especies', Icons.pets_outlined),
   exotic('Exóticos / Silvestres', Icons.forest_outlined),
-  production('Grandes especies / Producción', Icons.agriculture_outlined),
+  production('Producción y grandes especies', Icons.agriculture_outlined),
   management('Gestión clínica', Icons.business_outlined);
 
   const ClinicalBranch(this.label, this.icon);
@@ -28,7 +28,11 @@ class CoreViewModel extends ChangeNotifier {
   };
   void selectBranch(ClinicalBranch value) {
     branch = value;
-    screen = 'Inicio';
+    screen = switch (value) {
+      ClinicalBranch.production => 'Producción y grandes especies',
+      ClinicalBranch.management => 'Más',
+      _ => 'Inicio',
+    };
     notifyListeners();
   }
 

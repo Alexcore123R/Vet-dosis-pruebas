@@ -152,7 +152,7 @@ void main() {
         for (final (label, branch) in [
           ('Pequeñas especies', ClinicalBranch.small),
           ('Exóticos', ClinicalBranch.exotic),
-          ('Grandes especies', ClinicalBranch.production),
+          ('Producción y grandes especies', ClinicalBranch.production),
           ('Gestión clínica', ClinicalBranch.management),
         ]) {
           await tester.ensureVisible(find.text(label));

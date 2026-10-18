@@ -131,7 +131,7 @@ class HomePracticeSelector extends StatelessWidget {
                                   switch (branch) {
                                     ClinicalBranch.small => 'Pequeñas especies',
                                     ClinicalBranch.exotic => 'Exóticos',
-                                    _ => 'Grandes especies',
+                                    _ => 'Producción y grandes especies',
                                   },
                                   textAlign: TextAlign.center,
                                   style: Theme.of(context).textTheme.labelLarge,
