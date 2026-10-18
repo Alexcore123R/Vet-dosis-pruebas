@@ -250,3 +250,17 @@ sesiones reales de ambas clínicas, anon, Storage y Edge. Esta instalación de
 esquema no acredita una beta clínica operativa. No repetir los workflows de
 instalación/ensayo inicial sobre el estado instalado: rechazan aplicaciones
 parciales o repetidas; las siguientes actualizaciones requieren candidatos aditivos.
+
+## Primera comprobación HTTP — 18 octubre, 00:00 UTC
+
+[39081160834](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39081160834)
+confirmó una clave pública válida mediante Auth settings (sin registrar su valor
+ni la respuesta) y rechazo HTTP **401 / 42501** para solicitudes anónimas a
+`app_module_workspace`, `ops_dashboard` e `inv_dashboard` con UUID centinela.
+No se consultaron expedientes ni se registraron cuerpos privados de respuesta.
+Esto cubre solo esos tres RPC sin sesión; no sustituye el aislamiento entre dos
+sesiones autenticadas, Storage ni Edge.
+
+La cuenta/clínica destinataria de las concesiones está pendiente de identificación
+por la usuaria. No se conceden capacidades por deducirlas de un puesto ni se
+convierte una concesión operativa en habilitación profesional.
