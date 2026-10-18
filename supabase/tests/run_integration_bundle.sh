@@ -27,6 +27,8 @@ if [ "${1:-}" = '--observed-catalog-rehearsal' ];then
   tail -c 6000 "$work_dir/catalog-adjustments.log";exit 1;
  }
  echo 'Rehearsing selected remote catalog differences in isolated PostgreSQL only.'
+elif [ "${1:-}" = '--operational-access-test' ];then
+ :
 elif [ "$#" -ne 0 ];then
  echo 'Unknown rehearsal option';exit 1
 fi
@@ -77,3 +79,10 @@ do $$begin
 end$$;
 SQL
 echo 'Atomic 23-candidate rollout passed: rollback, partial/repeat rejection, unchanged counts and final function fingerprints.'
+
+if [ "${1:-}" = '--operational-access-test' ];then
+ python3 supabase/tests/operational_beta_access_trial.py | docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 > "$work_dir/operational-access.log" 2>&1 || {
+  tail -c 6000 "$work_dir/operational-access.log";exit 1;
+ }
+ echo 'Operational beta profile passed: rollback, owner scope, no professional authority, no renewal, module visibility and immutable patient.'
+fi

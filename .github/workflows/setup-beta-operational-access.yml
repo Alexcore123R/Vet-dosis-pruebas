@@ -1,0 +1,49 @@
+name: Configurar acceso operativo beta (sin habilitación profesional)
+on:
+  workflow_dispatch:
+    inputs:
+      clinic_email:
+        description: Correo de la titular de la clínica que solicitó la prueba
+        type: string
+        required: true
+      platform_email:
+        description: Correo separado de administración de plataforma
+        type: string
+        required: true
+      clinic_name:
+        description: Nombre exacto de la clínica de prueba
+        type: string
+        required: true
+      apply:
+        description: Aplicar concesiones; false solo ensaya con ROLLBACK
+        type: boolean
+        default: false
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: supabase-test-beta-preparation
+  cancel-in-progress: false
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar protecciones y ensayar perfil en PostgreSQL aislado
+        run: |
+          python3 -m unittest discover -s scripts/supabase -p 'test_*.py'
+          bash supabase/tests/run_integration_bundle.sh --operational-access-test
+      - name: Configurar solo el acceso solicitado de la titular
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          CLINIC_EMAIL: ${{ inputs.clinic_email }}
+          PLATFORM_EMAIL: ${{ inputs.platform_email }}
+          CLINIC_NAME: ${{ inputs.clinic_name }}
+          APPLY_OPTION: ${{ inputs.apply && '--apply' || '' }}
+        run: python3 scripts/supabase/beta_operational_access.py $APPLY_OPTION
+      - uses: actions/upload-artifact@v4
+        with:
+          name: beta-operational-access
+          path: beta-operational-access.json
+          retention-days: 7
