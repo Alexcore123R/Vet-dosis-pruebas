@@ -5,6 +5,9 @@ import 'package:vetdosis_pro/modules/core/data/settings_repository.dart';
 import 'package:vetdosis_pro/modules/core/presentation/core_view_model.dart';
 import 'package:vetdosis_pro/modules/auth/presentation/auth_view_model.dart';
 import 'support/fake_auth.dart' as auth_fixture;
+import 'patients_test.dart' show FakePatients;
+import 'hospital_test.dart' as hospital_fixture;
+import 'package:vetdosis_pro/modules/hospital/domain/hospital_models.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -182,6 +185,85 @@ void main() {
     model.dispose();
     auth.dispose();
     await repository.controller.close();
+  });
+
+  testWidgets('patient draft survives list disposal during permission revalidation', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = auth_fixture.FakeAuth();
+    repository.rows = [const ClinicMembership(
+      clinicId: 'a', clinicName: 'Synthetic clinic', userId: 'user-a', role: ClinicRole.admin,
+    )];
+    final auth = AuthViewModel(repository);
+    await auth.start();
+    final model = CoreViewModel(SettingsRepository(), const AppSettings());
+    model.navigate('Pacientes');
+    final patients = FakePatients();
+    Widget app(ModuleAccess access) => MaterialApp(home: CoreShell(
+      model: model, auth: auth, patients: patients, moduleAccess: access,
+    ));
+    await tester.pumpWidget(app(ModuleAccess.read(contract(enabled: 'patients'))));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Nuevo paciente'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Nombre del paciente'), 'Paciente temporal');
+    await tester.enterText(find.widgetWithText(TextField, 'Especie'), 'Sintética');
+    await tester.pumpWidget(app(ModuleAccess.denied));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(app(ModuleAccess.read(contract(enabled: 'patients'))));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Crear paciente'), 250,
+      scrollable: find.byType(Scrollable).last);
+    await tester.tap(find.text('Crear paciente'));
+    await tester.pumpAndSettle();
+    expect(patients.writes, 1);
+    expect(find.widgetWithText(TextField, 'Nombre del paciente'), findsNothing);
+    expect(find.text('No se pudo guardar.'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    model.dispose();auth.dispose();await repository.controller.close();
+  });
+
+  testWidgets('hospital admission draft survives permission revalidation', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = auth_fixture.FakeAuth();
+    repository.rows = [const ClinicMembership(
+      clinicId: 'a', clinicName: 'Synthetic clinic', userId: 'user-a', role: ClinicRole.admin,
+    )];
+    final auth = AuthViewModel(repository);
+    await auth.start();
+    final model = CoreViewModel(SettingsRepository(), const AppSettings());
+    model.navigate('Hospitalización');
+    final hospital = hospital_fixture.FakeHospital();
+    hospital.snapshot = const HospitalSnapshot([], [], optionalCage: true,
+      permissions: {'hospital.manage': true, 'hospital.read': true});
+    final alerts = await hospital_fixture.alerts(hospital_fixture.FakeAlarms());
+    Widget app(ModuleAccess access) => MaterialApp(home: CoreShell(
+      model: model, auth: auth, patients: FakePatients(), hospital: hospital,
+      hospitalAlerts: alerts, moduleAccess: access,
+    ));
+    await tester.pumpWidget(app(ModuleAccess.read(contract(enabled: 'hospital'))));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ingresar paciente'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Paciente ficticio').last);
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(app(ModuleAccess.denied));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(app(ModuleAccess.read(contract(enabled: 'hospital'))));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Registrar ingreso'));
+    await tester.pumpAndSettle();
+    expect(hospital.writes, 1);
+    expect(find.text('Registrar ingreso'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    model.dispose();auth.dispose();await repository.controller.close();
   });
 
   testWidgets('failed permissions show retry without enabling modules', (

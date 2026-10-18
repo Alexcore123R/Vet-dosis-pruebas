@@ -302,6 +302,14 @@ class _FormsScreenState extends State<FormsScreen> {
             child: const Text('Casos clínicos, mediciones y actuaciones'),
           ),
         Text('Plantillas', style: Theme.of(context).textTheme.titleLarge),
+        if (!model.busy && model.error == null && model.templates.isEmpty)
+          Text(
+            model.templateKnown && !model.capability('can_read')
+                ? 'Tu cuenta no tiene permiso para consultar plantillas. '
+                    'Revisa Permisos y habilitación.'
+                : 'No hay plantillas disponibles. Las plantillas deben '
+                    'configurarse y revisarse antes de usarlas.',
+          ),
         for (final version in model.templates)
           Card(
             child: Padding(

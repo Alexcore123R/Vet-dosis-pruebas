@@ -26,4 +26,4 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter analyze
-      - run: flutter test test/dashboard_test.dart test/dashboard_round2_test.dart test/module_navigation_dashboard_test.dart test/identity_test.dart test/neu_theme_test.dart
+      - run: flutter test test/dashboard_test.dart test/dashboard_round2_test.dart test/module_navigation_dashboard_test.dart test/identity_test.dart test/neu_theme_test.dart test/patients_test.dart test/hospital_flexible_test.dart test/forms_test.dart

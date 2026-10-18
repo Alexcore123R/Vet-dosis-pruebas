@@ -20,6 +20,7 @@ CODES = (
     'inventory.order.prepare','inventory.order.approve',
     'sales.collect','sales.read','sales.reverse','sales.reconcile','sales.manual','cash.move',
     'prescription.prepare','form.prepare','report.prepare','backup.export','workspace.manage',
+    'form.template.read','form.template.edit','form.branding.manage',
 )
 
 
@@ -43,7 +44,7 @@ def setup_sql(clinic_email,platform_email,clinic_name,*,commit=False,executor='l
     clinic_email,platform_email,clinic_name=inputs(clinic_email,platform_email,clinic_name)
     codes=','.join(literal(code) for code in CODES)
     origin=literal(json.dumps({'origin':'github_actions_administrative_setup',
-        'executor':executor,'run_id':run_id,'owner_requested':True,'profile':'operational_beta_v1'}))
+        'executor':executor,'run_id':run_id,'owner_requested':True,'profile':'operational_beta_v2'}))
     return f"""begin;
 set local lock_timeout='5s';
 set local statement_timeout='60s';
@@ -126,7 +127,7 @@ def main():
         if after['scope_count']!=1 or set(after['effective_codes'])!=set(CODES) or after['professional_current']!=before['professional_current']:
             raise SystemExit('Post-setup check incomplete. Inspect before any retry.')
     elif after!=before:raise SystemExit('Rehearsal rollback check differs.')
-    report={'project_ref':PROJECT,'applied':args.apply,'profile':'operational_beta_v1',
+    report={'project_ref':PROJECT,'applied':args.apply,'profile':'operational_beta_v2',
             'scope_count':after['scope_count'],'effective_codes':after['effective_codes'],
             'professional_current':after['professional_current'],'professional_authority_changed':False,
             'new_grants_valid_days':60,'existing_grants_extended':False,

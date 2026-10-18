@@ -21,6 +21,20 @@ void main() {
     expect(hospitalText(' ', allowEmpty: true), '');
     expect(() => hospitalText(' '), throwsFormatException);
   });
+  testWidgets('empty admission explains the missing patient and cannot submit', (
+    tester,
+  ) async {
+    var calls = 0;
+    await tester.pumpWidget(MaterialApp(home: HospitalAdmitForm(
+      patients: const [], optionalCage: true,
+      save: (_, _, _) async { calls++; return true; },
+    )));
+    expect(find.textContaining('No hay pacientes disponibles'), findsOneWidget);
+    expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed, isNull);
+    expect(calls, 0);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets(
     'Admission can save with just patient when optional cage is supported',
     (tester) async {

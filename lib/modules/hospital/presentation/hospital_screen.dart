@@ -134,25 +134,27 @@ class _HospitalScreenState extends State<HospitalScreen> {
     try {
       final patients = await widget.patients.patients(widget.member.clinicId);
       if (!mounted) return;
+      final repository = widget.repository;
+      final clinicId = widget.member.clinicId;
+      final optionalCage = model.snapshot.optionalCage;
       await Navigator.push(
         context,
         MaterialPageRoute<void>(
           builder: (_) => HospitalAdmitForm(
             patients: patients,
-            optionalCage: model.snapshot.optionalCage,
-            save: (patient, cage, op) => model.mutate(
-              () => widget.repository.admit(
-                widget.member.clinicId,
-                patient,
-                cage,
-                op,
-              ),
-              physician: true,
-              permission: 'hospital.manage',
-            ),
+            optionalCage: optionalCage,
+            save: (patient, cage, op) async {
+              try {
+                await repository.admit(clinicId, patient, cage, op);
+                return true;
+              } catch (_) {
+                return false;
+              }
+            },
           ),
         ),
       );
+      if (mounted) await model.refresh();
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

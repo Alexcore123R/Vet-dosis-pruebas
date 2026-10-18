@@ -1,0 +1,32 @@
+name: Corregir guardado de zona horaria beta
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        type: boolean
+        default: false
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: supabase-test-beta-preparation
+  cancel-in-progress: false
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s scripts/supabase -p 'test_*.py'
+      - name: Reproducir fallo y probar corrección sin conservar escrituras
+        run: bash supabase/tests/run_integration_bundle.sh --operational-access-test
+      - name: Corregir solo la función revisada en pruebas
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          APPLY_OPTION: ${{ inputs.apply && '--apply' || '' }}
+        run: python3 scripts/supabase/fix_beta_timezone.py $APPLY_OPTION
+      - uses: actions/upload-artifact@v4
+        with:
+          name: timezone-fix-report
+          path: timezone-fix-report.json
+          retention-days: 7

@@ -83,6 +83,14 @@ class _HospitalAdmitFormState extends State<HospitalAdmitForm> {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
+          if (widget.patients.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 16),
+              child: Text(
+                'No hay pacientes disponibles para ingresar. '
+                'Registra un paciente y actualiza hospitalización.',
+              ),
+            ),
           DropdownButtonFormField<String>(
             initialValue: patientId,
             isExpanded: true,
@@ -118,7 +126,7 @@ class _HospitalAdmitFormState extends State<HospitalAdmitForm> {
             ),
           const SizedBox(height: 16),
           FilledButton(
-            onPressed: busy ? null : save,
+            onPressed: busy || widget.patients.isEmpty ? null : save,
             child: const Text('Registrar ingreso'),
           ),
         ],

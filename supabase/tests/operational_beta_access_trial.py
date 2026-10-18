@@ -44,3 +44,21 @@ print("""do $$declare modules jsonb;begin
  then raise exception 'Administrative executor provenance missing';end if;
 end$$;""")
 print(f"do $$begin if (select count(*) from private.member_permission_grants)<>{len(CODES)} then raise exception 'Wrong operational scope';end if;end$$;")
+
+from diagnose_beta_writes import diagnostic_sql
+print("create temporary table probe_counts as select (select count(*) from public.vet_patients) patients,(select count(*) from public.vet_owners) owners,(select count(*) from public.inventory_clinic_settings) settings;")
+print(diagnostic_sql(*args))
+print("""do $$declare r jsonb;begin
+ r=pg_temp.vd_beta_write_probe();
+ if r#>>'{probes,0,passed}'<>'true' or r#>>'{probes,1,passed}'<>'true'
+ or r#>>'{probes,2,sqlstate}'<>'23502' then raise exception 'Timezone failure not reproduced';end if;
+end$$;""")
+print(open('supabase/proposed/14C_inventory_timezone_audit.sql').read())
+print("""do $$declare r jsonb;begin
+ r=pg_temp.vd_beta_write_probe();
+ if exists(select 1 from jsonb_array_elements(r->'probes') p where p->>'passed'<>'true')
+ then raise exception 'Controlled writes still fail after targeted fix';end if;
+ if exists(select 1 from probe_counts where patients<>(select count(*) from public.vet_patients)
+ or owners<>(select count(*) from public.vet_owners) or settings<>(select count(*) from public.inventory_clinic_settings))
+ then raise exception 'Controlled diagnostic retained synthetic writes';end if;
+end$$;""")

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../auth/domain/clinic_membership.dart';
+import '../../core/domain/plan_errors.dart';
 import '../domain/patient_models.dart';
 import '../domain/patient_repository.dart';
 import 'patient_view_model.dart';
@@ -63,17 +64,32 @@ class _PatientsScreenState extends State<PatientsScreen> {
   }
 
   Future<void> create() async {
-    await Navigator.push(
+    // The route can outlive the list while permissions are refreshed. Capture
+    // its repository/scope, not the list controller that may be disposed.
+    final repository = widget.repository;
+    final clinicId = widget.member.clinicId;
+    final owners = List<VetOwner>.unmodifiable(model.owners);
+    final saved = await Navigator.push<bool>(
       context,
-      MaterialPageRoute<void>(
+      MaterialPageRoute<bool>(
         builder: (_) => PatientForm(
-          owners: model.owners,
-          save: (p, o, id) async => (await model.create(p, o, id))
-              ? null
-              : model.error ?? 'No se pudo guardar.',
+          owners: owners,
+          save: (patient, owner, operation) async {
+            try {
+              await repository.createPatient(clinicId, patient, owner, operation);
+              return null;
+            } on FormatException catch (e) {
+              return e.message.toString();
+            } catch (e) {
+              return planActionError(e) ??
+                  'No se pudo guardar. Revisa conexión y permisos; '
+                      'puedes reintentar con este formulario sin duplicar el registro.';
+            }
+          },
         ),
       ),
     );
+    if (mounted && saved == true) await model.load();
   }
 
   Future<void> add(EventKind kind) async {
