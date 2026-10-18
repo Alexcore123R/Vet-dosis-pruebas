@@ -1,0 +1,56 @@
+name: Revisar separación de cuentas (solo lectura)
+on:
+  workflow_dispatch:
+    inputs:
+      clinic_email:
+        description: Correo de la cuenta de clínica
+        required: true
+        type: string
+      platform_email:
+        description: Correo de administración de plataforma
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: supabase-test-beta-preparation
+  cancel-in-progress: false
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Consultar roles sin modificar cuentas ni imprimir correos
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          CLINIC_EMAIL: ${{ inputs.clinic_email }}
+          PLATFORM_EMAIL: ${{ inputs.platform_email }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          sys.path.insert(0, 'scripts/supabase')
+          from identity_schema import query
+
+          def checked_email(key):
+              value = os.environ[key].strip().lower()
+              if not value or len(value)>254 or '@' not in value or any(c in value for c in "\r\n"):
+                  raise SystemExit('Correo de entrada inválido.')
+              return value.replace("'", "''")
+
+          accounts = [('cuenta_clinica', checked_email('CLINIC_EMAIL')),
+                      ('cuenta_plataforma', checked_email('PLATFORM_EMAIL'))]
+          if accounts[0][1] == accounts[1][1]:
+              raise SystemExit('Las dos cuentas deben ser distintas.')
+          for label, email in accounts:
+              sql = f"""select
+                exists(select 1 from auth.users u where lower(btrim(u.email))='{email}') as existe,
+                (select count(*) from public.clinic_members m join auth.users u on u.id=m.user_id
+                 where lower(btrim(u.email))='{email}') as membresias_clinica,
+                exists(select 1 from private.platform_admins p join auth.users u on u.id=p.user_id
+                 where lower(btrim(u.email))='{email}' and p.enabled) as admin_plataforma
+              """
+              result = query(sql)[0]
+              print(label + ': ' + json.dumps(result, sort_keys=True))
+          print('Revisión completada. No se modificaron datos ni permisos.')
+          PY
