@@ -1,3 +1,4 @@
+import '../../../vet_ui/vet_components.dart';
 import '../../auth/domain/staff_labels.dart';
 import 'appointment_patient_picker.dart';
 import '../../backup/domain/backup_archive.dart';
@@ -247,7 +248,9 @@ class _OperationsScreenState extends State<OperationsScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Operación de clínica',
+          activeSection == 'appointments'
+              ? 'Agenda y citas'
+              : 'Operación de clínica',
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const Text(
@@ -316,119 +319,148 @@ class _OperationsScreenState extends State<OperationsScreen> {
         if (activeSection == 'blocked')
           const Text('No tienes permiso para esta sección.'),
         if (activeSection == 'appointments') ...[
-          FilledButton(
+          VetActionButton(
+            label: 'Agendar cita',
+            icon: Icons.add,
             onPressed:
                 model.busy ||
                     (model.explicitPermissions &&
                         !model.allowed('appointment.manage'))
                 ? null
                 : newAppointment,
-            child: const Text('Agendar cita'),
           ),
-          ExpansionTile(
-            title: const Text('Calendario'),
-            children: [
-              CalendarDatePicker(
-                initialDate: calendarDay ?? DateTime.now(),
-                firstDate: DateTime.now().subtract(const Duration(days: 90)),
-                lastDate: DateTime(DateTime.now().year + 5, 12, 31),
-                onDateChanged: (d) => setState(() => calendarDay = d),
-              ),
-              TextButton(
-                onPressed: () => setState(() => calendarDay = null),
-                child: const Text('Mostrar todas las citas'),
-              ),
-            ],
+          VetCard(
+            padding: EdgeInsets.zero,
+            child: ExpansionTile(
+              title: const Text('Calendario'),
+              children: [
+                CalendarDatePicker(
+                  initialDate: calendarDay ?? DateTime.now(),
+                  firstDate: DateTime.now().subtract(const Duration(days: 90)),
+                  lastDate: DateTime(DateTime.now().year + 5, 12, 31),
+                  onDateChanged: (d) => setState(() => calendarDay = d),
+                ),
+                TextButton(
+                  onPressed: () => setState(() => calendarDay = null),
+                  child: const Text('Mostrar todas las citas'),
+                ),
+              ],
+            ),
           ),
+          if (!model.busy &&
+              model.error == null &&
+              model
+                  .rows('appointments')
+                  .where(
+                    (a) =>
+                        calendarDay == null ||
+                        DateUtils.isSameDay(
+                          DateTime.parse(a['starts_at'] as String).toLocal(),
+                          calendarDay,
+                        ),
+                  )
+                  .isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                calendarDay == null
+                    ? 'No hay citas registradas.'
+                    : 'No hay citas para el día seleccionado.',
+              ),
+            ),
           for (final a in model.rows('appointments').where((a) {
             if (calendarDay == null) return true;
             final d = DateTime.parse(a['starts_at'] as String).toLocal();
             return DateUtils.isSameDay(d, calendarDay);
           }))
-            Card(
-              child: ListTile(
-                onTap:
-                    a['patient_id'] != null &&
-                        widget.onOpenPatient != null &&
-                        (!model.explicitPermissions ||
-                            model.allowed('patient.read'))
-                    ? () => widget.onOpenPatient!(a['patient_id'] as String)
-                    : null,
-                title: Text(
-                  '${a['patient_name']} · ${a['kind']}${a['patient_id'] == null ? '' : ' · Vinculado al expediente'}',
-                ),
-                subtitle: Text(
-                  '${DateTime.parse(a['starts_at'] as String).toLocal()} · ${appointmentStateLabel(a['state'] as String)}\n${a['notes'] ?? ''}',
-                ),
-                trailing: PopupMenuButton<String>(
-                  enabled:
-                      !model.explicitPermissions ||
-                      model.allowed('appointment.manage'),
-                  onSelected: (state) => state == 'reprogramar'
-                      ? form(
-                          'Reprogramar cita',
-                          'appointment_reschedule',
-                          const [
-                            RxField(
-                              'starts_at',
-                              'Nuevo inicio',
-                              type: 'local_instant',
-                              required: true,
-                            ),
-                            RxField(
-                              'ends_at',
-                              'Nuevo fin',
-                              type: 'local_instant',
-                              required: true,
-                            ),
-                            RxField(
-                              'reason',
-                              'Motivo del cambio',
-                              required: true,
-                            ),
-                          ],
-                          initial: {
-                            'id': a['id'],
-                            'version': a['version'],
-                            'starts_at': a['starts_at'],
-                            'ends_at': a['ends_at'],
-                          },
-                        )
-                      : form(
-                          'Actualizar cita',
-                          'appointment_state',
-                          state == 'cancelado'
-                              ? const [
-                                  RxField(
-                                    'reason',
-                                    'Motivo de cancelación',
-                                    required: true,
-                                  ),
-                                ]
-                              : const [],
-                          initial: {
-                            'id': a['id'],
-                            'version': a['version'],
-                            'state': state,
-                          },
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: VetCard(
+                padding: EdgeInsets.zero,
+                child: ListTile(
+                  onTap:
+                      a['patient_id'] != null &&
+                          widget.onOpenPatient != null &&
+                          (!model.explicitPermissions ||
+                              model.allowed('patient.read'))
+                      ? () => widget.onOpenPatient!(a['patient_id'] as String)
+                      : null,
+                  title: Text(
+                    '${a['patient_name']} · ${a['kind']}${a['patient_id'] == null ? '' : ' · Vinculado al expediente'}',
+                  ),
+                  subtitle: Text(
+                    '${DateTime.parse(a['starts_at'] as String).toLocal()} · ${appointmentStateLabel(a['state'] as String)}\n${a['notes'] ?? ''}',
+                  ),
+                  trailing: PopupMenuButton<String>(
+                    enabled:
+                        !model.explicitPermissions ||
+                        model.allowed('appointment.manage'),
+                    onSelected: (state) => state == 'reprogramar'
+                        ? form(
+                            'Reprogramar cita',
+                            'appointment_reschedule',
+                            const [
+                              RxField(
+                                'starts_at',
+                                'Nuevo inicio',
+                                type: 'local_instant',
+                                required: true,
+                              ),
+                              RxField(
+                                'ends_at',
+                                'Nuevo fin',
+                                type: 'local_instant',
+                                required: true,
+                              ),
+                              RxField(
+                                'reason',
+                                'Motivo del cambio',
+                                required: true,
+                              ),
+                            ],
+                            initial: {
+                              'id': a['id'],
+                              'version': a['version'],
+                              'starts_at': a['starts_at'],
+                              'ends_at': a['ends_at'],
+                            },
+                          )
+                        : form(
+                            'Actualizar cita',
+                            'appointment_state',
+                            state == 'cancelado'
+                                ? const [
+                                    RxField(
+                                      'reason',
+                                      'Motivo de cancelación',
+                                      required: true,
+                                    ),
+                                  ]
+                                : const [],
+                            initial: {
+                              'id': a['id'],
+                              'version': a['version'],
+                              'state': state,
+                            },
+                          ),
+                    itemBuilder: (_) => [
+                      if (a['state'] == 'agendado')
+                        const PopupMenuItem(
+                          value: 'reprogramar',
+                          child: Text('Reprogramar'),
                         ),
-                  itemBuilder: (_) => [
-                    if (a['state'] == 'agendado')
-                      const PopupMenuItem(
-                        value: 'reprogramar',
-                        child: Text('Reprogramar'),
-                      ),
-                    for (final s in switch (a['state']) {
-                      'agendado' => ['en_atencion', 'cancelado'],
-                      'en_atencion' => ['listo', 'cancelado'],
-                      'listo' => ['entregado'],
-                      _ => <String>[],
-                    })
-                      PopupMenuItem(
-                        value: s,
-                        child: Text(appointmentStateLabel(s)),
-                      ),
-                  ],
+                      for (final s in switch (a['state']) {
+                        'agendado' => ['en_atencion', 'cancelado'],
+                        'en_atencion' => ['listo', 'cancelado'],
+                        'listo' => ['entregado'],
+                        _ => <String>[],
+                      })
+                        PopupMenuItem(
+                          value: s,
+                          child: Text(appointmentStateLabel(s)),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -634,7 +666,11 @@ class _OperationsScreenState extends State<OperationsScreen> {
               ),
             ),
         ],
-        if (!model.busy && model.rows(section).isEmpty)
+        if (!model.busy &&
+            model.error == null &&
+            activeSection != 'appointments' &&
+            activeSection != 'blocked' &&
+            model.rows(section).isEmpty)
           const Padding(
             padding: EdgeInsets.all(16),
             child: Text('Sin registros visibles en esta sección.'),

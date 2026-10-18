@@ -1,3 +1,4 @@
+import '../../../vet_ui/vet_components.dart';
 import '../../doses/domain/quantity.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -278,24 +279,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       constraints: BoxConstraints(
                         maxWidth: MediaQuery.sizeOf(context).width - 48,
                       ),
-                      child: WorkspacePanel(
-                        child: InkWell(
-                          onTap: () => widget.onNavigate(action.$2),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(sectionIcon(action.$2), size: 20),
-                                const SizedBox(width: 8),
-                                Flexible(child: Text(action.$1)),
-                              ],
-                            ),
-                          ),
-                        ),
+                      child: VetActionButton(
+                        label: action.$1,
+                        icon: sectionIcon(action.$2),
+                        style: VetActionStyle.neutral,
+                        onPressed: () => widget.onNavigate(action.$2),
                       ),
                     ),
               ],
