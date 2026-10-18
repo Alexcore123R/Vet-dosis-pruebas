@@ -472,6 +472,8 @@ class CoreShell extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1100),
             child: ListView(
+              key: ValueKey((auth?.active?.userId, auth?.active?.clinicId,
+                model.branch, model.screen)),
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 220),
               children: [
                 if (auth?.offline == true) ...[

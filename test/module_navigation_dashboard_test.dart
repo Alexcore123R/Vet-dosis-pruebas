@@ -266,6 +266,27 @@ void main() {
     model.dispose();auth.dispose();await repository.controller.close();
   });
 
+  testWidgets('returning home resets the previous module scroll and reveals search', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final model = CoreViewModel(SettingsRepository(), const AppSettings());
+    await tester.pumpWidget(VetDosisApp(model: model));
+    await tester.pumpAndSettle();
+    final search = find.widgetWithText(TextField, 'Buscar apartados y herramientas');
+    expect(search.hitTestable(), findsOneWidget);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -900));
+    await tester.pumpAndSettle();
+    model.navigate('Ajustes');
+    await tester.pumpAndSettle();
+    model.navigate('Inicio');
+    await tester.pumpAndSettle();
+    expect(search.hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    model.dispose();
+  });
+
   testWidgets('failed permissions show retry without enabling modules', (
     tester,
   ) async {
