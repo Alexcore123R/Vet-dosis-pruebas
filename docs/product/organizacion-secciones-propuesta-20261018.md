@@ -119,3 +119,11 @@ futuros, no un inventario de funcionalidades completadas.
 
 No se ha modificado la navegación con esta propuesta ni se ha aprobado el mapa
 por la usuaria todavía. Este documento se añade al PR para revisión conceptual.
+
+## Ampliación: menú por especie en producción
+
+La usuaria propone una segunda selección de bovinos, ovinos/caprinos, aves
+(postura/engorda), peces, abejas, porcinos y equinos. Se desarrolla en
+[Menú por especie y actividad](produccion-menu-especies-propuesta-20261018.md),
+con enlaces conceptuales a los módulos avícolas existentes y ubicación de sus
+materiales de clase. Es una propuesta; no activa nuevos destinos ni referencias.
