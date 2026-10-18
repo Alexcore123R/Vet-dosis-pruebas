@@ -239,7 +239,7 @@ void main() {
     model.navigate('Hospitalización');
     final hospital = hospital_fixture.FakeHospital();
     hospital.snapshot = const HospitalSnapshot([], [], optionalCage: true,
-      permissions: {'hospital.manage': true, 'hospital.read': true});
+      permissions: {'hospital.manage': true, 'hospital.read': true, 'patient.read': true});
     final alerts = await hospital_fixture.alerts(hospital_fixture.FakeAlarms());
     Widget app(ModuleAccess access) => MaterialApp(home: CoreShell(
       model: model, auth: auth, patients: FakePatients(), hospital: hospital,
