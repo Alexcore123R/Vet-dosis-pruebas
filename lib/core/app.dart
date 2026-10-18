@@ -1,3 +1,4 @@
+import '../modules/dashboard/presentation/home_pilot.dart';
 import '../vet_ui/vet_theme.dart';
 import '../modules/beta/domain/beta_repository.dart';
 import '../modules/beta/presentation/beta_boundary.dart';
@@ -291,7 +292,14 @@ class CoreShell extends StatelessWidget {
   bool allowed(String page) =>
       navigationAllowed(page, auth?.active, moduleAccess);
   @override
-  Widget build(BuildContext context) => PopScope(
+  Widget build(BuildContext context) => model.screen == 'Inicio'
+      ? Theme(
+          data: homePilotTheme(Theme.of(context)),
+          child: Builder(builder: _buildShell),
+        )
+      : _buildShell(context);
+
+  Widget _buildShell(BuildContext context) => PopScope(
     canPop: model.screen == 'Inicio',
     onPopInvokedWithResult: (didPop, result) {
       if (!didPop) model.navigate('Inicio');
@@ -499,30 +507,36 @@ class CoreShell extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                 ],
-                DropdownButtonFormField<ClinicalBranch>(
-                  initialValue: model.branch,
-                  key: ValueKey(model.branch),
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Rama de trabajo',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: ClinicalBranch.values
-                      .map(
-                        (branch) => DropdownMenuItem(
-                          value: branch,
-                          child: Text(
-                            branch.label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                if (model.screen == 'Inicio')
+                  HomePracticeSelector(
+                    selected: model.branch,
+                    onChanged: model.selectBranch,
+                  )
+                else
+                  DropdownButtonFormField<ClinicalBranch>(
+                    initialValue: model.branch,
+                    key: ValueKey(model.branch),
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Rama de trabajo',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: ClinicalBranch.values
+                        .map(
+                          (branch) => DropdownMenuItem(
+                            value: branch,
+                            child: Text(
+                              branch.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (branch) {
-                    if (branch != null) model.selectBranch(branch);
-                  },
-                ),
+                        )
+                        .toList(),
+                    onChanged: (branch) {
+                      if (branch != null) model.selectBranch(branch);
+                    },
+                  ),
                 const SizedBox(height: 28),
                 if (auth?.active != null &&
                     moduleAccess != null &&
@@ -933,6 +947,7 @@ class CoreShell extends StatelessWidget {
         moduleAccess: moduleAccess,
       ),
       offline: auth?.offline ?? false,
+      homePilot: true,
       alerts: hospitalAlerts,
       onNavigate: model.navigate,
     ),
