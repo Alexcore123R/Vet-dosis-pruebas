@@ -3,7 +3,7 @@ import '../../../core/widgets/workspace_panel.dart';
 import '../../../vet_ui/vet_theme.dart';
 import '../../core/presentation/core_view_model.dart';
 
-/// Presentation scoped to Inicio and Agenda. It never changes membership or access.
+/// Presentation scoped to Inicio, Agenda and Pacientes. It never changes membership or access.
 ThemeData homePilotTheme(ThemeData base) {
   final dark = base.brightness == Brightness.dark;
   return base.copyWith(

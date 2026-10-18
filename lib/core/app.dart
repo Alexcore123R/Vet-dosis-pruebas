@@ -353,7 +353,9 @@ class CoreShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      (model.screen == 'Inicio' || model.screen == 'Agenda')
+      (model.screen == 'Inicio' ||
+          model.screen == 'Agenda' ||
+          model.screen == 'Pacientes')
       ? Theme(
           data: homePilotTheme(Theme.of(context)),
           child: Builder(builder: _buildShell),
@@ -871,21 +873,27 @@ class CoreShell extends StatelessWidget {
                               patients != null && allowed('Pacientes')
                               ? (id) async {
                                   final member = auth!.active!;
+                                  final patientTheme = homePilotTheme(
+                                    Theme.of(context),
+                                  );
                                   await Navigator.push(
                                     context,
                                     MaterialPageRoute<void>(
-                                      builder: (_) => Scaffold(
-                                        appBar: AppBar(
-                                          title: const Text(
-                                            'Paciente de la cita',
+                                      builder: (_) => Theme(
+                                        data: patientTheme,
+                                        child: Scaffold(
+                                          appBar: AppBar(
+                                            title: const Text(
+                                              'Paciente de la cita',
+                                            ),
                                           ),
-                                        ),
-                                        body: SingleChildScrollView(
-                                          padding: const EdgeInsets.all(20),
-                                          child: PatientsScreen(
-                                            repository: patients!,
-                                            member: member,
-                                            initialPatientId: id,
+                                          body: SingleChildScrollView(
+                                            padding: const EdgeInsets.all(20),
+                                            child: PatientsScreen(
+                                              repository: patients!,
+                                              member: member,
+                                              initialPatientId: id,
+                                            ),
                                           ),
                                         ),
                                       ),

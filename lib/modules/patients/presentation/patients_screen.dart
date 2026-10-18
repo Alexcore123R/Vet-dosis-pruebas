@@ -1,3 +1,5 @@
+import '../../../core/widgets/workspace_panel.dart';
+import 'patient_catalog.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../auth/domain/clinic_membership.dart';
@@ -28,7 +30,9 @@ class PatientsScreen extends StatefulWidget {
 
 class _PatientsScreenState extends State<PatientsScreen> {
   late final PatientViewModel model;
+  final search = TextEditingController();
   String query = '';
+  String? species;
   @override
   void initState() {
     super.initState();
@@ -60,6 +64,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
   @override
   void dispose() {
     model.dispose();
+    search.dispose();
     super.dispose();
   }
 
@@ -69,23 +74,32 @@ class _PatientsScreenState extends State<PatientsScreen> {
     final repository = widget.repository;
     final clinicId = widget.member.clinicId;
     final owners = List<VetOwner>.unmodifiable(model.owners);
+    final theme = Theme.of(context);
     final saved = await Navigator.push<bool>(
       context,
       MaterialPageRoute<bool>(
-        builder: (_) => PatientForm(
-          owners: owners,
-          save: (patient, owner, operation) async {
-            try {
-              await repository.createPatient(clinicId, patient, owner, operation);
-              return null;
-            } on FormatException catch (e) {
-              return e.message.toString();
-            } catch (e) {
-              return planActionError(e) ??
-                  'No se pudo guardar. Revisa conexión y permisos; '
-                      'puedes reintentar con este formulario sin duplicar el registro.';
-            }
-          },
+        builder: (_) => Theme(
+          data: theme,
+          child: PatientForm(
+            owners: owners,
+            save: (patient, owner, operation) async {
+              try {
+                await repository.createPatient(
+                  clinicId,
+                  patient,
+                  owner,
+                  operation,
+                );
+                return null;
+              } on FormatException catch (e) {
+                return e.message.toString();
+              } catch (e) {
+                return planActionError(e) ??
+                    'No se pudo guardar. Revisa conexión y permisos; '
+                        'puedes reintentar con este formulario sin duplicar el registro.';
+              }
+            },
+          ),
         ),
       ),
     );
@@ -95,15 +109,19 @@ class _PatientsScreenState extends State<PatientsScreen> {
   Future<void> add(EventKind kind) async {
     final patient = model.selected;
     if (patient == null) return;
+    final theme = Theme.of(context);
     await Navigator.push(
       context,
       MaterialPageRoute<void>(
-        builder: (_) => EventForm(
-          kind: kind,
-          patient: patient,
-          save: (data, id) async => (await model.add(kind, data, id))
-              ? null
-              : model.error ?? 'No se pudo guardar.',
+        builder: (_) => Theme(
+          data: theme,
+          child: EventForm(
+            kind: kind,
+            patient: patient,
+            save: (data, id) async => (await model.add(kind, data, id))
+                ? null
+                : model.error ?? 'No se pudo guardar.',
+          ),
         ),
       ),
     );
@@ -146,6 +164,23 @@ class _PatientsScreenState extends State<PatientsScreen> {
     listenable: model,
     builder: (context, _) {
       final patient = model.selected;
+      final speciesNames = <String, String>{
+        for (final p in model.patients)
+          if (p.species.trim().isNotEmpty)
+            patientSearchText(p.species): p.species.trim(),
+      };
+      final selectedSpecies = speciesNames.containsKey(species)
+          ? species
+          : null;
+      final speciesKeys = speciesNames.keys.toList()..sort();
+      final matches = model.patients
+          .where(
+            (p) =>
+                (selectedSpecies == null ||
+                    patientSearchText(p.species) == selectedSpecies) &&
+                patientSearchText('${p.name} ${p.species}').contains(query),
+          )
+          .toList();
       VetOwner? owner;
       if (patient != null && model.access.owners) {
         for (final o in model.owners) {
@@ -191,11 +226,12 @@ class _PatientsScreenState extends State<PatientsScreen> {
             ),
           const SizedBox(height: 16),
           TextField(
+            controller: search,
             decoration: const InputDecoration(
               labelText: 'Buscar paciente o especie',
               prefixIcon: Icon(Icons.search),
             ),
-            onChanged: (s) => setState(() => query = s.toLowerCase().trim()),
+            onChanged: (s) => setState(() => query = patientSearchText(s)),
           ),
           if (model.patients.isEmpty && !model.busy && model.error == null)
             const Padding(
@@ -204,26 +240,63 @@ class _PatientsScreenState extends State<PatientsScreen> {
                 'Todavía no hay pacientes registrados en esta clínica.',
               ),
             ),
-          for (final p in model.patients.where(
-            (p) => '${p.name} ${p.species}'.toLowerCase().contains(query),
-          ))
-            ListTile(
-              title: Text(p.name),
-              subtitle: Text('${p.species} · ${p.breed}'),
+          if (!model.busy &&
+              model.error == null &&
+              model.patients.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  ChoiceChip(
+                    label: const Text('Todas las especies'),
+                    selected: selectedSpecies == null,
+                    onSelected: (_) => setState(() => species = null),
+                  ),
+                  for (final key in speciesKeys)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: ChoiceChip(
+                        label: Text(speciesNames[key]!),
+                        selected: selectedSpecies == key,
+                        onSelected: (_) => setState(() => species = key),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '${matches.length} coincidencias de ${model.patients.length} pacientes cargados',
+            ),
+            if (matches.isEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Text(
+                  'No hay pacientes que coincidan con la búsqueda y la especie.',
+                ),
+              ),
+              TextButton(
+                onPressed: () => setState(() {
+                  search.clear();
+                  query = '';
+                  species = null;
+                }),
+                child: const Text('Limpiar búsqueda y filtros'),
+              ),
+            ],
+          ],
+          for (final p in matches)
+            PatientCatalogTile(
+              patient: p,
               selected: patient?.id == p.id,
               onTap: model.busy ? null : () => model.select(p),
             ),
           if (patient != null) ...[
             const Divider(height: 32),
-            Text(
-              '${patient.name} · ${patient.species}',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            Text(
-              '${patient.sex} · Nacimiento: ${patient.birthDate ?? 'Pendiente'}',
-            ),
+            PatientIdentity(patient: patient),
             if (model.access.owners)
-              Card(
+              WorkspacePanel(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: owner == null
@@ -267,12 +340,17 @@ class _PatientsScreenState extends State<PatientsScreen> {
                 ],
               ),
               const SizedBox(height: 20),
+              Text(
+                'Historial clínico',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
               WeightChart(events: model.events),
               const Divider(height: 32),
               if (model.events.isEmpty && !model.busy)
                 const Text('Sin entradas clínicas registradas.'),
               for (final event in model.events.reversed)
-                Card(
+                WorkspacePanel(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -354,7 +432,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
                         },
                         const SizedBox(height: 8),
                         Text(
-                          'Registrado: ${event.createdAt.toLocal()} · Usuario: ${event.createdBy}',
+                          'Registrado: ${patientEventTimestamp(context, event.createdAt)} · Usuario: ${event.createdBy}',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],

@@ -1,3 +1,4 @@
+import 'package:vetdosis_pro/modules/patients/presentation/patient_form.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vetdosis_pro/core/app.dart';
@@ -214,7 +215,7 @@ void main() {
     await tester.pumpWidget(app(ModuleAccess.read(contract(enabled: 'patients'))));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Crear paciente'), 250,
-      scrollable: find.byType(Scrollable).last);
+      scrollable: find.descendant(of: find.byType(PatientForm), matching: find.byType(Scrollable)).first);
     await tester.tap(find.text('Crear paciente'));
     await tester.pumpAndSettle();
     expect(patients.writes, 1);
