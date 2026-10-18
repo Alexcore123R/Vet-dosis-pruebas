@@ -91,7 +91,8 @@ void main() {
     tester,
   ) async {
     await mount(tester, PermissionFake());
-    expect(find.textContaining('Migración en preparación'), findsOneWidget);
+    expect(find.textContaining('La beta sigue en preparación'), findsOneWidget);
+    expect(find.textContaining('el puesto no concede acceso'), findsOneWidget);
     expect(find.text('Sin habilitación vigente'), findsOneWidget);
     expect(find.text('Proponer responsable'), findsNothing);
     expect(find.text('Revisar evidencia'), findsNothing);
