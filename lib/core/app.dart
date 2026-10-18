@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+import '../modules/finance/presentation/financial_planning_panel.dart';
 import '../modules/core/presentation/section_menu.dart';
 import '../modules/production/presentation/production_menu.dart';
 import '../modules/dashboard/presentation/home_pilot.dart';
@@ -350,7 +352,8 @@ class CoreShell extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => model.screen == 'Inicio'
+  Widget build(BuildContext context) =>
+      (model.screen == 'Inicio' || model.screen == 'Agenda')
       ? Theme(
           data: homePilotTheme(Theme.of(context)),
           child: Builder(builder: _buildShell),
@@ -364,8 +367,28 @@ class CoreShell extends StatelessWidget {
     },
     child: Scaffold(
       appBar: AppBar(
-        toolbarHeight: auth?.active == null ? 56 : 68,
+        toolbarHeight: auth?.active == null
+            ? 56
+            : math.max(
+                68,
+                (model.screen == 'Inicio'
+                        ? 44.0
+                        : MediaQuery.textScalerOf(context).scale(
+                                Theme.of(
+                                      context,
+                                    ).textTheme.titleLarge?.fontSize ??
+                                    22,
+                              ) *
+                              1.4) +
+                    MediaQuery.textScalerOf(context).scale(
+                          Theme.of(context).textTheme.labelSmall?.fontSize ??
+                              11,
+                        ) *
+                        1.4 +
+                    16,
+              ),
         title: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (model.screen == 'Inicio')
@@ -375,13 +398,17 @@ class CoreShell extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: Image.asset(
-                  'assets/brand/vetdosis-logo.png',
-                  width: 140,
-                  height: 44,
-                  fit: BoxFit.cover,
-                  alignment: const Alignment(0, .3),
-                  semanticLabel: 'VetDosis Pro',
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Image.asset(
+                    'assets/brand/vetdosis-logo.png',
+                    width: 140,
+                    height: 44,
+                    fit: BoxFit.cover,
+                    alignment: const Alignment(0, .3),
+                    semanticLabel: 'VetDosis Pro',
+                  ),
                 ),
               )
             else
@@ -592,6 +619,16 @@ class CoreShell extends StatelessWidget {
                     onNavigate: model.navigate,
                     onAccount: auth == null ? null : () => openAccount(context),
                   )
+                else if (model.screen == 'Planeación financiera')
+                  allowed('Planeación financiera')
+                      ? FinancialPlanningPanel(
+                          key: ValueKey(
+                            '${auth?.active?.userId}:${auth?.active?.clinicId}',
+                          ),
+                        )
+                      : const Text(
+                          'Este apartado no está disponible con tus permisos actuales.',
+                        )
                 else if (model.screen == 'Cálculos')
                   CalculationMenu(
                     member: auth?.active,
@@ -1298,6 +1335,7 @@ class _ModuleSearchState extends State<_ModuleSearch> {
     'Hospitalización',
     'Inventario',
     'Caja',
+    'Planeación financiera',
     'Receta',
     'Formatos',
     'Cálculo rápido',

@@ -163,8 +163,12 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.textContaining('Vinculado al expediente'),
+      );
       await tester.tap(find.textContaining('Vinculado al expediente'));
       expect(opened, 'p1');
+      await tester.ensureVisible(find.text('Agendar cita'));
       await tester.tap(find.text('Agendar cita'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Paciente');

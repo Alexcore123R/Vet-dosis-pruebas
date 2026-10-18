@@ -1,3 +1,4 @@
+import 'appointment_summary.dart';
 import '../../../vet_ui/vet_components.dart';
 import '../../auth/domain/staff_labels.dart';
 import 'appointment_patient_picker.dart';
@@ -36,6 +37,19 @@ class _OperationsScreenState extends State<OperationsScreen> {
   );
   String section = 'appointments', filter = 'pendientes';
   DateTime? calendarDay;
+  String? appointmentState;
+  List<Map<String, dynamic>> get visibleAppointments => model
+      .rows('appointments')
+      .where(
+        (a) =>
+            (appointmentState == null || a['state'] == appointmentState) &&
+            (calendarDay == null ||
+                DateUtils.isSameDay(
+                  DateTime.parse(a['starts_at'] as String).toLocal(),
+                  calendarDay,
+                )),
+      )
+      .toList();
   bool get admin => widget.member.role == ClinicRole.admin;
   Map<String, String> get people => {
     for (final p in model.rows('members'))
@@ -305,6 +319,7 @@ class _OperationsScreenState extends State<OperationsScreen> {
                 child: const Text('Ficha médica privada'),
               ),
             IconButton(
+              tooltip: 'Actualizar registros',
               onPressed: model.busy ? null : model.load,
               icon: const Icon(Icons.refresh),
             ),
@@ -319,6 +334,13 @@ class _OperationsScreenState extends State<OperationsScreen> {
         if (activeSection == 'blocked')
           const Text('No tienes permiso para esta sección.'),
         if (activeSection == 'appointments') ...[
+          if (!model.busy && model.error == null)
+            AppointmentSummary(
+              rows: model.rows('appointments'),
+              selectedState: appointmentState,
+              onStateChanged: (value) =>
+                  setState(() => appointmentState = value),
+            ),
           VetActionButton(
             label: 'Agendar cita',
             icon: Icons.add,
@@ -347,32 +369,18 @@ class _OperationsScreenState extends State<OperationsScreen> {
               ],
             ),
           ),
-          if (!model.busy &&
-              model.error == null &&
-              model
-                  .rows('appointments')
-                  .where(
-                    (a) =>
-                        calendarDay == null ||
-                        DateUtils.isSameDay(
-                          DateTime.parse(a['starts_at'] as String).toLocal(),
-                          calendarDay,
-                        ),
-                  )
-                  .isEmpty)
+          if (!model.busy && model.error == null && visibleAppointments.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
-                calendarDay == null
+                appointmentState != null
+                    ? 'No hay citas con ese estado para la selección actual.'
+                    : calendarDay == null
                     ? 'No hay citas registradas.'
                     : 'No hay citas para el día seleccionado.',
               ),
             ),
-          for (final a in model.rows('appointments').where((a) {
-            if (calendarDay == null) return true;
-            final d = DateTime.parse(a['starts_at'] as String).toLocal();
-            return DateUtils.isSameDay(d, calendarDay);
-          }))
+          for (final a in visibleAppointments)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: VetCard(
@@ -388,8 +396,9 @@ class _OperationsScreenState extends State<OperationsScreen> {
                   title: Text(
                     '${a['patient_name']} · ${a['kind']}${a['patient_id'] == null ? '' : ' · Vinculado al expediente'}',
                   ),
-                  subtitle: Text(
-                    '${DateTime.parse(a['starts_at'] as String).toLocal()} · ${appointmentStateLabel(a['state'] as String)}\n${a['notes'] ?? ''}',
+                  subtitle: AppointmentDetails(
+                    appointment: a,
+                    stateLabel: appointmentStateLabel(a['state'] as String),
                   ),
                   trailing: PopupMenuButton<String>(
                     enabled:

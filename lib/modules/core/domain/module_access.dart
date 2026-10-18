@@ -94,7 +94,7 @@ bool moduleNavigationAllowed(
     'Pendientes del equipo' => access.module('agenda'),
     'Hospitalización' => access.module('hospital'),
     'Inventario' || 'Escanear producto' => access.module('inventory'),
-    'Caja' => access.module('sales'),
+    'Caja' || 'Planeación financiera' => access.module('sales'),
     'Receta' => access.module('prescriptions'),
     'Formatos' => access.module('forms') || access.module('clinical'),
     'Estadísticas' => access.module('statistics'),

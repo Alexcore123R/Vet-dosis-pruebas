@@ -165,7 +165,7 @@ void main() {
   }
 
   testWidgets(
-    'Pilot theme stays in Inicio and preserves appearance outside it',
+    'Pilot theme covers Inicio and Agenda while preserving other appearance',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       final core = CoreViewModel(SettingsRepository(), AppSettings(palette: 1));
@@ -181,6 +181,12 @@ void main() {
       core.navigate('Agenda');
       await tester.pumpAndSettle();
       expect(find.byType(HomePracticeSelector), findsNothing);
+      expect(
+        Theme.of(tester.element(find.byTooltip('Ajustes'))).colorScheme.primary,
+        isNot(original),
+      );
+      core.navigate('Ajustes');
+      await tester.pumpAndSettle();
       expect(
         Theme.of(tester.element(find.byTooltip('Ajustes'))).colorScheme.primary,
         original,

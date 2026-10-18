@@ -76,26 +76,25 @@ void main() {
     expect(find.text('Planeación financiera'), findsNothing);
   });
 
-  testWidgets(
-    'Planning is labelled as preparation and cannot open a fake workflow',
-    (tester) async {
-      String? opened;
-      await host(
-        tester,
-        SectionMenu(member: admin, onNavigate: (page) => opened = page),
-      );
-      await tester.enterText(find.byType(TextField), 'planeacion');
-      await tester.pumpAndSettle();
-      expect(find.text('Planeación financiera'), findsOneWidget);
-      expect(find.text('En preparación'), findsOneWidget);
-      final tile = tester.widget<ListTile>(
-        find.widgetWithText(ListTile, 'Planeación financiera'),
-      );
-      expect(tile.enabled, false);
-      expect(tile.onTap, isNull);
-      expect(opened, isNull);
-    },
-  );
+  testWidgets('Planning opens the simulator from the grouped menu', (
+    tester,
+  ) async {
+    String? opened;
+    await host(
+      tester,
+      SectionMenu(member: admin, onNavigate: (page) => opened = page),
+    );
+    await tester.enterText(find.byType(TextField), 'planeacion');
+    await tester.pumpAndSettle();
+    expect(find.text('Planeación financiera'), findsOneWidget);
+    expect(find.text('En preparación'), findsNothing);
+    final tile = tester.widget<ListTile>(
+      find.widgetWithText(ListTile, 'Planeación financiera'),
+    );
+    expect(tile.enabled, true);
+    await tester.tap(find.widgetWithText(ListTile, 'Planeación financiera'));
+    expect(opened, 'Planeación financiera');
+  });
 
   testWidgets('All species open an honest activity outline and shared tools', (
     tester,

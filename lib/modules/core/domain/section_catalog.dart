@@ -20,11 +20,12 @@ const sectionGroups = [
     'Inventario',
     'Escanear producto',
   ]),
-  SectionGroup(
-    'Administración y finanzas',
-    ['Caja', 'Servicios', 'Proveedores'],
-    planned: ['Planeación financiera'],
-  ),
+  SectionGroup('Administración y finanzas', [
+    'Caja',
+    'Planeación financiera',
+    'Servicios',
+    'Proveedores',
+  ]),
   SectionGroup('Equipo y comunicación', [
     'Equipo y avisos',
     'Pendientes del equipo',

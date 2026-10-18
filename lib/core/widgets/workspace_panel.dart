@@ -54,6 +54,7 @@ IconData sectionIcon(String page) => switch (page) {
   'Ayuda y soporte' => Icons.help_outline,
   'Estadísticas' => Icons.bar_chart_outlined,
   'Respaldo' || 'Estadísticas y respaldo' => Icons.backup_outlined,
+  'Planeación financiera' => Icons.trending_up,
   'Caja' => Icons.point_of_sale_outlined,
   'Equipo y avisos' || 'Pendientes del equipo' => Icons.forum_outlined,
   'Inventario' => Icons.inventory_2_outlined,

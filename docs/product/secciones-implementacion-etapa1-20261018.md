@@ -68,3 +68,9 @@ operaciones. No se incorpora la administración de plataforma al menú de clíni
 
 Estado de entrega: código en el PR #2; pendiente APK de la rama y prueba real en
 Android. No está incluido en el APK 39124259241 anterior.
+
+## Continuación
+
+La [segunda etapa](agenda-y-planeacion-etapa2-20261018.md) activa Planeación
+financiera como simulador mensual sin persistencia y amplía el piloto de Agenda.
+La etiqueta «En preparación» de la primera etapa es histórica para este destino.
