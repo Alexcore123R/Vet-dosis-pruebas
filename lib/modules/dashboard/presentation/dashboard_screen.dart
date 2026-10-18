@@ -241,6 +241,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const Text(
               'Conecta tu cuenta y elige una clínica para consultar sus datos.',
             ),
+          if (m.member != null &&
+              m.moduleAccess != null &&
+              m.moduleAccess!.modules.values.every((enabled) => !enabled))
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'No tienes accesos habilitados a las áreas de este espacio. '
+                'Revisa los permisos de tu cuenta con quien lo administra.',
+              ),
+            ),
           if (m.updated != null) Text('Última consulta: ${time(m.updated!)}'),
           if (m.busy) const LinearProgressIndicator(),
           if (navigationAllowed('Estadísticas', m.member, m.moduleAccess))

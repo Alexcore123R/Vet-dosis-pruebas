@@ -281,7 +281,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                     child: Padding(
                       padding: EdgeInsets.all(16),
                       child: Text(
-                        'Migración en preparación: estas concesiones aún no sustituyen los controles anteriores. La beta sigue cerrada.',
+                        'La beta sigue en preparación. Configura los permisos de cada persona; el puesto no concede acceso.',
                       ),
                     ),
                   ),
