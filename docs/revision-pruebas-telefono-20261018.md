@@ -56,6 +56,41 @@ El primer intento del test hospitalario no incluía `patient.read` en su fixture
 se corrigió la fixture, conservando los requisitos del servidor.
 
 Zona horaria y permisos de plantillas ya están corregidos en servidor. Los
-cambios de cliente todavía no están en un nuevo APK: el paquete anterior
-39082429107 carece de estas correcciones. Revisadas las siete capturas, se prepara
-una entrega conjunta; después repetir en teléfono, incluido membrete y checado.
+cambios de cliente están incluidos en la compilación 39124259241, aprobada sobre
+`ef54c78`. El paquete anterior 39082429107 carece de estas correcciones. Revisadas
+las siete capturas, queda repetir en teléfono, incluido membrete y checado.
+
+## Repetición en teléfono
+
+1. Actualizar la aplicación conservando su almacenamiento; comprobar que abre la
+   misma cuenta y clínica. Volver a Inicio y verificar el buscador arriba.
+2. Crear un paciente ficticio, dejar el formulario abierto durante una recarga de
+   acceso y guardar. Verificar que aparece una sola vez y conserva su tutor.
+3. Actualizar hospitalización, seleccionar ese paciente e ingresar sin jaula.
+   Verificar que jaula, peso y temperatura siguen siendo opcionales.
+4. Guardar America/Mexico_City y reabrir para comprobar persistencia.
+5. Actualizar Formatos; abrir «Logo y membrete de la clínica», guardar un cambio
+   de prueba y comprobarlo al reabrir. Esto no aprueba plantillas ni habilita MVZ.
+6. En Checado abrir «Ubicación y aviso», configurar únicamente datos reales de la
+   clínica y su aviso aprobado. Después generar QR y probar consentimiento,
+   entrada/salida, caducidad y rechazo fuera del radio; verificar exportaciones.
+
+No se declara aprobada ninguna de estas comprobaciones reales por haber pasado
+las pruebas automáticas. Caja, estadísticas, cálculos, avisos y exportaciones
+continúan pendientes según el reporte de la usuaria.
+
+## Entrega conjunta verificada
+
+[Compilación 39124259241](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39124259241):
+análisis sin incidencias y **369 pruebas Flutter aprobadas**. VersionCode
+**214486897**, firma propia y verificación de ambos APK aprobadas; registro de
+publicación beta completado. No abre admisiones ni concede habilitación MVZ.
+
+[Descarga](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39124259241/artifacts/12135696791):
+`vetdosis-pruebas-apks`, ZIP de 31 272 251 bytes, disponible hasta el **1 noviembre
+2026, 11:56 UTC**. Extraer el ZIP; ARM64: `app-arm64-v8a-beta-release.apk`
+(32.5 MB), ARM32: `app-armeabi-v7a-beta-release.apk` (29.2 MB).
+
+Instalar como actualización sin desinstalar ni borrar datos. Confirmar en teléfono
+los pasos anteriores; no se declara resuelta la prueba real del membrete hasta
+que la usuaria vuelva a abrirlo con los permisos actualizados.
