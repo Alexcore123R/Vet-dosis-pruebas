@@ -43,3 +43,20 @@ compartir, notificaciones con app cerrada y anticipación. La instalación de
 concesiones no acredita esos resultados. IA/Edge/13Y, 13X Storage, modo offline y
 flujos pendientes se mantienen como pendientes hasta sus pruebas/despliegue.
 No anunciar todas las funciones aprobadas con solo terminar este perfil.
+
+## Aplicación verificada — 18 octubre, 08:18 UTC
+
+[39110855603](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39110855603)
+aprobó 74 pruebas Python, el perfil completo sobre PostgreSQL aislado y el ensayo
+con rollback en el proyecto real de pruebas; las concesiones seguían vacías.
+[39110925396](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39110925396)
+aplicó después las 26 concesiones y comprobó que todas son efectivas para la
+titular indicada por la usuaria en una sola clínica (`vet prueba1`). La habilitación
+profesional siguió falsa. Bitácora y origen administrativo registrados. No se
+modificaron datos clínicos ni concesiones ajenas, ni se abrieron admisiones.
+
+El APK vigente de revisión sigue siendo 39082429107, con 365 pruebas aprobadas;
+esta configuración de servidor no exige otro APK. Se requiere ese APK corregido
+y recargar la sesión para consultar el contrato de módulos nuevo. La comprobación
+positiva con una sesión Auth real y la prueba en teléfono siguen pendientes: el
+éxito de la configuración administrativa no las sustituye.

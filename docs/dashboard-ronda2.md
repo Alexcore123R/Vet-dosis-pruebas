@@ -91,3 +91,9 @@ no añaden cambios visuales al cliente. La consulta 39110094504 confirma que la
 cuenta clínica es creadora/admin de `vet prueba1`, no administradora de plataforma,
 y todavía no tiene concesiones ni habilitación profesional vigente. Pendiente la
 elección del alcance operativo de prueba; no hay permisos concedidos por deducción.
+
+La configuración operativa ya se aplicó en 39110925396: la titular tiene 26
+concesiones explícitas no profesionales en `vet prueba1`, por 60 días para las
+nuevas. Sin conversión a habilitación ni permisos por procedimiento. Requiere
+recargar la sesión del APK corregido para revisar dashboard/escáner en teléfono.
+Véase `prueba-operativa-beta.md` para el alcance y pendientes de prueba.
