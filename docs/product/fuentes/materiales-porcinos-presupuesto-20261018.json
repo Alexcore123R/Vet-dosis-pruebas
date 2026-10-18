@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "fuentes": [
+    {
+      "id": "POR-UDG-CRUZAS-20261018",
+      "archivo_aportado": "Cruzas-Razas.pdf",
+      "sha256": "0a81d3346a560cf62b86a3a15ec505eb9c6607af40e307b26ba50b65dd06db5f",
+      "paginas": 66,
+      "autor_o_institucion_identificados": "MPP Ivón Yanine Chávez Mora; UDG/CUCBA, Departamento de Producción Animal",
+      "alcance": "Material docente de genética, razas, cruzamientos y registros de producción de cerdos",
+      "fecha_recepcion": "2026-10-18",
+      "fecha_publicacion": null,
+      "verificacion_declarada": {
+        "por": "usuaria",
+        "contenido": "El material porcino se aporta como verificado; el presupuesto como base de planeación financiera.",
+        "alcance": "Declaración de procedencia; no equivale a una aprobación automática de todos los parámetros operativos."
+      },
+      "revision_realizada": {
+        "tipo": "Extracción de texto y revisión estructural; inspección visual de páginas indicadas",
+        "paginas_con_inspeccion_visual": [
+          14,
+          62
+        ],
+        "revisor": "Codex",
+        "fecha": "2026-10-18",
+        "verificacion_externa_independiente": false
+      },
+      "uso_actual": "Especificación de módulos y trazabilidad documental; no cargado en assets operativos ni Supabase"
+    },
+    {
+      "id": "FIN-ADM-PRESUPUESTO-20261018",
+      "archivo_aportado": "Formato-de-presupuesto-proyecto-final-Administración.pdf",
+      "sha256": "51007179bb4ca9b94d52e666eb0b78e99fcd65ad94f81b1c303432cd3f3be1b0",
+      "paginas": 10,
+      "autor_o_institucion_identificados": null,
+      "alcance": "Plantilla académica de presupuesto con ejemplo de despacho contable",
+      "fecha_recepcion": "2026-10-18",
+      "fecha_publicacion": null,
+      "verificacion_declarada": {
+        "por": "usuaria",
+        "contenido": "El material porcino se aporta como verificado; el presupuesto como base de planeación financiera.",
+        "alcance": "Declaración de procedencia; no equivale a una aprobación automática de todos los parámetros operativos."
+      },
+      "revision_realizada": {
+        "tipo": "Extracción de texto y revisión estructural; inspección visual de páginas indicadas",
+        "paginas_con_inspeccion_visual": [],
+        "revisor": "Codex",
+        "fecha": "2026-10-18",
+        "verificacion_externa_independiente": false
+      },
+      "uso_actual": "Especificación de módulos y trazabilidad documental; no cargado en assets operativos ni Supabase"
+    }
+  ]
+}

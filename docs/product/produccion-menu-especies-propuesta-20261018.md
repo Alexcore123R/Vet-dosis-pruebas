@@ -112,3 +112,12 @@ de acuicultura, silos, apicultura o gestión UPP porcina en los archivos revisad
 3. Diseñar unidad/grupo/ciclo con trazabilidad antes de añadir indicadores por lote.
 4. Integrar materiales por actividad y fuente, sin habilitar límites clínicos,
    productivos o normativos por el mero hecho de crear una pantalla.
+
+## Material porcino y financiero recibido después
+
+`Cruzas Razas.pdf` aporta registros concretos de reproductores, servicios, camadas,
+alimentación y engorda, además de razas y genética. El formato académico de
+presupuesto aporta la estructura de planeación por proyecto. La extracción por
+página, requisitos y puntos de cotejo están en
+[Porcinos y Planeación desde los PDF](porcinos-y-planeacion-desde-pdf-20261018.md).
+Esto amplía las fuentes disponibles, sin declarar implementados esos módulos.
