@@ -786,11 +786,12 @@ class CoreShell extends StatelessWidget {
                 else if (model.screen == 'Estadísticas')
                   DashboardScreen(
                     key: ValueKey(
-                      'stats:${auth?.active?.userId}:${auth?.active?.clinicId}:${auth?.offline}',
+                      (auth?.active?.userId, auth?.active?.clinicId, auth?.offline, moduleAccess),
                     ),
                     model: DashboardViewModel(
                       member: auth?.active,
                       backup: allowed('Estadísticas') ? backup : null,
+                      moduleAccess: moduleAccess,
                     ),
                     offline: auth?.offline ?? false,
                     statisticsOnly: true,
@@ -903,7 +904,7 @@ class CoreShell extends StatelessWidget {
     ),
     DashboardScreen(
       key: ValueKey(
-        'dashboard:${auth?.active?.userId}:${auth?.active?.clinicId}:${auth?.active?.role}:${auth?.offline}',
+        (auth?.active?.userId, auth?.active?.clinicId, auth?.active?.role, auth?.offline, moduleAccess),
       ),
       model: DashboardViewModel(
         member: auth?.active,

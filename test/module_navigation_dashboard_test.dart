@@ -1,4 +1,10 @@
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:vetdosis_pro/core/app.dart';
+import 'package:vetdosis_pro/modules/core/data/settings_repository.dart';
+import 'package:vetdosis_pro/modules/core/presentation/core_view_model.dart';
+import 'package:vetdosis_pro/modules/auth/presentation/auth_view_model.dart';
+import 'support/fake_auth.dart' as auth_fixture;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -139,6 +145,43 @@ void main() {
     await model.load();
     expect(probe.reads, 0);
     model.dispose();
+  });
+
+  testWidgets('dashboard reloads when a same-session grant arrives and clears on revocation', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = auth_fixture.FakeAuth();
+    final auth = AuthViewModel(repository);
+    await auth.start();
+    final model = CoreViewModel(SettingsRepository(), const AppSettings());
+    final inventory = InventoryProbe();
+    Widget app(ModuleAccess access) => MaterialApp(home: CoreShell(
+      model: model,
+      auth: auth,
+      inventory: inventory,
+      moduleAccess: access,
+    ));
+    await tester.pumpWidget(app(ModuleAccess.denied));
+    await tester.pumpAndSettle();
+    expect(inventory.reads, 0);
+    expect(find.byTooltip('Escáner'), findsNothing);
+    expect(find.textContaining('Existencias disponibles por unidad'), findsNothing);
+    await tester.pumpWidget(app(ModuleAccess.read(contract(enabled: 'inventory'))));
+    await tester.pumpAndSettle();
+    expect(inventory.reads, 1);
+    expect(find.byTooltip('Escáner'), findsOneWidget);
+    expect(find.textContaining('Existencias disponibles por unidad'), findsOneWidget);
+    await tester.pumpWidget(app(ModuleAccess.denied));
+    await tester.pumpAndSettle();
+    expect(inventory.reads, 1);
+    expect(find.byTooltip('Escáner'), findsNothing);
+    expect(find.textContaining('Existencias disponibles por unidad'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    model.dispose();
+    auth.dispose();
+    await repository.controller.close();
   });
 
   testWidgets('failed permissions show retry without enabling modules', (
