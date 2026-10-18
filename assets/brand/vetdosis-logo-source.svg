@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 150" width="100%" height="100%">
+  <defs>
+    <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00D2B8" />
+      <stop offset="100%" stop-color="#3B82F6" />
+    </linearGradient>
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#00D2B8" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Icon group -->
+  <g transform="translate(20, 15)" filter="url(#softGlow)">
+    <!-- Base Paw Main Pad -->
+    <path d="M 50 65 C 28 65 18 85 24 102 C 30 118 45 125 60 125 C 75 125 90 118 96 102 C 102 85 92 65 70 65 C 65 65 55 65 50 65 Z" fill="url(#brandGrad)" />
+    
+    <!-- Paw Toes -->
+    <ellipse cx="28" cy="46" rx="11" ry="16" transform="rotate(-25 28 46)" fill="url(#brandGrad)" />
+    <ellipse cx="49" cy="30" rx="11.5" ry="17" transform="rotate(-8 49 30)" fill="url(#brandGrad)" />
+    <ellipse cx="71" cy="30" rx="11.5" ry="17" transform="rotate(8 71 30)" fill="url(#brandGrad)" />
+    <ellipse cx="92" cy="46" rx="11" ry="16" transform="rotate(25 92 46)" fill="url(#brandGrad)" />
+
+    <!-- ECG pulse carved out / white line overlay -->
+    <path d="M 28 96 L 44 96 L 50 82 L 56 112 L 64 74 L 70 102 L 76 96 L 92 96" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  <!-- Typography -->
+  <text x="155" y="82" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="44" font-weight="800" fill="#0F172A" letter-spacing="-1">VetDosis</text>
+  <text x="350" y="82" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="44" font-weight="800" fill="url(#brandGrad)" letter-spacing="-0.5">Pro</text>
+  <text x="157" y="110" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="14" font-weight="600" fill="#64748B" letter-spacing="1.5">CLINICAL &amp; DOSAGE SUITE</text>
+</svg>

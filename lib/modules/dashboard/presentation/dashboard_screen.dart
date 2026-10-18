@@ -1,3 +1,5 @@
+import 'home_pilot.dart';
+import '../../../vet_ui/vet_components.dart';
 import '../../doses/domain/quantity.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -17,11 +19,12 @@ class DashboardScreen extends StatefulWidget {
     required this.onNavigate,
     this.offline = false,
     this.statisticsOnly = false,
+    this.homePilot = false,
     this.alerts,
   });
   final DashboardViewModel model;
   final ValueChanged<String> onNavigate;
-  final bool offline, statisticsOnly;
+  final bool offline, statisticsOnly, homePilot;
   final HospitalAlerts? alerts;
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -127,6 +130,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return 'No disponible';
     }
   }
+
+  List<(String, int)>? get activity {
+    if (model.member == null ||
+        !model.canSummarize('agenda') ||
+        model.agenda == null) {
+      return null;
+    }
+    final local = model.localTime(model.now());
+    final today = DateTime.utc(local.year, local.month, local.day);
+    const labels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+    return List.generate(7, (i) {
+      final day = today.subtract(Duration(days: 6 - i));
+      final count = model.rows(model.agenda, 'appointments').where((row) {
+        final date = model.starts(row);
+        if (date == null || row['state'] == 'cancelado') return false;
+        return DateUtils.isSameDay(model.localTime(date), day);
+      }).length;
+      return (labels[day.weekday - 1], count);
+    });
+  }
+
+  List<(String, String, IconData)> get summaryMetrics => [
+    if (model.member != null && model.canSeePatients)
+      ('Pacientes', model.patientCount?.toString() ?? '—', Icons.pets_outlined),
+    if (model.member != null && model.canSummarize('agenda'))
+      (
+        'Citas por venir',
+        model.agenda == null ? '—' : '${model.upcoming.length}',
+        Icons.calendar_month_outlined,
+      ),
+    if (model.member != null && model.canSummarize('hospital'))
+      (
+        'En hospital',
+        model.ward == null ? '—' : '${model.ward!.stays.length}',
+        Icons.local_hospital_outlined,
+      ),
+    if (model.member != null &&
+        !model.member!.isPersonal &&
+        model.canSummarize('agenda'))
+      (
+        'Tareas visibles',
+        model.agenda == null ? '—' : '${model.pendingTasks.length}',
+        Icons.task_alt,
+      ),
+  ];
 
   Future<void> openCash() async {
     if (widget.offline ||
@@ -253,53 +301,97 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           if (m.updated != null) Text('Última consulta: ${time(m.updated!)}'),
           if (m.busy) const LinearProgressIndicator(),
-          if (navigationAllowed('Estadísticas', m.member, m.moduleAccess))
+          if (widget.statisticsOnly &&
+              navigationAllowed('Estadísticas', m.member, m.moduleAccess))
+            statisticsPanel,
+          if (widget.homePilot && !widget.statisticsOnly) ...[
+            const SizedBox(height: 16),
+            HomeSummary(metrics: summaryMetrics, activity: activity),
+          ],
+          if (!widget.homePilot &&
+              !widget.statisticsOnly &&
+              navigationAllowed('Estadísticas', m.member, m.moduleAccess))
             statisticsPanel,
           if (!widget.statisticsOnly) ...[
             const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final action in <(String, String)>[
-                  ('Inventario', 'Inventario'),
-                  ('Estadísticas', 'Estadísticas'),
-                  ('Recetas', 'Receta'),
-                  ('Formatos', 'Formatos'),
-                  ('Pacientes', 'Pacientes'),
-                  ('Agenda', 'Agenda'),
-                  ('Hospitalización', 'Hospitalización'),
-                  ('Cálculo rápido', 'Cálculo rápido'),
-                  ('Cálculos clínicos', 'Cálculos clínicos'),
-                  ('Escáner', 'Escanear producto'),
-                ])
-                  if (navigationAllowed(action.$2, m.member, m.moduleAccess))
-                    ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: MediaQuery.sizeOf(context).width - 48,
+            if (widget.homePilot) ...[
+              Text(
+                'Módulos principales',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              HomeModuleGrid(
+                actions: [
+                  for (final action in <(String, String)>[
+                    ('Inventario', 'Inventario'),
+                    ('Pacientes', 'Pacientes'),
+                    ('Recetas', 'Receta'),
+                    ('Agenda', 'Agenda'),
+                    ('Cálculo rápido', 'Cálculo rápido'),
+                    ('Hospital', 'Hospitalización'),
+                  ])
+                    if (navigationAllowed(action.$2, m.member, m.moduleAccess))
+                      action,
+                ],
+                onNavigate: widget.onNavigate,
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final action in <(String, String)>[
+                    ('Formatos', 'Formatos'),
+                    ('Estadísticas', 'Estadísticas'),
+                    ('Cálculos clínicos', 'Cálculos clínicos'),
+                    ('Escáner', 'Escanear producto'),
+                  ])
+                    if (navigationAllowed(action.$2, m.member, m.moduleAccess))
+                      OutlinedButton.icon(
+                        onPressed: () => widget.onNavigate(action.$2),
+                        icon: Icon(sectionIcon(action.$2)),
+                        label: Text(action.$1),
                       ),
-                      child: WorkspacePanel(
-                        child: InkWell(
-                          onTap: () => widget.onNavigate(action.$2),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(sectionIcon(action.$2), size: 20),
-                                const SizedBox(width: 8),
-                                Flexible(child: Text(action.$1)),
-                              ],
-                            ),
-                          ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ] else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final action in <(String, String)>[
+                    ('Inventario', 'Inventario'),
+                    ('Estadísticas', 'Estadísticas'),
+                    ('Recetas', 'Receta'),
+                    ('Formatos', 'Formatos'),
+                    ('Pacientes', 'Pacientes'),
+                    ('Agenda', 'Agenda'),
+                    ('Hospitalización', 'Hospitalización'),
+                    ('Cálculo rápido', 'Cálculo rápido'),
+                    ('Cálculos clínicos', 'Cálculos clínicos'),
+                    ('Escáner', 'Escanear producto'),
+                  ])
+                    if (navigationAllowed(action.$2, m.member, m.moduleAccess))
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.sizeOf(context).width - 48,
+                        ),
+                        child: VetActionButton(
+                          label: action.$1,
+                          icon: sectionIcon(action.$2),
+                          style: VetActionStyle.neutral,
+                          onPressed: () => widget.onNavigate(action.$2),
                         ),
                       ),
-                    ),
-              ],
-            ),
+                ],
+              ),
+            if (widget.homePilot &&
+                navigationAllowed('Estadísticas', m.member, m.moduleAccess))
+              ExpansionTile(
+                title: const Text('Ver estadísticas'),
+                children: [statisticsPanel],
+              ),
             panel(
               'Alertas y recordatorios',
               navigationAllowed('Hospitalización', m.member, m.moduleAccess)

@@ -87,12 +87,14 @@ bool moduleNavigationAllowed(
   if (member == null || access == null) return true;
   return switch (page) {
     'Pacientes' => access.module('patients'),
+    'Servicios' ||
+    'Proveedores' ||
     'Agenda' ||
     'Equipo y avisos' ||
     'Pendientes del equipo' => access.module('agenda'),
     'Hospitalización' => access.module('hospital'),
     'Inventario' || 'Escanear producto' => access.module('inventory'),
-    'Caja' => access.module('sales'),
+    'Caja' || 'Planeación financiera' => access.module('sales'),
     'Receta' => access.module('prescriptions'),
     'Formatos' => access.module('forms') || access.module('clinical'),
     'Estadísticas' => access.module('statistics'),
