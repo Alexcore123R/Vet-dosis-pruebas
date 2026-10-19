@@ -1,6 +1,15 @@
 name: Validar rotacion de claves IA
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'supabase/proposed/**'
+      - 'supabase/adaptations/**'
+      - 'scripts/supabase/integration_preflight.py'
+      - 'supabase/tests/ai_key_rotation.sql'
+      - 'supabase/tests/ai_key_rotation_concurrency.sh'
+      - 'supabase/tests/run_ai_key_rotation.sh'
+      - '.github/workflows/test-ai-key-rotation.yml'
   push:
     branches: [main]
     paths:
@@ -8,6 +17,7 @@ on:
       - 'supabase/adaptations/**'
       - 'scripts/supabase/integration_preflight.py'
       - 'supabase/tests/ai_key_rotation.sql'
+      - 'supabase/tests/ai_key_rotation_concurrency.sh'
       - 'supabase/tests/run_ai_key_rotation.sh'
       - '.github/workflows/test-ai-key-rotation.yml'
 permissions:
