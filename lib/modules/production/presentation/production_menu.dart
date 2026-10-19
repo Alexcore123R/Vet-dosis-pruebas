@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'growth_panel.dart';
+import 'feeding_panel.dart';
 import '../../aviculture/presentation/aviculture_screen.dart';
 import '../../incubation/presentation/incubation_screen.dart';
 import '../../auth/domain/clinic_membership.dart';
@@ -102,7 +104,11 @@ class _ProductionMenuState extends State<ProductionMenu> {
           ListTile(
             title: Text(entry.key),
             subtitle: Text(
-              entry.key == 'Aves'
+              entry.key == 'Peces'
+                  ? 'Calculadora de biomasa y ración · registros en preparación'
+                  : entry.key == 'Porcinos'
+                  ? 'Calculadora de crecimiento y engorda · registros en preparación'
+                  : entry.key == 'Aves'
                   ? 'Herramientas de capacidad e incubación disponibles según acceso'
                   : 'Organización de actividades · registros específicos en preparación',
             ),
@@ -161,6 +167,24 @@ class _ProductionMenuState extends State<ProductionMenu> {
           if (activity != 'Engorda')
             const Text(
               'Las herramientas conservan sus referencias y avisos de datos sin verificar.',
+            ),
+        ],
+        if (species == 'Peces' && activity == 'Tilapia') ...[
+          const SizedBox(height: 16),
+          if (allowed('Cálculos clínicos'))
+            const FeedingPanel()
+          else
+            const Text(
+              'Las calculadoras no están habilitadas para tu acceso actual.',
+            ),
+        ],
+        if (species == 'Porcinos' && activity == 'Crecimiento y engorda') ...[
+          const SizedBox(height: 16),
+          if (allowed('Cálculos clínicos'))
+            GrowthPanel(showCosts: allowed('Planeación financiera'))
+          else
+            const Text(
+              'Las calculadoras no están habilitadas para tu acceso actual.',
             ),
         ],
         const SizedBox(height: 20),
