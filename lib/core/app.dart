@@ -352,15 +352,10 @@ class CoreShell extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      (model.screen == 'Inicio' ||
-          model.screen == 'Agenda' ||
-          model.screen == 'Pacientes')
-      ? Theme(
-          data: homePilotTheme(Theme.of(context)),
-          child: Builder(builder: _buildShell),
-        )
-      : _buildShell(context);
+  Widget build(BuildContext context) => Theme(
+    data: homePilotTheme(Theme.of(context)),
+    child: Builder(builder: _buildShell),
+  );
 
   Widget _buildShell(BuildContext context) => PopScope(
     canPop: model.screen == 'Inicio',
@@ -449,23 +444,6 @@ class CoreShell extends StatelessWidget {
                 title: Text('VetDosis Pro'),
                 subtitle: Text('Tu espacio veterinario'),
               ),
-              ListTile(
-                leading: const Icon(Icons.home_outlined),
-                title: const Text('Inicio'),
-                onTap: () {
-                  Navigator.pop(context);
-                  model.navigate('Inicio');
-                },
-              ),
-              if (allowed('Cálculos'))
-                ListTile(
-                  leading: const Icon(Icons.calculate_outlined),
-                  title: const Text('Cálculos'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    model.navigate('Cálculos');
-                  },
-                ),
               const Divider(),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),

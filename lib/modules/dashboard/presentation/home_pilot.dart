@@ -3,17 +3,41 @@ import '../../../core/widgets/workspace_panel.dart';
 import '../../../vet_ui/vet_theme.dart';
 import '../../core/presentation/core_view_model.dart';
 
-/// Presentation scoped to Inicio, Agenda and Pacientes. It never changes membership or access.
+/// Shared shell presentation. It never changes membership or access.
 ThemeData homePilotTheme(ThemeData base) {
   final dark = base.brightness == Brightness.dark;
+  final surface = dark ? const Color(0xFF131E2A) : VetColors.surface;
+  final scheme =
+      ColorScheme.fromSeed(
+        seedColor: VetColors.purple,
+        brightness: base.brightness,
+        surface: surface,
+      ).copyWith(
+        primary: dark ? VetColors.lavender : VetColors.purpleDeep,
+        onPrimary: dark ? VetColors.ink : Colors.white,
+        secondary: dark ? VetColors.mint : const Color(0xFF087F7C),
+        secondaryContainer: dark
+            ? const Color(0xFF144541)
+            : const Color(0xFFD8F7F3),
+        onSecondaryContainer: dark ? VetColors.mint : VetColors.ink,
+        onSurface: dark ? const Color(0xFFE3ECF2) : VetColors.ink,
+      );
   return base.copyWith(
     scaffoldBackgroundColor: dark ? const Color(0xFF0B121C) : VetColors.canvas,
-    colorScheme: base.colorScheme.copyWith(
-      primary: dark ? VetColors.mint : const Color(0xFF087F7C),
-      onPrimary: dark ? VetColors.ink : Colors.white,
-      secondary: dark ? VetColors.lavender : VetColors.purple,
-      surface: dark ? const Color(0xFF131E2A) : VetColors.surface,
-      onSurface: dark ? const Color(0xFFE3ECF2) : VetColors.ink,
+    colorScheme: scheme,
+    drawerTheme: base.drawerTheme.copyWith(
+      backgroundColor: surface,
+      surfaceTintColor: Colors.transparent,
+    ),
+    navigationBarTheme: base.navigationBarTheme.copyWith(
+      backgroundColor: surface,
+      indicatorColor: scheme.secondaryContainer,
+      surfaceTintColor: Colors.transparent,
+    ),
+    appBarTheme: base.appBarTheme.copyWith(
+      backgroundColor: surface,
+      foregroundColor: scheme.onSurface,
+      surfaceTintColor: Colors.transparent,
     ),
     extensions: [
       ...base.extensions.values.where((e) => e is! WorkspaceStyle),

@@ -165,7 +165,7 @@ void main() {
   }
 
   testWidgets(
-    'Pilot theme covers migrated sections while preserving other appearance',
+    'Shared theme stays consistent across sections without rewriting preferences',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       final core = CoreViewModel(SettingsRepository(), AppSettings(palette: 1));
@@ -195,7 +195,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         Theme.of(tester.element(find.byTooltip('Ajustes'))).colorScheme.primary,
-        original,
+        isNot(original),
       );
       expect(core.settings.palette, 1);
       await tester.pumpWidget(const SizedBox());

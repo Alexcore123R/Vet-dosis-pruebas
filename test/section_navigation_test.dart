@@ -34,6 +34,42 @@ Future<void> host(WidgetTester tester, Widget child) async {
 }
 
 void main() {
+  testWidgets('Drawer uses the shared palette and omits bottom shortcuts', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final core = CoreViewModel(SettingsRepository(), const AppSettings());
+    await tester.pumpWidget(VetDosisApp(model: core));
+    await tester.pumpAndSettle();
+    for (final page in ['Inicio', 'Más', 'Cálculos']) {
+      core.navigate(page);
+      await tester.pumpAndSettle();
+      tester.state<ScaffoldState>(find.byType(Scaffold).first).openDrawer();
+      await tester.pumpAndSettle();
+      final drawer = find.byType(Drawer);
+      expect(
+        find.descendant(of: drawer, matching: find.text('Inicio')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: drawer, matching: find.text('Cálculos')),
+        findsNothing,
+      );
+      final theme = Theme.of(tester.element(drawer));
+      expect(theme.drawerTheme.backgroundColor, theme.colorScheme.surface);
+      expect(theme.colorScheme.primary, const Color(0xFF632CE5));
+      tester.state<ScaffoldState>(find.byType(Scaffold).first).closeDrawer();
+      await tester.pumpAndSettle();
+      expect(
+        find.widgetWithText(NavigationDestination, 'Inicio'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    }
+    await tester.pumpWidget(const SizedBox());
+    core.dispose();
+  });
+
   test(
     'Service and supplier routes require the existing operations module',
     () {
