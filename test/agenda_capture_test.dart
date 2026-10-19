@@ -101,7 +101,11 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).at(0), 'Paciente prueba');
       await tester.enterText(find.byType(TextField).at(1), 'Especie prueba');
-      await tester.ensureVisible(find.text('Crear paciente'));
+      await tester.scrollUntilVisible(
+        find.text('Crear paciente'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(find.text('Crear paciente'));
       await tester.pump();
       await tester.tap(find.byType(BackButton));

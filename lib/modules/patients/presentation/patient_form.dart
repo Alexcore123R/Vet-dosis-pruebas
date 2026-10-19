@@ -131,9 +131,16 @@ class _PatientFormState extends State<PatientForm> {
     child: TextField(
       enabled: !busy,
       controller: fields[key],
+      keyboardType: switch (key) {
+        'phone' => TextInputType.phone,
+        'email' => TextInputType.emailAddress,
+        _ => TextInputType.text,
+      },
       decoration: InputDecoration(
         labelText: label,
-        border: const OutlineInputBorder(),
+        filled: true,
+        fillColor: Theme.of(context).colorScheme.surface,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
       ),
     ),
   );
@@ -147,11 +154,17 @@ class _PatientFormState extends State<PatientForm> {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
+          Text(
+            'Datos del paciente',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 16),
           input('name', 'Nombre del paciente'),
           input('species', 'Especie'),
           input('breed', 'Raza (opcional)'),
           DropdownButtonFormField<String>(
             initialValue: sex,
+            isExpanded: true,
             decoration: const InputDecoration(labelText: 'Sexo'),
             items: const [
               DropdownMenuItem(
@@ -165,8 +178,14 @@ class _PatientFormState extends State<PatientForm> {
           ),
           const SizedBox(height: 16),
           input('birth_date', 'Fecha de nacimiento (AAAA-MM-DD, opcional)'),
+          Text(
+            'Tutor y contacto',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: ownerMode,
+            isExpanded: true,
             decoration: const InputDecoration(labelText: 'Tutor / propietario'),
             items: const [
               DropdownMenuItem(

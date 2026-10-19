@@ -352,13 +352,10 @@ class CoreShell extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      (model.screen == 'Inicio' || model.screen == 'Agenda')
-      ? Theme(
-          data: homePilotTheme(Theme.of(context)),
-          child: Builder(builder: _buildShell),
-        )
-      : _buildShell(context);
+  Widget build(BuildContext context) => Theme(
+    data: homePilotTheme(Theme.of(context)),
+    child: Builder(builder: _buildShell),
+  );
 
   Widget _buildShell(BuildContext context) => PopScope(
     canPop: model.screen == 'Inicio',
@@ -447,23 +444,6 @@ class CoreShell extends StatelessWidget {
                 title: Text('VetDosis Pro'),
                 subtitle: Text('Tu espacio veterinario'),
               ),
-              ListTile(
-                leading: const Icon(Icons.home_outlined),
-                title: const Text('Inicio'),
-                onTap: () {
-                  Navigator.pop(context);
-                  model.navigate('Inicio');
-                },
-              ),
-              if (allowed('Cálculos'))
-                ListTile(
-                  leading: const Icon(Icons.calculate_outlined),
-                  title: const Text('Cálculos'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    model.navigate('Cálculos');
-                  },
-                ),
               const Divider(),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
@@ -871,21 +851,27 @@ class CoreShell extends StatelessWidget {
                               patients != null && allowed('Pacientes')
                               ? (id) async {
                                   final member = auth!.active!;
+                                  final patientTheme = homePilotTheme(
+                                    Theme.of(context),
+                                  );
                                   await Navigator.push(
                                     context,
                                     MaterialPageRoute<void>(
-                                      builder: (_) => Scaffold(
-                                        appBar: AppBar(
-                                          title: const Text(
-                                            'Paciente de la cita',
+                                      builder: (_) => Theme(
+                                        data: patientTheme,
+                                        child: Scaffold(
+                                          appBar: AppBar(
+                                            title: const Text(
+                                              'Paciente de la cita',
+                                            ),
                                           ),
-                                        ),
-                                        body: SingleChildScrollView(
-                                          padding: const EdgeInsets.all(20),
-                                          child: PatientsScreen(
-                                            repository: patients!,
-                                            member: member,
-                                            initialPatientId: id,
+                                          body: SingleChildScrollView(
+                                            padding: const EdgeInsets.all(20),
+                                            child: PatientsScreen(
+                                              repository: patients!,
+                                              member: member,
+                                              initialPatientId: id,
+                                            ),
                                           ),
                                         ),
                                       ),
