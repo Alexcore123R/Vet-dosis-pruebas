@@ -1,0 +1,101 @@
+# APK temporal de revisión visual; no despliega ni publica en Supabase.
+name: Compilar APK visual de revision (sin publicar)
+on:
+  push:
+    branches: [ci/design-apk-preview-20261019]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: vetdosis-design-preview-apk
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VETDOSIS_GOOGLE_ENABLED: 'false'
+      SUPABASE_TEST_URL: https://wtrelwtztkddfktrfdpb.supabase.co
+      SUPABASE_TEST_PUBLISHABLE_KEY: ${{ vars.SUPABASE_TEST_PUBLISHABLE_KEY || secrets.SUPABASE_TEST_PUBLISHABLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar firma propia y versión incremental
+        env:
+          ANDROID_BETA_KEYSTORE_BASE64: ${{ secrets.ANDROID_BETA_KEYSTORE_BASE64 }}
+          ANDROID_BETA_STORE_PASSWORD: ${{ secrets.ANDROID_BETA_STORE_PASSWORD }}
+          ANDROID_BETA_KEY_ALIAS: ${{ secrets.ANDROID_BETA_KEY_ALIAS }}
+          ANDROID_BETA_KEY_PASSWORD: ${{ secrets.ANDROID_BETA_KEY_PASSWORD }}
+          ANDROID_BETA_CERT_SHA256: ${{ vars.ANDROID_BETA_CERT_SHA256 }}
+        run: python3 scripts/android/prepare_ci.py
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Comprobar certificado antes de compilar
+        env:
+          ANDROID_BETA_STORE_PASSWORD: ${{ secrets.ANDROID_BETA_STORE_PASSWORD }}
+          ANDROID_BETA_KEY_ALIAS: ${{ secrets.ANDROID_BETA_KEY_ALIAS }}
+          ANDROID_BETA_CERT_SHA256: ${{ vars.ANDROID_BETA_CERT_SHA256 }}
+        run: python3 scripts/android/check_keystore.py
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+      - name: Preparar configuración pública de pruebas
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          from pathlib import Path
+          key = os.environ.get('SUPABASE_TEST_PUBLISHABLE_KEY', '').strip()
+          if not key.startswith('sb_publishable_'):
+              raise SystemExit('Falta la variable SUPABASE_TEST_PUBLISHABLE_KEY; usar únicamente la clave publicable.')
+          if os.environ['SUPABASE_TEST_URL'] != 'https://wtrelwtztkddfktrfdpb.supabase.co':
+              raise SystemExit('El APK beta debe usar exclusivamente el proyecto de pruebas aprobado.')
+          google_enabled = os.environ.get('VETDOSIS_GOOGLE_ENABLED') == 'true'
+          if google_enabled:
+              request = urllib.request.Request(os.environ['SUPABASE_TEST_URL'] + '/auth/v1/settings', headers={'apikey': key})
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  settings = json.load(response)
+              if settings.get('external', {}).get('google') is not True:
+                  raise SystemExit('Google todavía no está habilitado en Supabase; no se generará un APK con un botón inoperante.')
+          Path('supabase/config.test.local.json').write_text(json.dumps({
+              'SUPABASE_URL': os.environ['SUPABASE_TEST_URL'],
+              'SUPABASE_PUBLISHABLE_KEY': key,
+              'SUPABASE_EXISTING_SCHEMA': True,
+              'SUPABASE_GOOGLE_ENABLED': google_enabled,
+          }))
+          PY
+      - name: Pruebas de configuración de firma y recuperación cifrada
+        run: python3 -m unittest discover -s scripts/android -p 'test_*.py'
+      - run: flutter pub get
+      - run: flutter analyze
+      - name: Pruebas unitarias y de interfaz
+        run: flutter test --timeout 5m --concurrency 2
+      - name: Generar APKs beta con firma propia
+        env:
+          ANDROID_BETA_STORE_PASSWORD: ${{ secrets.ANDROID_BETA_STORE_PASSWORD }}
+          ANDROID_BETA_KEY_ALIAS: ${{ secrets.ANDROID_BETA_KEY_ALIAS }}
+          ANDROID_BETA_KEY_PASSWORD: ${{ secrets.ANDROID_BETA_KEY_PASSWORD }}
+        run: flutter build apk --release --flavor beta --build-number "$BETA_VERSION_CODE" -Pforce-version-code-ignoring-abi=true --split-per-abi --target-platform android-arm,android-arm64 --dart-define=APP_CHANNEL=beta --dart-define=BETA_BUILD="$BETA_VERSION_CODE" --dart-define-from-file=supabase/config.test.local.json
+      - name: Verificar identidad, versión y firma de ambos APK
+        env:
+          ANDROID_BETA_CERT_SHA256: ${{ vars.ANDROID_BETA_CERT_SHA256 }}
+        run: python3 scripts/android/verify_apk.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vetdosis-agenda-finanzas-preview-apks
+          path: |
+            build/app/outputs/flutter-apk/app-*-release.apk
+            build/app/outputs/flutter-apk/SHA256SUMS.txt
+            build/app/outputs/flutter-apk/BUILD-INFO.json
+          if-no-files-found: error
+          retention-days: 7
+      # Build de revisión: NO registrar la versión en el servidor ni abrir admisiones.
+      - name: Resumen de compilación no publicada
+        run: echo 'APK firmado y verificable para revisión visual; no registrado como build beta remoto.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Eliminar material de firma temporal
+        if: always()
+        shell: bash
+        run: rm -f -- "$RUNNER_TEMP/vetdosis-beta.jks"
