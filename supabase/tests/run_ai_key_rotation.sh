@@ -70,4 +70,5 @@ print('supabase/proposed/13Y_ai_key_rotation.sql')
 print('supabase/tests/ai_key_rotation.sql')
 PY
 )
-echo 'AI key rotation authorization passed after the complete beta permission cutover.'
+bash supabase/tests/ai_key_rotation_concurrency.sh "$container_name"
+echo 'AI key rotation authorization and concurrency passed after the complete beta permission cutover.'
