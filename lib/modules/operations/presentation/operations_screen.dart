@@ -145,6 +145,49 @@ class _OperationsScreenState extends State<OperationsScreen>
     if (mounted) await model.load();
   }
 
+  Future<void> confirmAppointmentState(
+    Map<String, dynamic> appointment,
+    String state,
+  ) async {
+    final label = switch (state) {
+      'en_atencion' => 'iniciar la atención',
+      'listo' => 'marcar el servicio como listo',
+      'entregado' => 'marcar la entrega',
+      'cancelado' => 'cancelar la cita',
+      _ => 'actualizar la cita',
+    };
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Confirmar actualización'),
+        content: Text('¿Quieres $label de ${appointment['patient_name']}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Volver'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Confirmar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await form(
+      'Actualizar cita',
+      'appointment_state',
+      state == 'cancelado'
+          ? const [RxField('reason', 'Motivo de cancelación', required: true)]
+          : const [],
+      initial: {
+        'id': appointment['id'],
+        'version': appointment['version'],
+        'state': state,
+      },
+    );
+  }
+
   Future<void> newAppointment() async {
     Map<String, dynamic> patient = {};
     if ((model.explicitPermissions
@@ -181,6 +224,7 @@ class _OperationsScreenState extends State<OperationsScreen>
             'consulta': 'Consulta',
             'seguimiento': 'Seguimiento',
             'estetica': 'Estética / baño / peluquería',
+            'cirugia': 'Cirugía',
             'analisis': 'Análisis / toma de muestras',
             'hospital_visita': 'Visita de hospitalizado',
             'vacunacion': 'Vacunación / desparasitación',
@@ -189,6 +233,7 @@ class _OperationsScreenState extends State<OperationsScreen>
           },
           required: true,
         ),
+        const RxField('surgery_type', 'Tipo de cirugía (si aplica)'),
         RxField(
           'professional_id',
           model.explicitPermissions ? 'Integrante asignado' : 'Profesional',
@@ -540,24 +585,7 @@ class _OperationsScreenState extends State<OperationsScreen>
                               'ends_at': a['ends_at'],
                             },
                           )
-                        : form(
-                            'Actualizar cita',
-                            'appointment_state',
-                            state == 'cancelado'
-                                ? const [
-                                    RxField(
-                                      'reason',
-                                      'Motivo de cancelación',
-                                      required: true,
-                                    ),
-                                  ]
-                                : const [],
-                            initial: {
-                              'id': a['id'],
-                              'version': a['version'],
-                              'state': state,
-                            },
-                          ),
+                        : confirmAppointmentState(a, state),
                     itemBuilder: (_) => [
                       if (a['state'] == 'agendado')
                         const PopupMenuItem(

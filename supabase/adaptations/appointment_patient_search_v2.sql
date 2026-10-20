@@ -4,7 +4,7 @@ alter table public.clinic_appointments
   drop constraint if exists clinic_appointments_kind_check;
 alter table public.clinic_appointments
   add constraint clinic_appointments_kind_check
-  check (kind in ('consulta','seguimiento','estetica','analisis','hospital_visita','vacunacion','entrega','otro'));
+  check (kind in ('consulta','seguimiento','estetica','cirugia','analisis','hospital_visita','vacunacion','entrega','otro'));
 
 create or replace function public.ops_patient_search(p_clinic uuid,p_query text)
 returns jsonb language plpgsql security definer set search_path='' as $$
