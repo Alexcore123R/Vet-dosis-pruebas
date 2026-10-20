@@ -301,14 +301,20 @@ class _FormsScreenState extends State<FormsScreen> {
                   },
             child: const Text('Casos clínicos, mediciones y actuaciones'),
           ),
-        Text('Plantillas', style: Theme.of(context).textTheme.titleLarge),
+        Text(
+          '1. Formatos de la clínica',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const Text(
+          'Edita una copia, define secciones, cláusulas y campos rellenables. Los documentos firmados conservan la versión que usaron.',
+        ),
         if (!model.busy && model.error == null && model.templates.isEmpty)
           Text(
             model.templateKnown && !model.capability('can_read')
                 ? 'Tu cuenta no tiene permiso para consultar plantillas. '
-                    'Revisa Permisos y habilitación.'
+                      'Revisa Permisos y habilitación.'
                 : 'No hay plantillas disponibles. Las plantillas deben '
-                    'configurarse y revisarse antes de usarlas.',
+                      'configurarse y revisarse antes de usarlas.',
           ),
         for (final version in model.templates)
           Card(
@@ -384,14 +390,21 @@ class _FormsScreenState extends State<FormsScreen> {
             ),
           ),
         const SizedBox(height: 20),
-        Text('Documentos', style: Theme.of(context).textTheme.titleLarge),
+        Text(
+          '2. Documentos del expediente',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const Text(
+          'Llena un formato con los datos autorizados del paciente, revisa la vista previa, firma y guarda el PDF como evidencia inmutable.',
+        ),
         if (model.documents.isEmpty && !model.busy)
           const Text('Sin documentos disponibles para tu acceso.'),
         for (final doc in model.documents) ...[
           ListTile(
             title: Text(doc.snapshot['schema']['title']),
             subtitle: Text(
-              '${formStateLabel(doc.state)} · ${doc.snapshot['patient']['name']}',
+              '${formStateLabel(doc.state)} · ${doc.snapshot['patient']['name']}\n'
+              '${doc.signed ? 'Firmado y agregado al expediente' : 'Borrador editable'}',
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: model.busy ? null : () => open(doc),
