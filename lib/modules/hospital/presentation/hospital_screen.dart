@@ -1,3 +1,5 @@
+import '../../patients/domain/patient_contacts.dart';
+import '../../patients/presentation/patient_contact_panel.dart';
 import 'package:flutter/material.dart';
 import '../../auth/domain/clinic_membership.dart';
 import '../../patients/domain/patient_repository.dart';
@@ -736,6 +738,28 @@ class _HospitalScreenState extends State<HospitalScreen> {
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       Text(stay.species),
+                      if (widget.patients is PatientContactRepository &&
+                          [
+                            ClinicRole.admin,
+                            ClinicRole.mvz,
+                            ClinicRole.recepcion,
+                          ].contains(widget.member.role))
+                        ExpansionTile(
+                          title: const Text('Contacto del tutor'),
+                          children: [
+                            PatientContactPanel(
+                              key: ValueKey(
+                                'hospital-contact:${widget.member.userId}:${widget.member.clinicId}:${stay.patientId}',
+                              ),
+                              repository:
+                                  widget.patients as PatientContactRepository,
+                              clinic: widget.member.clinicId,
+                              patient: stay.patientId,
+                              patientName: stay.patientName,
+                              onSaved: () => model.refresh(),
+                            ),
+                          ],
+                        ),
                       if (model.snapshot.cageChanges &&
                           widget.repository is HospitalLocationRepository)
                         Wrap(

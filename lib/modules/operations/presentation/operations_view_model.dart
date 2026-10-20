@@ -1,12 +1,15 @@
 import '../../core/domain/plan_errors.dart';
 import 'package:flutter/foundation.dart';
 import '../domain/operations_repository.dart';
+import '../domain/appointment_links.dart';
 
 class OperationsViewModel extends ChangeNotifier {
   OperationsViewModel(this.repository, this.clinic);
   final OperationsRepository repository;
   final String clinic;
   Map<String, dynamic> data = {};
+  Map<String, Map<String, dynamic>> links = {};
+  String? linksError;
   bool busy = false, _disposed = false;
   String? error;
   bool explicitPermissions = false;
@@ -21,9 +24,12 @@ class OperationsViewModel extends ChangeNotifier {
       .map((e) => Map<String, dynamic>.from(e as Map))
       .toList();
   Future<void> load() async {
-    if (busy) return;
+    if (_disposed || busy) return;
     busy = true;
     error = null;
+    links = {};
+    linksError = null;
+    data = {};
     notifyListeners();
     try {
       final next = await repository.dashboard(clinic);
@@ -31,8 +37,32 @@ class OperationsViewModel extends ChangeNotifier {
         throw StateError('permission_snapshot_missing');
       }
       if (next['permissions'] is Map) explicitPermissions = true;
+      if (_disposed) return;
       data = next;
+      if (repository is AppointmentLinksRepository &&
+          (next['permissions'] is! Map ||
+              (next['permissions'] as Map)['appointment.read'] == true)) {
+        try {
+          final ids = <String>{
+            for (final a in rows('appointments')) a['id'] as String,
+            for (final act in rows('acts'))
+              if (act['appointment_id'] is String)
+                act['appointment_id'] as String,
+          };
+          final nextLinks = await (repository as AppointmentLinksRepository)
+              .patientLinks(clinic, ids.toList());
+          if (_disposed) return;
+          links = nextLinks;
+        } catch (_) {
+          if (_disposed) return;
+          links = {};
+          linksError =
+              'No se pudieron comprobar contactos y pagos; actualiza antes de utilizarlos.';
+        }
+      }
     } catch (e) {
+      if (_disposed) return;
+      links = {};
       data = {};
       error = operationError(e);
     }
@@ -44,6 +74,8 @@ class OperationsViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    data = {};
+    links = {};
     super.dispose();
   }
 }

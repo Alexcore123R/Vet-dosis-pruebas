@@ -1,12 +1,15 @@
 name: Validar historia clinica y carnet
 on:
-  push:
-    branches: [feature/historia-carnet-20261020]
   pull_request:
     paths:
       - 'lib/modules/patients/**'
       - 'test/history_booklet_test.dart'
       - 'test/patient_activity*'
+      - 'test/contact*'
+      - 'lib/modules/operations/**'
+      - 'android/app/src/main/kotlin/**'
+      - 'supabase/adaptations/patient_contacts_appointment_links_v1.sql'
+      - 'supabase/tests/patient_contacts_links.sql'
       - 'supabase/adaptations/patient_activity_snapshot_v1.sql'
       - 'supabase/tests/patient_activity_snapshot.sql'
       - '.github/workflows/validate-history-booklet.yml'
@@ -50,3 +53,22 @@ jobs:
           psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/history_booklet_validation.sql
           createdb -h localhost -U postgres activity_test
           psql -h localhost -U postgres -d activity_test -v ON_ERROR_STOP=1 -f supabase/tests/patient_activity_snapshot.sql
+          createdb -h localhost -U postgres contacts_test
+          psql -h localhost -U postgres -d contacts_test -v ON_ERROR_STOP=1 -f supabase/tests/patient_contacts_links.sql
+  android-compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Compilar puente de contactos Android (debug, no distribuir)
+        run: flutter build apk --debug --flavor beta --target-platform android-arm64

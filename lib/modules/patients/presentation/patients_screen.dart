@@ -1,3 +1,7 @@
+import '../domain/patient_contacts.dart';
+import '../domain/patient_timeline.dart';
+import 'patient_contact_panel.dart';
+import 'contact_actions.dart';
 import 'dart:async';
 import '../domain/patient_activity.dart';
 import '../application/patient_activity_model.dart';
@@ -42,8 +46,12 @@ class _PatientsScreenState extends State<PatientsScreen>
     with WidgetsBindingObserver {
   late final PatientViewModel model;
   final search = TextEditingController();
+  final historySearch = TextEditingController();
   String query = '';
   String? species;
+  String historyQuery = '';
+  EventKind? historyKind;
+  bool historyOldestFirst = false, historyByReason = false;
   PatientActivityModel? activity;
   PatientActivityKind? activityFilter;
   Timer? activityTimer;
@@ -105,6 +113,7 @@ class _PatientsScreenState extends State<PatientsScreen>
     activity?.dispose();
     model.dispose();
     search.dispose();
+    historySearch.dispose();
     super.dispose();
   }
 
@@ -392,7 +401,16 @@ class _PatientsScreenState extends State<PatientsScreen>
             PatientCatalogTile(
               patient: p,
               selected: patient?.id == p.id,
-              onTap: model.busy ? null : () => model.select(p),
+              onTap: model.busy
+                  ? null
+                  : () {
+                      setState(() {
+                        historyQuery = '';
+                        historySearch.clear();
+                        historyKind = null;
+                      });
+                      model.select(p);
+                    },
             ),
             if (snapshot != null)
               for (final item in snapshot.forPatient(p.id))
@@ -439,17 +457,30 @@ class _PatientsScreenState extends State<PatientsScreen>
                   padding: const EdgeInsets.all(16),
                   child: owner == null
                       ? const Text('Tutor pendiente de capturar.')
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Tutor: ${owner.name}'),
-                            if (owner.phone.isNotEmpty)
-                              Text('Teléfono: ${owner.phone}'),
-                            if (owner.email.isNotEmpty)
-                              Text('Correo: ${owner.email}'),
-                            if (owner.address.isNotEmpty)
-                              Text('Dirección: ${owner.address}'),
-                          ],
+                      : widget.repository is PatientContactRepository
+                      ? PatientContactPanel(
+                          key: ValueKey(
+                            'contact:${widget.member.userId}:${widget.member.clinicId}:${patient.id}:${owner.id}',
+                          ),
+                          repository:
+                              widget.repository as PatientContactRepository,
+                          clinic: widget.member.clinicId,
+                          patient: patient.id,
+                          patientName: patient.name,
+                          onSaved: () async {
+                            await model.load();
+                            if (mounted) await model.select(patient);
+                          },
+                        )
+                      : ContactActions(
+                          owner: {
+                            'id': owner.id,
+                            'name': owner.name,
+                            'phone': owner.phone,
+                            'email': owner.email,
+                            'address': owner.address,
+                          },
+                          patientName: patient.name,
                         ),
                 ),
               ),
@@ -462,7 +493,7 @@ class _PatientsScreenState extends State<PatientsScreen>
                   icon: const Icon(Icons.history_edu),
                   label: const Text('Registrar historia clínica'),
                 ),
-              for (final e in model.events.reversed.where(
+              for (final e in patientTimeline(model.events).where(
                 (e) =>
                     e.kind == EventKind.soap &&
                     e.data['record_type'] == 'clinical_history',
@@ -512,11 +543,72 @@ class _PatientsScreenState extends State<PatientsScreen>
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 12),
+              TextField(
+                key: ValueKey('history-search:${patient.id}'),
+                controller: historySearch,
+                decoration: const InputDecoration(
+                  labelText: 'Buscar por motivo de consulta',
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onChanged: (value) => setState(() => historyQuery = value),
+              ),
+              DropdownButtonFormField<EventKind?>(
+                key: ValueKey(
+                  'history-kind:${patient.id}:${historyKind?.name}',
+                ),
+                initialValue: historyKind,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Tipo de entrada'),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Todas las entradas'),
+                  ),
+                  for (final kind in EventKind.values)
+                    DropdownMenuItem(value: kind, child: Text(kind.label)),
+                ],
+                onChanged: (value) => setState(() => historyKind = value),
+              ),
+              Wrap(
+                spacing: 8,
+                children: [
+                  FilterChip(
+                    label: const Text('Más antiguas primero'),
+                    selected: historyOldestFirst,
+                    onSelected: (value) =>
+                        setState(() => historyOldestFirst = value),
+                  ),
+                  FilterChip(
+                    label: const Text('Agrupar por motivo'),
+                    selected: historyByReason,
+                    onSelected: (value) =>
+                        setState(() => historyByReason = value),
+                  ),
+                ],
+              ),
+              const Text(
+                'Orden por fecha clínica. Fechas preventivas desconocidas: se usa la fecha de registro. El motivo agrupa consultas, sin unir ni modificar documentos.',
+              ),
               WeightChart(events: model.events),
               const Divider(height: 32),
               if (model.events.isEmpty && !model.busy)
                 const Text('Sin entradas clínicas registradas.'),
-              for (final event in model.events.reversed)
+              if (model.events.isNotEmpty &&
+                  patientTimeline(
+                    model.events,
+                    query: historyQuery,
+                    kind: historyKind,
+                  ).isEmpty)
+                const Text(
+                  'Sin coincidencias para estos filtros; el expediente original se conserva.',
+                ),
+              for (final event in patientTimeline(
+                model.events,
+                query: historyQuery,
+                kind: historyKind,
+                oldestFirst: historyOldestFirst,
+                byReason: historyByReason,
+              ))
                 WorkspacePanel(
                   child: Padding(
                     padding: const EdgeInsets.all(16),

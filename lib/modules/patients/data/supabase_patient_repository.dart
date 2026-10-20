@@ -2,11 +2,66 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../domain/patient_models.dart';
 import '../domain/patient_activity.dart';
 import '../domain/patient_repository.dart';
+import '../domain/patient_contacts.dart';
 
 class SupabasePatientRepository
-    implements PatientRepository, PatientActivityRepository {
+    implements
+        PatientRepository,
+        PatientActivityRepository,
+        PatientContactRepository {
   SupabasePatientRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<Map<String, dynamic>> contact(String clinic, String patient) async =>
+      Map<String, dynamic>.from(
+        await client.rpc(
+              'patient_contact_snapshot',
+              params: {'p_clinic': clinic, 'p_patient': patient},
+            )
+            as Map,
+      );
+  @override
+  Future<void> saveContact(
+    String clinic,
+    String patient,
+    String owner,
+    int version,
+    Map<String, dynamic> data,
+    String operation,
+  ) async {
+    await client.rpc(
+      'patient_contact_save',
+      params: {
+        'p_clinic': clinic,
+        'p_patient': patient,
+        'p_owner': owner,
+        'p_version': version,
+        'p_data': validateContact(data),
+        'p_operation': operation,
+      },
+    );
+  }
+
+  @override
+  Future<void> logContact(
+    String clinic,
+    String patient,
+    String owner,
+    Map<String, dynamic> data,
+    String operation,
+  ) async {
+    await client.rpc(
+      'patient_contact_log',
+      params: {
+        'p_clinic': clinic,
+        'p_patient': patient,
+        'p_owner': owner,
+        'p_data': data,
+        'p_operation': operation,
+      },
+    );
+  }
+
   @override
   Future<PatientActivitySnapshot> activity(String clinic) async =>
       PatientActivitySnapshot.read(

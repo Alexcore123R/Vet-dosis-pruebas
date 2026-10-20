@@ -1,3 +1,4 @@
+import 'appointment_links_panel.dart';
 import 'appointment_summary.dart';
 import '../../../vet_ui/vet_components.dart';
 import '../../auth/domain/staff_labels.dart';
@@ -338,6 +339,7 @@ class _OperationsScreenState extends State<OperationsScreen> {
         if (activeSection == 'blocked')
           const Text('No tienes permiso para esta sección.'),
         if (activeSection == 'appointments') ...[
+          if (model.linksError != null) Text(model.linksError!),
           if (widget.initialPatientId != null)
             const Text('Atenciones del paciente seleccionado en Pacientes.'),
           if (!model.busy && model.error == null)
@@ -402,9 +404,19 @@ class _OperationsScreenState extends State<OperationsScreen> {
                   title: Text(
                     '${a['patient_name']} · ${a['kind']}${a['patient_id'] == null ? '' : ' · Vinculado al expediente'}',
                   ),
-                  subtitle: AppointmentDetails(
-                    appointment: a,
-                    stateLabel: appointmentStateLabel(a['state'] as String),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AppointmentDetails(
+                        appointment: a,
+                        stateLabel: appointmentStateLabel(a['state'] as String),
+                      ),
+                      AppointmentLinksPanel(
+                        data: model.links[a['id']],
+                        patientName:
+                            a['patient_name'] as String? ?? 'el paciente',
+                      ),
+                    ],
                   ),
                   trailing: PopupMenuButton<String>(
                     enabled:
