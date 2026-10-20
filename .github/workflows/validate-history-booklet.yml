@@ -6,6 +6,9 @@ on:
     paths:
       - 'lib/modules/patients/**'
       - 'test/history_booklet_test.dart'
+      - 'test/patient_activity*'
+      - 'supabase/adaptations/patient_activity_snapshot_v1.sql'
+      - 'supabase/tests/patient_activity_snapshot.sql'
       - '.github/workflows/validate-history-booklet.yml'
   workflow_dispatch:
 permissions:
@@ -43,4 +46,7 @@ jobs:
       - name: Validar metadatos en PostgreSQL sintetico aislado
         env:
           PGPASSWORD: synthetic-test-only
-        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/history_booklet_validation.sql
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/history_booklet_validation.sql
+          createdb -h localhost -U postgres activity_test
+          psql -h localhost -U postgres -d activity_test -v ON_ERROR_STOP=1 -f supabase/tests/patient_activity_snapshot.sql

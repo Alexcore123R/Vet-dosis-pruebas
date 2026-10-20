@@ -358,7 +358,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Tutor reservado'), findsNothing);
     expect(find.text('Agregar consentimiento'), findsNothing);
-    expect(find.textContaining('Sustancia ficticia'), findsOneWidget);
+    // Brief alert and original chronological entry remain visible.
+    expect(find.textContaining('Sustancia ficticia'), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
   testWidgets('Dictado crea borrador revisable y no guarda sin revisar', (

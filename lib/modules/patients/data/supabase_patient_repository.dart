@@ -1,10 +1,25 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../domain/patient_models.dart';
+import '../domain/patient_activity.dart';
 import '../domain/patient_repository.dart';
 
-class SupabasePatientRepository implements PatientRepository {
+class SupabasePatientRepository
+    implements PatientRepository, PatientActivityRepository {
   SupabasePatientRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<PatientActivitySnapshot> activity(String clinic) async =>
+      PatientActivitySnapshot.read(
+        Map<String, dynamic>.from(
+          await client.rpc(
+                'patient_activity_snapshot',
+                params: {'p_clinic': clinic},
+              )
+              as Map,
+        ),
+        clinic,
+      );
+
   @override
   Future<List<VetPatient>> patients(String clinicId) async {
     final rows = await client

@@ -671,6 +671,15 @@ class CoreShell extends StatelessWidget {
                                 ),
                                 repository: patients!,
                                 member: auth!.active!,
+                                canOpenActivity: allowed,
+                                onOpenActivity: (destination, patientId) async {
+                                  if (allowed(destination)) {
+                                    model.navigate(
+                                      destination,
+                                      patientId: patientId,
+                                    );
+                                  }
+                                },
                                 onOpenClinical:
                                     clinical != null && forms != null
                                     ? (patient) async {
@@ -713,6 +722,7 @@ class CoreShell extends StatelessWidget {
                                 key: ValueKey(
                                   '${auth!.active!.userId}:${auth!.active!.clinicId}:${auth!.active!.role.name}',
                                 ),
+                                initialPatientId: model.activityPatientId,
                                 repository: hospital!,
                                 patients: patients!,
                                 member: auth!.active!,
@@ -845,6 +855,7 @@ class CoreShell extends StatelessWidget {
                               : model.screen == 'Pendientes del equipo'
                               ? 'tasks'
                               : 'appointments',
+                          initialPatientId: model.activityPatientId,
                           repository: operations!,
                           member: auth!.active!,
                           onOpenPatient:

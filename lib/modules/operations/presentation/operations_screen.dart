@@ -21,8 +21,10 @@ class OperationsScreen extends StatefulWidget {
     required this.member,
     this.onOpenPatient,
     this.initialSection = 'appointments',
+    this.initialPatientId,
   });
   final Future<void> Function(String)? onOpenPatient;
+  final String? initialPatientId;
   final OperationsRepository repository;
   final String initialSection;
   final ClinicMembership member;
@@ -42,6 +44,8 @@ class _OperationsScreenState extends State<OperationsScreen> {
       .rows('appointments')
       .where(
         (a) =>
+            (widget.initialPatientId == null ||
+                a['patient_id'] == widget.initialPatientId) &&
             (appointmentState == null || a['state'] == appointmentState) &&
             (calendarDay == null ||
                 DateUtils.isSameDay(
@@ -334,6 +338,8 @@ class _OperationsScreenState extends State<OperationsScreen> {
         if (activeSection == 'blocked')
           const Text('No tienes permiso para esta sección.'),
         if (activeSection == 'appointments') ...[
+          if (widget.initialPatientId != null)
+            const Text('Atenciones del paciente seleccionado en Pacientes.'),
           if (!model.busy && model.error == null)
             AppointmentSummary(
               rows: model.rows('appointments'),
