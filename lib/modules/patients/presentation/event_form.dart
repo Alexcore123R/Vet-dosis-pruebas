@@ -2,6 +2,7 @@ import '../../core/presentation/unsaved_form_scope.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../domain/patient_models.dart';
+import '../domain/clinical_record_fields.dart';
 import '../application/voice_dictation.dart';
 import 'signature_pad.dart';
 import 'patient_view_model.dart';
@@ -13,11 +14,13 @@ class EventForm extends StatefulWidget {
     required this.patient,
     required this.save,
     this.voice,
+    this.history = false,
   });
   final EventKind kind;
   final VetPatient patient;
   final Future<String?> Function(Map<String, dynamic>, String) save;
   final VoiceDictation? voice;
+  final bool history;
   @override
   State<EventForm> createState() => _EventFormState();
 }
@@ -32,7 +35,7 @@ class _EventFormState extends State<EventForm> {
       signature.isNotEmpty ||
       accepted ||
       reviewed ||
-      type != 'vacuna';
+      type != 'vacuna' || origin != null || precision != 'exact';
   final fields = <String, TextEditingController>{};
   late final VoiceDictation voice;
   String operationId = newOperationId();
@@ -42,6 +45,8 @@ class _EventFormState extends State<EventForm> {
   bool accepted = false, busy = false, reviewed = false, listening = false;
   String type = 'vacuna', target = 'subjective';
   String? error;
+  String? origin;
+  String precision = 'exact';
   @override
   void initState() {
     super.initState();
@@ -63,10 +68,14 @@ class _EventFormState extends State<EventForm> {
       'procedure',
       'text',
       'signer',
+      ...historyFields.keys,
+      'coverage', 'date_description', 'performer', 'informant',
+      'evidence_reference', 'next_date_by',
     ]) {
       fields[k] = TextEditingController();
     }
     fields['date']!.text = DateTime.now().toIso8601String().substring(0, 10);
+    if (widget.kind == EventKind.preventive) fields['date']!.clear();
     originalFields = fieldFingerprint;
     for (final c in fields.values) {
       c.addListener(() {
@@ -153,6 +162,25 @@ class _EventFormState extends State<EventForm> {
         'signature': signature,
         'accepted': accepted,
       };
+      if (widget.history) {
+        raw['record_type'] = 'clinical_history';
+        raw['subjective'] = [for (final entry in historyFields.entries)
+          if (fields[entry.key]!.text.trim().isNotEmpty)
+            '${entry.value}: ${fields[entry.key]!.text.trim()}'].join('\n');
+        if ((raw['subjective'] as String).length > 4000) {
+          // Structured sections retain their full content; SOAP is a short index.
+          raw['subjective'] = 'Historia clínica estructurada; consultar apartados.';
+        }
+      }
+      if (widget.kind == EventKind.preventive) {
+        raw['preventive_version'] = 1;
+        raw['origin'] = origin;
+        raw['date_precision'] = precision;
+        if (precision != 'exact') {
+          // The required legacy date is a record date, never an invented application date.
+          raw['date'] = DateTime.now().toIso8601String().substring(0, 10);
+        }
+      }
       final payload = validateEvent(widget.kind, raw);
       if (widget.kind == EventKind.soap && !reviewed) {
         throw const FormatException('Revisa la nota antes de guardarla.');
@@ -206,7 +234,7 @@ class _EventFormState extends State<EventForm> {
     dirty: dirty,
     busy: busy || listening,
     child: Scaffold(
-      appBar: AppBar(title: Text(widget.kind.label)),
+      appBar: AppBar(title: Text(widget.history ? 'Historia clínica' : widget.kind.label)),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -215,17 +243,24 @@ class _EventFormState extends State<EventForm> {
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 16),
-          input('date', 'Fecha (AAAA-MM-DD)'),
+          if (widget.kind != EventKind.preventive || precision == 'exact')
+            input('date', widget.kind == EventKind.preventive
+                ? 'Fecha de aplicación (AAAA-MM-DD)' : 'Fecha clínica (AAAA-MM-DD)'),
           ...switch (widget.kind) {
             EventKind.soap => [
               input('reason', 'Motivo de consulta'),
+              if (widget.history) ...[
+                const Text('Deja sin capturar lo desconocido. No equivale a ausencia de antecedentes. Vacunas, pesos y alergias se consultan en el expediente.'),
+                for (final entry in historyFields.entries)
+                  input(entry.key, entry.value, lines: 3),
+              ],
               for (final pair in <(String, String)>[
                 ('subjective', 'S · Subjetivo'),
                 ('objective', 'O · Objetivo'),
                 ('assessment', 'A · Valoración'),
                 ('plan', 'P · Plan'),
               ])
-                input(
+                if (!widget.history || pair.$1 != 'subjective') input(
                   pair.$1,
                   pair.$2,
                   lines: 3,
@@ -280,6 +315,40 @@ class _EventFormState extends State<EventForm> {
             ],
             EventKind.preventive => [
               DropdownButtonFormField<String>(
+                initialValue: origin,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Origen del registro'),
+                items: [for (final e in preventiveOrigins.entries)
+                  DropdownMenuItem(value: e.key, child: Text(e.value))],
+                onChanged: busy ? null : (v) => setState(() {
+                  origin = v;
+                  fields['date']!.clear();
+                  precision = 'exact';
+                }),
+              ),
+              if (origin != 'clinic') ...[
+                DropdownButtonFormField<String>(
+                  key: ValueKey(origin),
+                  initialValue: precision,
+                  decoration: const InputDecoration(labelText: 'Fecha conocida'),
+                  items: const [
+                    DropdownMenuItem(value: 'exact', child: Text('Exacta')),
+                    DropdownMenuItem(value: 'approximate', child: Text('Aproximada')),
+                    DropdownMenuItem(value: 'unknown', child: Text('Desconocida')),
+                  ],
+                  onChanged: busy ? null : (v) => setState(() => precision = v ?? 'unknown'),
+                ),
+              ],
+              if (precision == 'approximate')
+                input('date_description', 'Fecha aproximada referida'),
+              if (precision != 'exact')
+                const Text('La fecha de registro se conserva por separado; no se inventará una fecha de aplicación.'),
+              if (origin == 'clinic') input('performer', 'Persona que aplicó el producto'),
+              if (origin == 'owner_report') input('informant', 'Persona que refiere el antecedente'),
+              if (origin == 'external_document')
+                input('evidence_reference', 'Referencia del carnet o comprobante revisado',
+                  hint: 'Describe documento, fecha y emisor si se conocen. Adjuntar archivos queda pendiente; no acredita autenticidad.'),
+              DropdownButtonFormField<String>(
                 initialValue: type,
                 decoration: const InputDecoration(labelText: 'Tipo'),
                 items: const [
@@ -294,14 +363,19 @@ class _EventFormState extends State<EventForm> {
                     : (v) => setState(() => type = v ?? type),
               ),
               const SizedBox(height: 16),
-              input('product', 'Producto aplicado'),
+              input('coverage', type == 'vacuna'
+                  ? 'Vacuna y coberturas / componentes'
+                  : 'Desparasitación interna, externa, ambas o desconocida',
+                hint: 'No se deduce composición por nombre triple o séxtuple.', lines: 2),
+              input('product', 'Producto / marca (si se conoce)'),
               input('batch', 'Lote (si está disponible)'),
               input(
                 'next_date',
                 'Próxima fecha (AAAA-MM-DD, opcional)',
                 hint:
-                    'La fecha la indica el MVZ; no se asigna automáticamente.',
+                    'La indica el MVZ. Sin fecha de aplicación conocida, debe ser igual o posterior al registro; no se asigna automáticamente.',
               ),
+              input('next_date_by', 'Profesional que indicó la próxima fecha (si existe)'),
               input('notes', 'Notas', lines: 2),
             ],
             EventKind.consent => [
@@ -345,3 +419,4 @@ class _EventFormState extends State<EventForm> {
     ),
   );
 }
+
