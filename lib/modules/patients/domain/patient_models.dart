@@ -1,4 +1,5 @@
 import '../../auth/domain/clinic_membership.dart';
+import 'clinical_record_fields.dart';
 import '../../doses/domain/quantity.dart';
 
 class PatientAccess {
@@ -141,6 +142,12 @@ Map<String, dynamic> validateEvent(EventKind kind, Map<String, dynamic> raw) {
         required: true,
         max: 120,
       );
+      if (raw['record_type'] == 'clinical_history') {
+        out['record_type'] = 'clinical_history';
+        for (final key in historyFields.keys) {
+          out[key] = textField(raw, key);
+        }
+      }
     case EventKind.weight:
       final number = textField(raw, 'kg', required: true).replaceAll(',', '.');
       if (!Quantity.parse(number).positive) {
@@ -157,7 +164,41 @@ Map<String, dynamic> validateEvent(EventKind kind, Map<String, dynamic> raw) {
         throw const FormatException('Tipo preventivo inválido.');
       }
       out['type'] = type;
-      out['product'] = textField(raw, 'product', required: true, max: 300);
+      final extended = raw['preventive_version'] == 1;
+      out['product'] = textField(raw, 'product', required: !extended, max: 300);
+      if (extended) {
+        final origin = textField(raw, 'origin', required: true);
+        if (!preventiveOrigins.containsKey(origin)) {
+          throw const FormatException('Selecciona el origen del antecedente.');
+        }
+        final precision = textField(raw, 'date_precision', required: true);
+        if (!['exact', 'approximate', 'unknown'].contains(precision) ||
+            (origin == 'clinic' && precision != 'exact')) {
+          throw const FormatException('Revisa la fecha de aplicación.');
+        }
+        out['preventive_version'] = 1;
+        out['origin'] = origin;
+        out['date_precision'] = precision;
+        for (final key in ['coverage', 'date_description', 'performer',
+            'informant', 'evidence_reference', 'next_date_by']) {
+          out[key] = textField(raw, key, max: 1000);
+        }
+        if (precision == 'approximate' && out['date_description'] == '') {
+          throw const FormatException('Describe la fecha aproximada conocida.');
+        }
+        if (origin == 'external_document' && out['evidence_reference'] == '') {
+          throw const FormatException('Identifica el carnet o comprobante revisado.');
+        }
+        if (origin == 'owner_report' && out['informant'] == '') {
+          throw const FormatException('Indica quién refirió el antecedente.');
+        }
+        if (origin == 'clinic' && out['performer'] == '') {
+          throw const FormatException('Indica quién realizó la aplicación.');
+        }
+        if (out['product'] == '' && out['coverage'] == '') {
+          throw const FormatException('Captura producto, cobertura o tipo de desparasitación.');
+        }
+      }
       out['batch'] = textField(raw, 'batch', max: 120);
       final due = textField(raw, 'next_date');
       out['next_date'] = due.isEmpty ? null : calendarDate(due);
@@ -166,6 +207,10 @@ Map<String, dynamic> validateEvent(EventKind kind, Map<String, dynamic> raw) {
           'La próxima fecha no puede ser anterior a la aplicación.',
         );
       }
+      if (extended && due.isNotEmpty && out['next_date_by'] == '') {
+        throw const FormatException('Indica el profesional que señaló la próxima fecha.');
+      }
+      if (extended && out['product'] == '') out['product'] = 'No especificado';
       out['notes'] = textField(raw, 'notes');
     case EventKind.consent:
       out['procedure'] = textField(raw, 'procedure', required: true, max: 300);
@@ -223,3 +268,4 @@ class SoapTemplate {
     'plan': 'Plan indicado por el MVZ, seguimiento y revisión.',
   };
 }
+
