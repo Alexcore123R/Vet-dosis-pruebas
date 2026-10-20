@@ -164,6 +164,9 @@ Map<String, dynamic> validateEvent(EventKind kind, Map<String, dynamic> raw) {
         throw const FormatException('Tipo preventivo inválido.');
       }
       out['type'] = type;
+      if (raw.containsKey('preventive_version') && raw['preventive_version'] != 1) {
+        throw const FormatException('Versión del carnet no compatible.');
+      }
       final extended = raw['preventive_version'] == 1;
       out['product'] = textField(raw, 'product', required: !extended, max: 300);
       if (extended) {

@@ -24,3 +24,23 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test --timeout 5m --concurrency 2
+  sql-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: synthetic-test-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar metadatos en PostgreSQL sintetico aislado
+        env:
+          PGPASSWORD: synthetic-test-only
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/history_booklet_validation.sql

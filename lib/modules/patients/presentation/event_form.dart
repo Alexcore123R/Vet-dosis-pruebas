@@ -45,6 +45,7 @@ class _EventFormState extends State<EventForm> {
   bool accepted = false, busy = false, reviewed = false, listening = false;
   String type = 'vacuna', target = 'subjective';
   String? error;
+  final registrationDate = DateTime.now().toIso8601String().substring(0, 10);
   String? origin;
   String precision = 'exact';
   @override
@@ -178,7 +179,7 @@ class _EventFormState extends State<EventForm> {
         raw['date_precision'] = precision;
         if (precision != 'exact') {
           // The required legacy date is a record date, never an invented application date.
-          raw['date'] = DateTime.now().toIso8601String().substring(0, 10);
+          raw['date'] = registrationDate;
         }
       }
       final payload = validateEvent(widget.kind, raw);
