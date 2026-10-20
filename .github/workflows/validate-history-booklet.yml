@@ -1,0 +1,26 @@
+name: Validar historia clinica y carnet
+on:
+  push:
+    branches: [feature/historia-carnet-20261020]
+  pull_request:
+    paths:
+      - 'lib/modules/patients/**'
+      - 'test/history_booklet_test.dart'
+      - '.github/workflows/validate-history-booklet.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  flutter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test --timeout 5m --concurrency 2
