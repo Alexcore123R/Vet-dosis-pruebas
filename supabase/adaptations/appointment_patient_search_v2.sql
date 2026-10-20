@@ -1,5 +1,6 @@
 -- Candidate migration: broader appointment lookup and additional appointment kinds.
 -- Review with the existing permission cutover before deployment.
+begin;
 alter table public.clinic_appointments
   drop constraint if exists clinic_appointments_kind_check;
 alter table public.clinic_appointments
@@ -25,3 +26,5 @@ begin
     or (can_clinical and exists(select 1 from public.vet_patient_events e where e.clinic_id=p_clinic and e.patient_id=p.id and lower(coalesce(e.payload->>'notes','')) like '%'||q||'%'))
   ) limit 50);
 end$$;
+notify pgrst,'reload schema';
+commit;

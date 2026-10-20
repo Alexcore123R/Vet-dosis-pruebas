@@ -124,10 +124,22 @@ class _OperationsScreenState extends State<OperationsScreen>
               validateAppointmentTimes(d);
             }
             try {
+              final payload = Map<String, dynamic>.from(d);
+              if (action == 'appointment' && payload['kind'] == 'cirugia') {
+                final surgeryType = '${payload.remove('surgery_type') ?? ''}'
+                    .trim();
+                if (surgeryType.isNotEmpty) {
+                  final notes = '${payload['notes'] ?? ''}'.trim();
+                  payload['notes'] = [
+                    if (notes.isNotEmpty) notes,
+                    'Tipo de cirugía: $surgeryType',
+                  ].join('\n');
+                }
+              }
               await widget.repository.write(
                 widget.member.clinicId,
                 action,
-                d,
+                payload,
                 op,
               );
             } catch (e) {
@@ -498,7 +510,7 @@ class _OperationsScreenState extends State<OperationsScreen>
                       ? () => openPatient(a['patient_id'] as String)
                       : null,
                   title: Text(
-                    '${a['patient_name']} · ${a['kind']}${a['patient_id'] == null ? '' : ' · Vinculado al expediente'}',
+                    '${a['patient_name']} · ${appointmentKindLabel(a['kind'])}${a['patient_id'] == null ? '' : ' · Vinculado al expediente'}',
                   ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

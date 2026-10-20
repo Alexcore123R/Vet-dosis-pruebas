@@ -280,11 +280,14 @@ void main() {
         );
         await tester.pumpAndSettle();
         await tester.scrollUntilVisible(
-          find.text('Referida por el propietario'),
+          find.textContaining('Referida por el propietario'),
           500,
         );
         expect(tester.takeException(), isNull);
-        expect(find.text('Referida por el propietario'), findsOneWidget);
+        expect(
+          find.textContaining('Referida por el propietario'),
+          findsOneWidget,
+        );
         expect(find.text('RETIRED_PLAN'), findsNothing);
       }
     },

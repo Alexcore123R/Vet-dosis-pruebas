@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../auth/domain/staff_labels.dart';
 import '../../operations/presentation/operations_view_model.dart'
     show validateAppointmentTimes;
@@ -96,12 +97,51 @@ class _PreventiveScreenState extends State<PreventiveScreen>
 
   Future<void> attach(PatientEvent event) async {
     try {
-      final picked = await FilePicker.pickFile(
-        type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+      final source = await showModalBottomSheet<String>(
+        context: context,
+        showDragHandle: true,
+        builder: (context) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ListTile(
+                title: Text('Agregar comprobante al carnet'),
+                subtitle: Text('Foto, imagen guardada o PDF escaneado.'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.document_scanner_outlined),
+                title: const Text('Fotografiar documento'),
+                onTap: () => Navigator.pop(context, 'camera'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Elegir foto'),
+                onTap: () => Navigator.pop(context, 'photo'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.picture_as_pdf_outlined),
+                title: const Text('Elegir PDF o escaneo'),
+                onTap: () => Navigator.pop(context, 'pdf'),
+              ),
+            ],
+          ),
+        ),
       );
-      if (!mounted || picked == null) return;
-      final file = picked.xFile;
+      if (!mounted || source == null) return;
+      final file = source == 'camera'
+          ? await ImagePicker().pickImage(
+              source: ImageSource.camera,
+              imageQuality: 88,
+              maxWidth: 2000,
+              maxHeight: 2000,
+            )
+          : source == 'photo'
+          ? await ImagePicker().pickImage(source: ImageSource.gallery)
+          : (await FilePicker.pickFile(
+              type: FileType.custom,
+              allowedExtensions: ['pdf'],
+            ))?.xFile;
+      if (!mounted || file == null) return;
       if (await file.length() > maxPreventiveEvidence) {
         throw const FormatException('Selecciona un comprobante de hasta 3 MB.');
       }
@@ -378,73 +418,123 @@ class _PreventiveScreenState extends State<PreventiveScreen>
               ),
             const SizedBox(height: 16),
             Text(
-              'Aplicaciones y antecedentes',
+              'Historial del carnet',
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            if (events.isEmpty)
-              const Text(
-                'Sin registros disponibles. No significa que no haya recibido aplicaciones.',
-              ),
-            for (final event in events)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${event.data['type']} · ${event.data['coverage'] ?? event.data['product'] ?? 'Cobertura desconocida'}',
+            const Text(
+              'Consulta por separado las vacunas y las desparasitaciones. Cada ficha conserva fecha, producto o cobertura, lote y próxima fecha cuando esos datos fueron registrados.',
+            ),
+            for (final type in const ['vacuna', 'desparasitación'])
+              ExpansionTile(
+                initiallyExpanded: true,
+                tilePadding: EdgeInsets.zero,
+                title: Text(type == 'vacuna' ? 'Vacunas' : 'Desparasitaciones'),
+                subtitle: Text(
+                  '${events.where((e) => e.data['type'] == type).length} registros',
+                ),
+                children: [
+                  if (!events.any((e) => e.data['type'] == type))
+                    const ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text('Sin registros en este apartado.'),
+                      subtitle: Text(
+                        'Esto no significa que no haya recibido aplicaciones.',
                       ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Text(
-                          preventiveOriginLabel(event.data),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      Text(preventiveDateLabel(event.data)),
-                      if (event.data['next_date'] != null)
-                        Text(
-                          'Fecha histórica registrada: ${event.data['next_date']}. Confirmar vigencia antes de agendar.',
-                        ),
-                      if (model.data!['can_confirm'] == true)
-                        TextButton(
-                          onPressed: () => plan(event),
-                          child: const Text(
-                            'Confirmar próxima fecha desde este antecedente',
-                          ),
-                        ),
-                      for (final file
-                          in model
-                              .rows('evidence')
-                              .where((f) => f['event_id'] == event.id))
-                        TextButton.icon(
-                          icon: const Icon(Icons.attach_file),
-                          label: Text(
-                            '${file['label']} · ${(file['size'] as num) / 1024 ~/ 1} KB',
-                          ),
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => PreventivePreview(
-                                load: () => widget.repository.evidence(
-                                  widget.clinic,
-                                  widget.patient,
-                                  file['id'] as String,
+                    ),
+                  for (final event in events.where(
+                    (e) => e.data['type'] == type,
+                  ))
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${event.data['coverage'] ?? event.data['product'] ?? (type == 'vacuna' ? 'Cobertura desconocida' : 'Tipo de desparasitación no especificado')}',
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            const SizedBox(height: 8),
+                            _bookletDetail(
+                              'Fecha',
+                              preventiveDateLabel(event.data),
+                            ),
+                            _bookletDetail(
+                              'Origen',
+                              preventiveOriginLabel(event.data),
+                            ),
+                            if ('${event.data['product'] ?? ''}'.isNotEmpty)
+                              _bookletDetail(
+                                'Producto',
+                                '${event.data['product']}',
+                              ),
+                            if ('${event.data['batch'] ?? ''}'.isNotEmpty)
+                              _bookletDetail('Lote', '${event.data['batch']}'),
+                            if ('${event.data['performer'] ?? ''}'.isNotEmpty)
+                              _bookletDetail(
+                                'Aplicó',
+                                '${event.data['performer']}',
+                              ),
+                            if ('${event.data['informant'] ?? ''}'.isNotEmpty)
+                              _bookletDetail(
+                                'Referido por',
+                                '${event.data['informant']}',
+                              ),
+                            if (event.data['next_date'] != null)
+                              _bookletDetail(
+                                'Próxima fecha anotada',
+                                '${event.data['next_date']} · confirmar vigencia antes de agendar',
+                              ),
+                            if ('${event.data['next_date_by'] ?? ''}'
+                                .isNotEmpty)
+                              _bookletDetail(
+                                'Fecha indicada por',
+                                '${event.data['next_date_by']}',
+                              ),
+                            if (model.data!['can_confirm'] == true)
+                              TextButton(
+                                onPressed: () => plan(event),
+                                child: const Text(
+                                  'Confirmar próxima fecha desde este antecedente',
                                 ),
                               ),
-                            ),
-                          ),
+                            for (final file
+                                in model
+                                    .rows('evidence')
+                                    .where((f) => f['event_id'] == event.id))
+                              TextButton.icon(
+                                icon: const Icon(Icons.attach_file),
+                                label: Text(
+                                  '${file['label']} · ${(file['size'] as num) / 1024 ~/ 1} KB',
+                                ),
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => PreventivePreview(
+                                      load: () => widget.repository.evidence(
+                                        widget.clinic,
+                                        widget.patient,
+                                        file['id'] as String,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            if (model.data!['can_attach'] == true)
+                              TextButton.icon(
+                                onPressed: () => attach(event),
+                                icon: const Icon(
+                                  Icons.add_photo_alternate_outlined,
+                                ),
+                                label: const Text(
+                                  'Agregar foto o PDF escaneado',
+                                ),
+                              ),
+                          ],
                         ),
-                      if (model.data!['can_attach'] == true)
-                        TextButton.icon(
-                          onPressed: () => attach(event),
-                          icon: const Icon(Icons.add_photo_alternate_outlined),
-                          label: const Text('Adjuntar foto / PDF (hasta 3 MB)'),
-                        ),
-                    ],
-                  ),
-                ),
+                      ),
+                    ),
+                ],
               ),
           ],
         );
@@ -452,6 +542,11 @@ class _PreventiveScreenState extends State<PreventiveScreen>
     ),
   );
 }
+
+Widget _bookletDetail(String label, String value) => Padding(
+  padding: const EdgeInsets.only(bottom: 4),
+  child: Text('$label: $value'),
+);
 
 String appointmentLabel(dynamic state) => switch (state) {
   'agendado' => 'Agendada',

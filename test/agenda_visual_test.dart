@@ -8,10 +8,16 @@ import 'package:vetdosis_pro/modules/auth/domain/clinic_membership.dart';
 import 'package:vetdosis_pro/modules/core/data/settings_repository.dart';
 import 'package:vetdosis_pro/modules/core/presentation/core_view_model.dart';
 import 'package:vetdosis_pro/modules/operations/presentation/operations_screen.dart';
+import 'package:vetdosis_pro/modules/operations/presentation/appointment_summary.dart';
 import 'package:vetdosis_pro/vet_ui.dart';
 import 'agenda_permission_test.dart' show PermissionAgendaFake;
 
 void main() {
+  test('appointment kinds have clear Spanish display labels', () {
+    expect(appointmentKindLabel('estetica'), 'Estética / baño / peluquería');
+    expect(appointmentKindLabel('cirugia'), 'Cirugía');
+    expect(appointmentKindLabel('hospital_visita'), 'Visita de hospitalizado');
+  });
   for (final brightness in Brightness.values) {
     testWidgets(
       'Agenda keeps read-only actions and empty state in $brightness',
@@ -103,9 +109,9 @@ void main() {
     await tester.ensureVisible(find.text('En atención (2)'));
     await tester.tap(find.text('En atención (2)'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Hoy agendada · consulta'), findsNothing);
-    expect(find.textContaining('Hoy atención · consulta'), findsOneWidget);
-    expect(find.textContaining('Mañana atención · consulta'), findsOneWidget);
+    expect(find.textContaining('Hoy agendada · Consulta'), findsNothing);
+    expect(find.textContaining('Hoy atención · Consulta'), findsOneWidget);
+    expect(find.textContaining('Mañana atención · Consulta'), findsOneWidget);
     await tester.ensureVisible(find.text('Calendario'));
     await tester.tap(find.text('Calendario'));
     await tester.pumpAndSettle();
@@ -113,7 +119,7 @@ void main() {
         .widget<CalendarDatePicker>(find.byType(CalendarDatePicker))
         .onDateChanged(today);
     await tester.pumpAndSettle();
-    expect(find.textContaining('Mañana atención · consulta'), findsNothing);
+    expect(find.textContaining('Mañana atención · Consulta'), findsNothing);
     await tester.ensureVisible(find.text('Canceladas (0)'));
     await tester.tap(find.text('Canceladas (0)'));
     await tester.pumpAndSettle();

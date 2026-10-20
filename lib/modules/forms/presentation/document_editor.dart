@@ -461,16 +461,24 @@ class _DocumentEditorState extends State<DocumentEditor> {
     final id = f['id'] as String, type = f['type'];
     if (type == 'signature') return const SizedBox.shrink();
     if (type == 'binding') {
+      final patientData = document?.snapshot['patient'] as Map? ?? const {};
+      final ownerData = document?.snapshot['owner'] as Map? ?? const {};
+      final linkedValue = document == null
+          ? 'Se vincula al crear el borrador.'
+          : id == 'patient'
+          ? [
+              patientData['name'],
+              patientData['species'],
+              if ('${patientData['breed'] ?? ''}'.isNotEmpty)
+                'Raza: ${patientData['breed']}',
+              if ('${patientData['sex'] ?? ''}'.isNotEmpty)
+                'Sexo: ${patientData['sex']}',
+            ].where((value) => value != null && '$value'.isNotEmpty).join(' · ')
+          : '${ownerData['name'] ?? 'Sin propietario registrado'}';
       return ListTile(
         leading: const Icon(Icons.link),
         title: Text(f['label']),
-        subtitle: Text(
-          document == null
-              ? 'Se vincula al crear el borrador.'
-              : id == 'patient'
-              ? '${document!.snapshot['patient']['name']} · ${document!.snapshot['patient']['species']}'
-              : document!.snapshot['owner']['name'],
-        ),
+        subtitle: Text(linkedValue),
       );
     }
     final label = '${f['label']}${f['required'] == true ? ' *' : ''}';
@@ -823,10 +831,27 @@ class _DocumentEditorState extends State<DocumentEditor> {
                 'Cambiar el perfil exige revisar y firmar de nuevo. Sin firma compartida se usa la firma propia de quien emite.',
               ),
             ],
+            const Padding(
+              padding: EdgeInsets.only(top: 20, bottom: 8),
+              child: Text(
+                'Datos para completar',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const Text(
+              'El tutor completa o confirma sus datos personales; el equipo registra la información clínica y del procedimiento. Los datos vinculados del expediente se muestran como referencia.',
+            ),
             for (final f in (schema['fields'] as List).cast<Map>())
               if (!(widget.draftOnly &&
                   ['mvz_name', 'mvz_license'].contains(f['id'])))
                 field(f),
+            const Padding(
+              padding: EdgeInsets.only(top: 20, bottom: 8),
+              child: Text(
+                'Cláusulas e indicaciones para revisar',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+            ),
             for (final c in schema['clauses'])
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
