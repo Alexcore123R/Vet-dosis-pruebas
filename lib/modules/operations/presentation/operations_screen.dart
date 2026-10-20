@@ -177,7 +177,16 @@ class _OperationsScreenState extends State<OperationsScreen>
           'kind',
           'Tipo',
           type: 'select',
-          options: {'consulta': 'Consulta', 'estetica': 'Estética / baño'},
+          options: {
+            'consulta': 'Consulta',
+            'seguimiento': 'Seguimiento',
+            'estetica': 'Estética / baño / peluquería',
+            'analisis': 'Análisis / toma de muestras',
+            'hospital_visita': 'Visita de hospitalizado',
+            'vacunacion': 'Vacunación / desparasitación',
+            'entrega': 'Entrega / alta',
+            'otro': 'Otro servicio',
+          },
           required: true,
         ),
         RxField(
@@ -400,6 +409,7 @@ class _OperationsScreenState extends State<OperationsScreen>
                 ? null
                 : newAppointment,
           ),
+          const SizedBox(height: 14),
           VetCard(
             padding: EdgeInsets.zero,
             child: ExpansionTile(

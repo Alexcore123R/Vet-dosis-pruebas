@@ -43,7 +43,7 @@ class AppointmentSummary extends StatelessWidget {
                 '$todayCount citas para hoy · ${rows.length} citas cargadas',
               ),
               const Text(
-                'Resumen de los registros disponibles. Horarios del dispositivo.',
+                'Resumen de los registros disponibles. Horarios del dispositivo; desliza para ver todos los estados.',
               ),
             ],
           ),

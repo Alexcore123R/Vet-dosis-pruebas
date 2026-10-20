@@ -22,6 +22,7 @@ on:
       - 'supabase/tests/patient_activity_snapshot.sql'
       - 'supabase/adaptations/preventive_booklet_v2.sql'
       - 'supabase/tests/preventive_booklet_v2.sql'
+      - 'supabase/adaptations/appointment_patient_search_v2.sql'
       - '.github/workflows/validate-history-booklet.yml'
   workflow_dispatch:
 permissions:
