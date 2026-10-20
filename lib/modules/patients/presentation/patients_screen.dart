@@ -7,6 +7,8 @@ import '../domain/patient_activity.dart';
 import '../application/patient_activity_model.dart';
 import '../domain/clinical_record_fields.dart';
 import 'preventive_booklet.dart';
+import 'preventive_screen.dart';
+import '../domain/preventive_repository.dart';
 import '../../../core/widgets/workspace_panel.dart';
 import 'patient_catalog.dart';
 import 'package:flutter/material.dart';
@@ -191,7 +193,7 @@ class _PatientsScreenState extends State<PatientsScreen>
     }
     final due = event.data['next_date'];
     final message =
-        'Hola ${owner.name}. Recordatorio de ${model.member.clinicName}: ${model.selected!.name} tiene ${event.data['type']} programada para $due. Contáctanos para confirmar su cita.';
+        'Hola ${owner.name}. Recordatorio de ${model.member.clinicName}: ${model.selected!.name} tiene una fecha de ${event.data['type']} registrada para $due. Contáctanos para revisar la indicación y agendar, si corresponde.';
     final uri = Uri.https('wa.me', '/$phone', {'text': message});
     try {
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
@@ -513,6 +515,33 @@ class _PatientsScreenState extends State<PatientsScreen>
                   ],
                 ),
               PreventiveBooklet(events: model.events),
+              if (widget.repository is PreventiveRepository)
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.menu_book),
+                  label: const Text(
+                    'Abrir carnet · comprobantes y próximas citas',
+                  ),
+                  onPressed: model.busy
+                      ? null
+                      : () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PreventiveScreen(
+                                key: ValueKey(
+                                  'booklet-${widget.member.userId}-${widget.member.clinicId}-${patient.id}',
+                                ),
+                                repository:
+                                    widget.repository as PreventiveRepository,
+                                clinic: widget.member.clinicId,
+                                patient: patient.id,
+                                clinicName: widget.member.clinicName,
+                              ),
+                            ),
+                          );
+                          if (mounted) await model.select(patient);
+                        },
+                ),
 
               if (widget.onOpenClinical != null)
                 OutlinedButton(

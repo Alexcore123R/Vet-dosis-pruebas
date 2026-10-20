@@ -11,6 +11,7 @@ on:
       - 'test/patient_activity*'
       - 'test/contact*'
       - 'test/appointment_care*'
+      - 'test/preventive_booklet*'
       - 'supabase/adaptations/appointment_care_v1.sql'
       - 'supabase/tests/appointment_care.sql'
       - 'lib/modules/operations/**'
@@ -19,6 +20,8 @@ on:
       - 'supabase/tests/patient_contacts_links.sql'
       - 'supabase/adaptations/patient_activity_snapshot_v1.sql'
       - 'supabase/tests/patient_activity_snapshot.sql'
+      - 'supabase/adaptations/preventive_booklet_v2.sql'
+      - 'supabase/tests/preventive_booklet_v2.sql'
       - '.github/workflows/validate-history-booklet.yml'
   workflow_dispatch:
 permissions:
@@ -64,6 +67,8 @@ jobs:
           psql -h localhost -U postgres -d care_test -v ON_ERROR_STOP=1 -f supabase/tests/appointment_care.sql
           createdb -h localhost -U postgres contacts_test
           psql -h localhost -U postgres -d contacts_test -v ON_ERROR_STOP=1 -f supabase/tests/patient_contacts_links.sql
+          createdb -h localhost -U postgres preventive_test
+          psql -h localhost -U postgres -d preventive_test -v ON_ERROR_STOP=1 -f supabase/tests/preventive_booklet_v2.sql
   android-compile:
     runs-on: ubuntu-latest
     timeout-minutes: 35
