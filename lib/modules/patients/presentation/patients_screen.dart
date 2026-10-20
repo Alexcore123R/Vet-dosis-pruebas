@@ -618,7 +618,11 @@ class _PatientsScreenState extends State<PatientsScreen>
                         Text(
                           event.kind == EventKind.preventive
                               ? '${event.kind.label} · ${preventiveDateLabel(event.data)}'
-                              : '${event.data['record_type'] == 'clinical_history' ? 'Historia clínica' : event.kind.label} · ${event.data['date']}',
+                              : '${event.data['record_type'] == 'clinical_history'
+                                    ? 'Historia clínica'
+                                    : event.data['record_type'] == 'care_discharge'
+                                    ? 'Cierre de consulta e indicaciones'
+                                    : event.kind.label} · ${event.data['date']}',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         if (event.formDocumentId != null ||

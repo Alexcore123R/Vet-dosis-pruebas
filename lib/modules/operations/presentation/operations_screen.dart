@@ -1,4 +1,6 @@
 import 'appointment_links_panel.dart';
+import 'appointment_care_panel.dart';
+import '../domain/appointment_care.dart';
 import 'appointment_summary.dart';
 import '../../../vet_ui/vet_components.dart';
 import '../../auth/domain/staff_labels.dart';
@@ -33,18 +35,29 @@ class OperationsScreen extends StatefulWidget {
   State<OperationsScreen> createState() => _OperationsScreenState();
 }
 
-class _OperationsScreenState extends State<OperationsScreen> {
+class _OperationsScreenState extends State<OperationsScreen>
+    with WidgetsBindingObserver {
   late final model = OperationsViewModel(
     widget.repository,
     widget.member.clinicId,
   );
   String section = 'appointments', filter = 'pendientes';
   DateTime? calendarDay;
+  bool careDay = true;
+  bool get careEnabled => widget.repository is AppointmentCareRepository;
   String? appointmentState;
   List<Map<String, dynamic>> get visibleAppointments => model
       .rows('appointments')
       .where(
         (a) =>
+            (!careEnabled ||
+                !careDay ||
+                (model.careWindow != null &&
+                    inCareQueue(
+                      a,
+                      DateTime.parse(model.careWindow!['day_start'] as String),
+                      DateTime.parse(model.careWindow!['day_end'] as String),
+                    ))) &&
             (widget.initialPatientId == null ||
                 a['patient_id'] == widget.initialPatientId) &&
             (appointmentState == null || a['state'] == appointmentState) &&
@@ -72,12 +85,23 @@ class _OperationsScreenState extends State<OperationsScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     section = widget.initialSection;
     model.load();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      model.load();
+    } else {
+      model.suspend();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     model.dispose();
     super.dispose();
   }
@@ -114,6 +138,11 @@ class _OperationsScreenState extends State<OperationsScreen> {
       ),
     );
     if (ok == true && mounted) await model.load();
+  }
+
+  Future<void> openPatient(String id) async {
+    await widget.onOpenPatient?.call(id);
+    if (mounted) await model.load();
   }
 
   Future<void> newAppointment() async {
@@ -349,6 +378,18 @@ class _OperationsScreenState extends State<OperationsScreen> {
               onStateChanged: (value) =>
                   setState(() => appointmentState = value),
             ),
+          if (careEnabled) ...[
+            FilterChip(
+              label: const Text('Atención del día y pendientes anteriores'),
+              selected: careDay,
+              onSelected: (value) => setState(() => careDay = value),
+            ),
+            if (model.careWindow != null && careDay)
+              Text(
+                '${model.careWindow!['day']} · ${model.careWindow!['timezone']} · ${visibleAppointments.length} citas',
+              ),
+            if (model.careError != null) Text(model.careError!),
+          ],
           VetActionButton(
             label: 'Agendar cita',
             icon: Icons.add,
@@ -399,7 +440,7 @@ class _OperationsScreenState extends State<OperationsScreen> {
                           widget.onOpenPatient != null &&
                           (!model.explicitPermissions ||
                               model.allowed('patient.read'))
-                      ? () => widget.onOpenPatient!(a['patient_id'] as String)
+                      ? () => openPatient(a['patient_id'] as String)
                       : null,
                   title: Text(
                     '${a['patient_name']} · ${a['kind']}${a['patient_id'] == null ? '' : ' · Vinculado al expediente'}',
@@ -411,6 +452,43 @@ class _OperationsScreenState extends State<OperationsScreen> {
                         appointment: a,
                         stateLabel: appointmentStateLabel(a['state'] as String),
                       ),
+                      Text(
+                        'Responsable: ${a['professional_id'] is String ? person(a['professional_id'] as String) : 'Sin asignar'}',
+                      ),
+                      if (a['patient_id'] != null &&
+                          widget.onOpenPatient != null &&
+                          (!model.explicitPermissions ||
+                              model.allowed('patient.read')))
+                        TextButton.icon(
+                          icon: const Icon(Icons.folder_open),
+                          label: const Text(
+                            'Abrir expediente / registrar evolución',
+                          ),
+                          onPressed: () =>
+                              openPatient(a['patient_id'] as String),
+                        ),
+                      if (careEnabled)
+                        AppointmentCarePanel(
+                          key: ValueKey(
+                            'care-${widget.member.userId}-${widget.member.clinicId}-${a['id']}-${a['version']}',
+                          ),
+                          appointment: a,
+                          data: model.care[a['id']],
+                          repository:
+                              widget.repository as AppointmentCareRepository,
+                          clinic: widget.member.clinicId,
+                          onSaved: model.load,
+                          isCurrent: () =>
+                              mounted &&
+                              model.care[a['id']] != null &&
+                              model
+                                  .rows('appointments')
+                                  .any(
+                                    (r) =>
+                                        r['id'] == a['id'] &&
+                                        r['version'] == a['version'],
+                                  ),
+                        ),
                       AppointmentLinksPanel(
                         data: model.links[a['id']],
                         patientName:
@@ -477,9 +555,13 @@ class _OperationsScreenState extends State<OperationsScreen> {
                           child: Text('Reprogramar'),
                         ),
                       for (final s in switch (a['state']) {
-                        'agendado' => ['en_atencion', 'cancelado'],
-                        'en_atencion' => ['listo', 'cancelado'],
-                        'listo' => ['entregado'],
+                        'agendado' =>
+                          careEnabled
+                              ? ['cancelado']
+                              : ['en_atencion', 'cancelado'],
+                        'en_atencion' =>
+                          careEnabled ? ['cancelado'] : ['listo', 'cancelado'],
+                        'listo' => careEnabled ? <String>[] : ['entregado'],
                         _ => <String>[],
                       })
                         PopupMenuItem(
@@ -689,7 +771,7 @@ class _OperationsScreenState extends State<OperationsScreen> {
             ListTile(
               title: Text('${a['name']} · \$${a['price']}'),
               subtitle: Text(
-                '${person(a['professional_id'] as String)} · comisión \$${a['commission']} · ${a['paid'] == true ? 'Cobrado' : 'Pendiente de cobro'}',
+                '${a['professional_id'] is String ? person(a['professional_id'] as String) : 'Sin asignar'} · comisión \$${a['commission']} · ${a['paid'] == true ? 'Cobrado' : 'Pendiente de cobro'}',
               ),
             ),
         ],

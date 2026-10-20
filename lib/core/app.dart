@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'widgets/app_version_label.dart';
 import '../modules/finance/presentation/financial_planning_panel.dart';
 import '../modules/core/presentation/section_menu.dart';
 import '../modules/production/presentation/production_menu.dart';
@@ -845,7 +846,9 @@ class CoreShell extends StatelessWidget {
                           auth?.active != null &&
                           auth?.offline != true
                       ? OperationsScreen(
-                          key: ValueKey('operations:${model.screen}'),
+                          key: ValueKey(
+                            'operations:${model.screen}:${auth?.active?.clinicId}:${auth?.active?.userId}:${model.activityPatientId}',
+                          ),
                           initialSection: model.screen == 'Servicios'
                               ? 'services'
                               : model.screen == 'Proveedores'
@@ -1230,7 +1233,7 @@ class CoreShell extends StatelessWidget {
       ),
       AlertPreferencesPanel(alerts: hospitalAlerts),
     ],
-    const Text('VetDosis Pro · Versión de pruebas · 0.1.0'),
+    const AppVersionLabel(),
   ];
 
   List<Widget> pending(BuildContext context) => [

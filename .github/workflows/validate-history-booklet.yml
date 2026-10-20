@@ -3,9 +3,16 @@ on:
   pull_request:
     paths:
       - 'lib/modules/patients/**'
+      - 'lib/core/app.dart'
+      - 'lib/core/widgets/app_version_label.dart'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
       - 'test/history_booklet_test.dart'
       - 'test/patient_activity*'
       - 'test/contact*'
+      - 'test/appointment_care*'
+      - 'supabase/adaptations/appointment_care_v1.sql'
+      - 'supabase/tests/appointment_care.sql'
       - 'lib/modules/operations/**'
       - 'android/app/src/main/kotlin/**'
       - 'supabase/adaptations/patient_contacts_appointment_links_v1.sql'
@@ -53,6 +60,8 @@ jobs:
           psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/history_booklet_validation.sql
           createdb -h localhost -U postgres activity_test
           psql -h localhost -U postgres -d activity_test -v ON_ERROR_STOP=1 -f supabase/tests/patient_activity_snapshot.sql
+          createdb -h localhost -U postgres care_test
+          psql -h localhost -U postgres -d care_test -v ON_ERROR_STOP=1 -f supabase/tests/appointment_care.sql
           createdb -h localhost -U postgres contacts_test
           psql -h localhost -U postgres -d contacts_test -v ON_ERROR_STOP=1 -f supabase/tests/patient_contacts_links.sql
   android-compile:

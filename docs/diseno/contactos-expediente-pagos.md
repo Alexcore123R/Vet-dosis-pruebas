@@ -45,7 +45,7 @@ Importante: el POS actual cobra cada acto completo. La etiqueta parcial puede de
 - El enlace no inventa un tutor para un paciente sin tutor: completar esa vinculación administrativa sigue pendiente. El alta existente captura teléfono/dirección principales; los datos adicionales se editan después sobre el tutor registrado.
 - Revisar lectura de nuevos campos en formatos futuros y sus permisos. Los PDF y las instantáneas ya firmadas no se modifican; esta entrega no agrega contacto automáticamente a PDFs antiguos.
 - Extender respaldo/restauración a la nueva bitácora y revisiones privadas antes de afirmar cobertura integral. El mecanismo actual que serializa vet_owners puede incluir columnas nuevas, pero eso no acredita restauración completa.
-- Pendientes de la etapa anterior: adjuntos del carnet, exportación/compartir, selección estructurada de componentes, planes preventivos sin evento anterior, versión visible de app y verificación real en teléfono.
+- Pendientes de la etapa anterior: adjuntos del carnet, exportación/compartir, selección estructurada de componentes, planes preventivos sin evento anterior, verificación real en teléfono. La versión visible se incorporó después en la etapa de atención/ingreso/entrega.
 - Agenda sigue pendiente de las observaciones específicas de la usuaria; esta entrega solo enlaza contacto y resumen financiero.
 
 ## Evidencia
