@@ -1,3 +1,5 @@
+import '../domain/clinical_record_fields.dart';
+import 'preventive_booklet.dart';
 import '../../../core/widgets/workspace_panel.dart';
 import 'patient_catalog.dart';
 import 'package:flutter/material.dart';
@@ -106,7 +108,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
     if (mounted && saved == true) await model.load();
   }
 
-  Future<void> add(EventKind kind) async {
+  Future<void> add(EventKind kind, {bool history = false}) async {
     final patient = model.selected;
     if (patient == null) return;
     final theme = Theme.of(context);
@@ -117,6 +119,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
           data: theme,
           child: EventForm(
             kind: kind,
+            history: history,
             patient: patient,
             save: (data, id) async => (await model.add(kind, data, id))
                 ? null
@@ -316,6 +319,23 @@ class _PatientsScreenState extends State<PatientsScreen> {
                 ),
               ),
             if (model.access.clinical) ...[
+              if (model.access.canAdd(EventKind.soap))
+                OutlinedButton.icon(
+                  onPressed: model.busy ? null : () => add(EventKind.soap, history: true),
+                  icon: const Icon(Icons.history_edu),
+                  label: const Text('Registrar historia clínica'),
+                ),
+              for (final e in model.events.reversed.where(
+                  (e) => e.kind == EventKind.soap && e.data['record_type'] == 'clinical_history'))
+                ExpansionTile(
+                  title: Text('Historia clínica · ${e.data['date']}'),
+                  subtitle: Text('Registro: ${patientEventTimestamp(context, e.createdAt)} · ${e.createdBy}'),
+                  children: [for (final field in historyFields.entries)
+                    if ('${e.data[field.key] ?? ''}'.isNotEmpty)
+                      ListTile(title: Text(field.value), subtitle: Text('${e.data[field.key]}'))],
+                ),
+              PreventiveBooklet(events: model.events),
+
               if (widget.onOpenClinical != null)
                 OutlinedButton(
                   onPressed: model.busy
@@ -357,7 +377,9 @@ class _PatientsScreenState extends State<PatientsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${event.kind.label} · ${event.data['date']}',
+                          event.kind == EventKind.preventive
+                              ? '${event.kind.label} · ${preventiveDateLabel(event.data)}'
+                              : '${event.data['record_type'] == 'clinical_history' ? 'Historia clínica' : event.kind.label} · ${event.data['date']}',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         if (event.formDocumentId != null ||
@@ -389,6 +411,9 @@ class _PatientsScreenState extends State<PatientsScreen> {
                             Text(event.data['notes'] as String? ?? ''),
                           ],
                           EventKind.preventive => [
+                            Text(preventiveOriginLabel(event.data)),
+                            if ('${event.data['coverage'] ?? ''}'.isNotEmpty)
+                              Text('Coberturas / tipo: ${event.data['coverage']}'),
                             Text(
                               '${event.data['type']} · ${event.data['product']}',
                             ),
@@ -452,3 +477,4 @@ class _PatientsScreenState extends State<PatientsScreen> {
     },
   );
 }
+
