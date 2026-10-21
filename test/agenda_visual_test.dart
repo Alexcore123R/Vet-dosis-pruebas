@@ -54,7 +54,12 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.text('Agenda y citas'), findsOneWidget);
+        // The section title and its navigation chip intentionally share a label.
+        expect(find.text('Agenda y citas'), findsNWidgets(2));
+        expect(
+          find.widgetWithText(ChoiceChip, 'Agenda y citas'),
+          findsOneWidget,
+        );
         expect(find.text('No hay citas registradas.'), findsOneWidget);
         expect(find.byType(VetCard), findsWidgets);
         final button = tester.widget<FilledButton>(

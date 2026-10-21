@@ -8,6 +8,7 @@ on:
       - 'pubspec.yaml'
       - 'pubspec.lock'
       - 'test/history_booklet_test.dart'
+      - 'test/agenda_visual_test.dart'
       - 'test/patient_activity*'
       - 'test/contact*'
       - 'test/appointment_care*'
