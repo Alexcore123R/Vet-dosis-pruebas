@@ -283,61 +283,18 @@ class _SaleScreenState extends State<SaleScreen> {
             ),
             const RxField('price', 'Precio unitario MXN', required: true),
             const RxField('cost', 'Costo TOTAL capturado MXN', required: true),
-            const RxField(
-              'commission_kind',
-              'Cómo calcular la comisión',
-              type: 'select',
-              options: {'porcentaje': 'Porcentaje del servicio', 'bono': 'Importe fijo MXN'},
-              required: true,
-            ),
-            const RxField(
-              'commission',
-              'Porcentaje o importe fijo',
-              required: true,
-            ),
-            RxField(
-              'professional_id',
-              'Profesional de la clínica',
-              type: 'select',
-              options: {
-                for (final s in widget.staff)
-                  s['id'] as String: '${s['label'] ?? s['id']} · ${s['role']}',
-              },
-            ),
           ],
           submit: (d, _) async {
             for (final key in ['price', 'cost']) {
               d[key] = Money.parse(d[key] as String).decimal;
             }
-            final amount = Money.parse(d['price'] as String)
-                .times(Quantity.parse(d['quantity'] as String));
-            if (d['commission_kind'] == 'porcentaje') {
-              final percentage = Money.parse(d['commission'] as String);
-              if (percentage.cents > BigInt.from(10000)) {
-                throw const FormatException('El porcentaje no puede superar 100%.');
-              }
-              d['commission'] = Money(
-                (amount.cents * percentage.cents + BigInt.from(5000)) ~/
-                    BigInt.from(10000),
-              ).decimal;
-            } else {
-              d['commission'] = Money.parse(d['commission'] as String).decimal;
-            }
-            if (Money.parse(d['commission']).cents > BigInt.zero &&
-                d['professional_id'] == null) {
-              throw const FormatException(
-                'Selecciona al profesional para la comisión.',
-              );
-            }
-            if (Money.parse(d['commission']).cents > amount.cents) {
-              throw const FormatException('La comisión supera el importe.');
-            }
             setState(() {
               lines.add({
                 ...d,
+                'commission': '0.00',
                 'kind': 'servicio',
                 'display': d['name'],
-              }..remove('commission_kind'));
+              });
               changed();
             });
           },
@@ -438,7 +395,7 @@ class _SaleScreenState extends State<SaleScreen> {
           if (widget.admin)
             TextButton(
               onPressed: busy ? null : addService,
-              child: const Text('Agregar servicio y comisión manual'),
+              child: const Text('Agregar servicio manual sin comisión'),
             ),
           const Divider(),
           const Text(

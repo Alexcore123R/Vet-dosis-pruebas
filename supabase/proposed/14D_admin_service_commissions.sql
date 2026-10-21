@@ -33,5 +33,17 @@ begin
  return v_id;
 end$$;
 revoke all on function private.ops_catalog_write(uuid,text,jsonb,text) from public,anon,authenticated,service_role;
+create or replace function private.commission_catalog_guard()
+returns trigger language plpgsql set search_path='' as $$
+begin
+ if new.kind='servicio' and new.service_act_id is null and new.commission>0 then
+  raise exception 'commission_catalog_service_required';
+ end if;
+ return new;
+end$$;
+drop trigger if exists commission_catalog_guard on public.inventory_sale_lines;
+create trigger commission_catalog_guard before insert on public.inventory_sale_lines
+for each row execute function private.commission_catalog_guard();
+revoke all on function private.commission_catalog_guard() from public,anon,authenticated,service_role;
 notify pgrst,'reload schema';
 commit;
