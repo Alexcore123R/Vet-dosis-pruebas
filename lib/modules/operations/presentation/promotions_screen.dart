@@ -47,7 +47,7 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
   Future<void> edit([Map<String, dynamic>? promotion, String? draft]) async {
     final saved = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => RxEntryScreen(
       title: promotion == null ? 'Nueva oferta o promoción' : 'Editar oferta o promoción',
-      initial: promotion == null ? {'kind': 'promocion', if(draft!=null)'message':draft} : {
+      initial: promotion == null ? {'kind': 'promocion', 'message':draft??''} : {
         'id': promotion['id'], 'kind': promotion['kind'], 'title': promotion['title'],
         'message': promotion['message'], 'discount_percent': promotion['discount_percent']?.toString() ?? '',
         'starts_on': promotion['starts_on'] ?? '', 'ends_on': promotion['ends_on'] ?? '',
