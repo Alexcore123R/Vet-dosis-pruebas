@@ -6,6 +6,7 @@ import '../../ai/presentation/ai_screen.dart';
 import '../../patients/domain/patient_contacts.dart';
 import '../../patients/presentation/patient_view_model.dart' show newOperationId;
 import '../../prescribing/presentation/rx_entry_screen.dart';
+import 'promotion_image_screen.dart';
 import '../domain/operations_repository.dart';
 
 class PromotionsScreen extends StatefulWidget {
@@ -145,6 +146,9 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
         if (promotion['discount_percent'] != null) Text('Descuento: ${promotion['discount_percent']}%'),
         if (promotion['starts_on'] != null || promotion['ends_on'] != null) Text('Vigencia: ${promotion['starts_on'] ?? 'sin inicio'} a ${promotion['ends_on'] ?? 'sin fin'}'),
         Wrap(spacing: 8, children: [
+          TextButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PromotionImageScreen(
+            clinicName: widget.member.clinicName, promotion: promotion,
+          ))), icon: const Icon(Icons.image_outlined), label: const Text('Crear imagen')),
           TextButton(onPressed: () => recipients(promotion, 'whatsapp'), child: const Text('WhatsApp')),
           TextButton(onPressed: () => recipients(promotion, 'email'), child: const Text('Correo')),
           if (admin) TextButton(onPressed: () => edit(promotion), child: const Text('Editar')),
