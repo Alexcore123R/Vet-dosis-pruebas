@@ -1,0 +1,19 @@
+name: Probar staging de referencias
+on:
+  pull_request:
+    paths:
+      - 'supabase/proposed/15A_reference_staging.sql'
+      - 'supabase/tests/reference_staging.sql'
+      - 'supabase/tests/run_reference_staging.sh'
+      - '.github/workflows/test-reference-staging.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reference-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar esquema sin datos ni conexión remota
+        run: bash supabase/tests/run_reference_staging.sh
