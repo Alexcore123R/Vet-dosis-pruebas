@@ -36,6 +36,9 @@ class OperationsViewModel extends ChangeNotifier {
       (data['permissions'] as Map)[code] == true;
   bool sectionAllowed(String section) =>
       data['sections'] is Map && (data['sections'] as Map)[section] == true;
+  String? sectionReason(String section) => data['section_reasons'] is Map
+      ? (data['section_reasons'] as Map)[section] as String?
+      : null;
   List<Map<String, dynamic>> rows(String key) => (data[key] as List? ?? [])
       .map((e) => Map<String, dynamic>.from(e as Map))
       .toList();

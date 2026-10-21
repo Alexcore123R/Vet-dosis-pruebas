@@ -1,3 +1,4 @@
+import 'package:vetdosis_pro/modules/prescribing/presentation/rx_entry_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vetdosis_pro/modules/auth/domain/clinic_membership.dart';
@@ -133,9 +134,134 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('No tienes permiso para esta sección.'), findsOneWidget);
+      expect(
+        find.text('Esta sección no está habilitada para tu cuenta.'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('service.read o service.manage'),
+        findsOneWidget,
+      );
       expect(find.text('Nuevo servicio'), findsNothing);
       await tester.pumpWidget(const SizedBox());
     },
   );
+
+  testWidgets('An explicit service grant enables catalog management', (
+    tester,
+  ) async {
+    final fake = PermissionAgendaFake()
+      ..response = {
+        'permissions': {'service.manage': true},
+        'sections': {'services': true},
+        'members': [
+          {'user_id': 'u1', 'role': 'member'},
+        ],
+        'people': [
+          {'user_id': 'u1', 'display_name': 'Synthetic staff'},
+        ],
+        'services': [],
+      };
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: OperationsScreen(
+              repository: fake,
+              initialSection: 'services',
+              member: const ClinicMembership(
+                clinicId: 'c1',
+                clinicName: 'Synthetic',
+                userId: 'u1',
+                role: ClinicRole.estilista,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Nuevo servicio'), findsOneWidget);
+    await tester.ensureVisible(find.text('Cirugías'));
+    await tester.tap(find.text('Cirugías'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.widgetWithText(ActionChip, 'Cirugía'));
+    await tester.tap(find.widgetWithText(ActionChip, 'Cirugía'));
+    await tester.pumpAndSettle();
+    final entry = tester.widget<RxEntryScreen>(find.byType(RxEntryScreen));
+    expect(entry.initial['category'], 'cirugia');
+    expect(entry.initial['name'], 'Cirugía');
+    expect(entry.initial.containsKey('price'), false);
+    expect(entry.fields.any((field) => field.key == 'name'), true);
+    expect(
+      entry.fields.any(
+        (field) => field.key == 'subcategory' && field.type == 'text',
+      ),
+      true,
+    );
+
+    expect(
+      find.text('Esta sección no está habilitada para tu cuenta.'),
+      findsNothing,
+    );
+    await tester.pumpWidget(const SizedBox());
+  });
+  for (final permitted in [false, true]) {
+    testWidgets(
+      'Products and pharmacy navigation respects access: $permitted',
+      (tester) async {
+        final fake = PermissionAgendaFake()
+          ..response = {
+            'permissions': {'service.read': true},
+            'sections': {'services': true},
+            'services': [],
+          };
+        String? destination;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: OperationsScreen(
+                  repository: fake,
+                  initialSection: 'services',
+                  member: const ClinicMembership(
+                    clinicId: 'c1',
+                    clinicName: 'Synthetic',
+                    userId: 'u1',
+                    role: ClinicRole.estilista,
+                  ),
+                  canOpenInventory: permitted,
+                  canOpenSales: permitted,
+                  onNavigate: (value) => destination = value,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final inventory = find.widgetWithText(
+          OutlinedButton,
+          'Productos y farmacia',
+        );
+        final sales = find.widgetWithText(OutlinedButton, 'Registrar venta');
+        expect(
+          tester.widget<OutlinedButton>(inventory).onPressed != null,
+          permitted,
+        );
+        expect(
+          tester.widget<OutlinedButton>(sales).onPressed != null,
+          permitted,
+        );
+        if (permitted) {
+          await tester.ensureVisible(inventory);
+          await tester.tap(inventory);
+          expect(destination, 'Inventario');
+          await tester.ensureVisible(sales);
+          await tester.tap(sales);
+          expect(destination, 'Caja');
+        }
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
 }

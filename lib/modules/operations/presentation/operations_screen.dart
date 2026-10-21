@@ -1,3 +1,4 @@
+import '../domain/service_catalog.dart';
 import 'appointment_links_panel.dart';
 import 'appointment_care_panel.dart';
 import '../domain/appointment_care.dart';
@@ -23,11 +24,16 @@ class OperationsScreen extends StatefulWidget {
     required this.repository,
     required this.member,
     this.onOpenPatient,
+    this.onNavigate,
+    this.canOpenInventory = false,
+    this.canOpenSales = false,
     this.initialSection = 'appointments',
     this.initialPatientId,
   });
   final Future<void> Function(String)? onOpenPatient;
   final String? initialPatientId;
+  final ValueChanged<String>? onNavigate;
+  final bool canOpenInventory, canOpenSales;
   final OperationsRepository repository;
   final String initialSection;
   final ClinicMembership member;
@@ -69,6 +75,31 @@ class _OperationsScreenState extends State<OperationsScreen>
       )
       .toList();
   bool get admin => widget.member.role == ClinicRole.admin;
+  bool canWrite(String permission, {required bool legacy}) =>
+      model.explicitPermissions ? model.allowed(permission) : legacy;
+  String sectionTitle(String value) => switch (value) {
+    'appointments' => 'Agenda y citas',
+    'services' => 'Servicios',
+    'tasks' => 'Pendientes del equipo',
+    'messages' => 'Mensajes del equipo',
+    'suppliers' => 'Proveedores',
+    'acts' => 'Servicios realizados',
+    _ => 'Operación de clínica',
+  };
+  String sectionPermission(String value) {
+    if (model.sectionReason(value) == 'clinic_plan_required') {
+      return 'el plan de la clínica para las herramientas de equipo';
+    }
+    return switch (value) {
+      'appointments' => 'appointment.read o appointment.manage',
+      'services' => 'service.read o service.manage',
+      'tasks' || 'messages' => 'team.read o team.manage',
+      'suppliers' => 'supplier.read o supplier.manage',
+      'acts' => 'service.act.read o service.act.record',
+      _ => 'permiso de operación',
+    };
+  }
+
   Map<String, String> get people => {
     for (final p in model.rows('members'))
       p['user_id'] as String: staffLabel(
@@ -362,9 +393,9 @@ class _OperationsScreenState extends State<OperationsScreen>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          activeSection == 'appointments'
-              ? 'Agenda y citas'
-              : 'Operación de clínica',
+          activeSection == 'blocked'
+              ? sectionTitle(section)
+              : sectionTitle(activeSection),
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const Text(
@@ -374,7 +405,7 @@ class _OperationsScreenState extends State<OperationsScreen>
           spacing: 8,
           children: [
             for (final e in {
-              'appointments': 'Agenda / estética',
+              'appointments': 'Agenda y citas',
               'services': 'Servicios',
               if (!widget.member.isPersonal) 'tasks': 'Pendientes',
               if (!widget.member.isPersonal) 'messages': 'Mensajes',
@@ -432,7 +463,27 @@ class _OperationsScreenState extends State<OperationsScreen>
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
         if (activeSection == 'blocked')
-          const Text('No tienes permiso para esta sección.'),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Esta sección no está habilitada para tu cuenta.'),
+                  const SizedBox(height: 8),
+                  Text(
+                    'El acceso requiere ${sectionPermission(section)}. Pide a una persona administradora de la clínica que revise “Permisos y habilitación”.',
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: model.busy ? null : model.load,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Actualizar permisos'),
+                  ),
+                ],
+              ),
+            ),
+          ),
         if (activeSection == 'appointments') ...[
           if (model.linksError != null) Text(model.linksError!),
           if (widget.initialPatientId != null)
@@ -624,28 +675,284 @@ class _OperationsScreenState extends State<OperationsScreen>
               ),
             ),
         ],
-        if (activeSection == 'services') ...[
-          if (admin)
+        if (activeSection == 'services' &&
+            !model.busy &&
+            model.data.isNotEmpty) ...[
+          if (canWrite('service.manage', legacy: admin))
             FilledButton(
               onPressed: () => service(),
               child: const Text('Nuevo servicio'),
             ),
-          for (final s in model.rows('services'))
-            ListTile(
-              title: Text('${s['name']} · \$${s['price']}'),
-              subtitle: Text(
-                '${s['commission_kind']} ${s['commission_value']} · versión ${s['version']}',
-              ),
-              trailing: admin
-                  ? IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: () => service(s),
-                    )
-                  : null,
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              'Organiza los servicios que ofrece tu clínica. Elige una categoría y agrega un servicio con su nombre y precio. Las cirugías pueden llevar el nombre del procedimiento.',
             ),
-          FilledButton(
-            onPressed: () =>
-                form('Registrar servicio realizado', 'service_act', [
+          ),
+          for (final category in serviceCategories.entries)
+            ExpansionTile(
+              key: ValueKey('service-category-${category.key}'),
+              title: Text(category.value),
+              subtitle: Text(
+                '${model.rows('services').where((s) => serviceCategory(s) == category.key).length} servicios registrados',
+              ),
+              children: [
+                if (canWrite('service.manage', legacy: admin))
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final example in serviceExamples[category.key]!)
+                        ActionChip(
+                          avatar: const Icon(Icons.add, size: 18),
+                          label: Text(example),
+                          onPressed: () => service(null, category.key, example),
+                        ),
+                    ],
+                  ),
+                if (canWrite('service.manage', legacy: admin))
+                  TextButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: const Text(
+                      'Otro servicio / subcategoría personalizada',
+                    ),
+                    onPressed: () => service(null, category.key),
+                  ),
+                for (final sub in <String>{
+                  ...?serviceSubcategories[category.key],
+                  for (final row
+                      in model
+                          .rows('services')
+                          .where((s) => serviceCategory(s) == category.key))
+                    serviceSubcategory(row),
+                })
+                  ExpansionTile(
+                    title: Text(sub.isEmpty ? 'Sin subcategoría' : sub),
+                    children: [
+                      if (canWrite('service.manage', legacy: admin))
+                        TextButton.icon(
+                          icon: const Icon(Icons.add),
+                          label: const Text('Agregar servicio aquí'),
+                          onPressed: () => service(null, category.key, '', sub),
+                        ),
+                      for (final row
+                          in model
+                              .rows('services')
+                              .where(
+                                (s) =>
+                                    serviceCategory(s) == category.key &&
+                                    serviceSubcategory(s) == sub,
+                              ))
+                        ListTile(
+                          title: Text('${row['name']} · \$${row['price']}'),
+                          subtitle: Text(
+                            'Comisión: ${row['commission_kind']} ${row['commission_value']}',
+                          ),
+                          trailing: canWrite('service.manage', legacy: admin)
+                              ? IconButton(
+                                  tooltip: 'Editar servicio',
+                                  icon: const Icon(Icons.edit),
+                                  onPressed: () => service(row),
+                                )
+                              : null,
+                        ),
+                    ],
+                  ),
+              ],
+            ),
+        ],
+        if (activeSection == 'services' &&
+            !model.busy &&
+            model.sectionAllowed('services'))
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Venta de productos y farmacia',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const Text(
+                    'Alimentos, accesorios, higiene y medicamentos. Gestiona existencias y precios en Inventario y registra las ventas en Caja.',
+                  ),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed:
+                            widget.canOpenInventory && widget.onNavigate != null
+                            ? () => widget.onNavigate!('Inventario')
+                            : null,
+                        icon: const Icon(Icons.inventory_2_outlined),
+                        label: const Text('Productos y farmacia'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed:
+                            widget.canOpenSales && widget.onNavigate != null
+                            ? () => widget.onNavigate!('Caja')
+                            : null,
+                        icon: const Icon(Icons.point_of_sale),
+                        label: const Text('Registrar venta'),
+                      ),
+                    ],
+                  ),
+                  if (!widget.canOpenInventory || !widget.canOpenSales)
+                    const Text(
+                      'Los accesos se habilitan según tus permisos de Inventario y Caja.',
+                    ),
+                ],
+              ),
+            ),
+          ),
+        if (activeSection == 'tasks') ...[
+          if (canWrite('team.manage', legacy: !widget.member.isPersonal))
+            FilledButton(
+              onPressed: () => form('Nuevo pendiente', 'task', [
+                const RxField('title', 'Pendiente', required: true),
+                RxField(
+                  'assigned_to',
+                  'Asignado a (vacío: todos)',
+                  type: 'select',
+                  options: people,
+                ),
+                const RxField(
+                  'priority',
+                  'Prioridad',
+                  type: 'select',
+                  options: {
+                    'urgente': 'Urgente',
+                    'media': 'Media',
+                    'baja': 'Baja',
+                  },
+                  required: true,
+                ),
+              ]),
+              child: const Text('Crear pendiente'),
+            ),
+          DropdownButton<String>(
+            value: filter,
+            items: [
+              for (final f in ['pendientes', 'completadas', 'todas'])
+                DropdownMenuItem(value: f, child: Text(f)),
+            ],
+            onChanged: (v) => setState(() => filter = v!),
+          ),
+          for (final t
+              in model
+                  .rows('tasks')
+                  .where(
+                    (t) =>
+                        filter == 'todas' ||
+                        (filter == 'pendientes') == (t['completed_at'] == null),
+                  ))
+            ListTile(
+              title: Text('${t['title']} · ${t['priority']}'),
+              subtitle: Text(
+                t['assigned_to'] == null
+                    ? 'Todos'
+                    : person(t['assigned_to'] as String),
+              ),
+              trailing:
+                  t['completed_at'] == null &&
+                      canWrite('team.manage', legacy: !widget.member.isPersonal)
+                  ? IconButton(
+                      icon: const Icon(Icons.check),
+                      onPressed: () => form(
+                        'Completar pendiente',
+                        'task_complete',
+                        const [],
+                        initial: {'id': t['id']},
+                      ),
+                    )
+                  : const Icon(Icons.done_all),
+            ),
+        ],
+        if (activeSection == 'messages') ...[
+          if (canWrite('team.manage', legacy: !widget.member.isPersonal))
+            FilledButton(
+              onPressed: () => form('Mensaje al equipo', 'message', const [
+                RxField(
+                  'category',
+                  'Categoría',
+                  type: 'select',
+                  options: {
+                    'general': 'General',
+                    'urgente': 'Urgente',
+                    'aviso': 'Aviso',
+                    'turno': 'Turno',
+                  },
+                  required: true,
+                ),
+                RxField(
+                  'body',
+                  'Mensaje (sin datos sensibles de pacientes o personal)',
+                  required: true,
+                ),
+              ]),
+              child: const Text('Escribir mensaje'),
+            ),
+          for (final m in model.rows('messages'))
+            ListTile(
+              title: Text('${m['category']} · ${m['body']}'),
+              subtitle: Text(
+                '${person(m['author_id'] as String)} · ${m['created_at']}',
+              ),
+            ),
+        ],
+        if (activeSection == 'suppliers') ...[
+          if (canWrite(
+            'supplier.manage',
+            legacy: admin || widget.member.role == ClinicRole.recepcion,
+          ))
+            FilledButton(
+              onPressed: () => form('Distribuidor', 'supplier', const [
+                RxField('name', 'Nombre', required: true),
+                RxField('phone', 'Teléfono con código de país'),
+                RxField('notes', 'Notas'),
+              ]),
+              child: const Text('Agregar distribuidor'),
+            ),
+          for (final s in model.rows('suppliers'))
+            ListTile(
+              title: Text('${s['name']}'),
+              subtitle: Text(
+                [
+                  if ('${s['phone'] ?? ''}'.trim().isNotEmpty)
+                    '${s['phone']}'.trim(),
+                  if ('${s['notes'] ?? ''}'.trim().isNotEmpty)
+                    '${s['notes']}'.trim(),
+                ].join(' · '),
+              ),
+              trailing: PopupMenuButton<String>(
+                itemBuilder: (_) => [
+                  for (final x in ['WhatsApp', 'Llamar', 'SMS'])
+                    PopupMenuItem(value: x, child: Text(x)),
+                ],
+                onSelected: (x) async {
+                  final p = (s['phone'] as String).replaceAll(
+                    RegExp(r'[^0-9+]'),
+                    '',
+                  );
+                  if (p.isEmpty) return;
+                  final uri = x == 'WhatsApp'
+                      ? Uri.https('wa.me', p.replaceAll('+', ''))
+                      : Uri(scheme: x == 'Llamar' ? 'tel' : 'sms', path: p);
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                },
+              ),
+            ),
+        ],
+        if (activeSection == 'acts') ...[
+          if (canWrite(
+            'service.act.record',
+            legacy: admin || widget.member.role == ClinicRole.recepcion,
+          ))
+            FilledButton(
+              onPressed: () => form(
+                'Registrar servicio realizado',
+                'service_act',
+                [
                   RxField(
                     'service_id',
                     'Servicio',
@@ -674,139 +981,15 @@ class _OperationsScreenState extends State<OperationsScreen>
                         a['id'] as String: a['patient_name'] as String,
                     },
                   ),
-                ]),
-            child: const Text('Registrar servicio realizado'),
-          ),
-        ],
-        if (activeSection == 'tasks') ...[
-          FilledButton(
-            onPressed: () => form('Nuevo pendiente', 'task', [
-              const RxField('title', 'Pendiente', required: true),
-              RxField(
-                'assigned_to',
-                'Asignado a (vacío: todos)',
-                type: 'select',
-                options: people,
-              ),
-              const RxField(
-                'priority',
-                'Prioridad',
-                type: 'select',
-                options: {
-                  'urgente': 'Urgente',
-                  'media': 'Media',
-                  'baja': 'Baja',
-                },
-                required: true,
-              ),
-            ]),
-            child: const Text('Crear pendiente'),
-          ),
-          DropdownButton<String>(
-            value: filter,
-            items: [
-              for (final f in ['pendientes', 'completadas', 'todas'])
-                DropdownMenuItem(value: f, child: Text(f)),
-            ],
-            onChanged: (v) => setState(() => filter = v!),
-          ),
-          for (final t
-              in model
-                  .rows('tasks')
-                  .where(
-                    (t) =>
-                        filter == 'todas' ||
-                        (filter == 'pendientes') == (t['completed_at'] == null),
-                  ))
-            ListTile(
-              title: Text('${t['title']} · ${t['priority']}'),
-              subtitle: Text(
-                t['assigned_to'] == null
-                    ? 'Todos'
-                    : person(t['assigned_to'] as String),
-              ),
-              trailing: t['completed_at'] == null
-                  ? IconButton(
-                      icon: const Icon(Icons.check),
-                      onPressed: () => form(
-                        'Completar pendiente',
-                        'task_complete',
-                        const [],
-                        initial: {'id': t['id']},
-                      ),
-                    )
-                  : const Icon(Icons.done_all),
-            ),
-        ],
-        if (activeSection == 'messages') ...[
-          FilledButton(
-            onPressed: () => form('Mensaje al equipo', 'message', const [
-              RxField(
-                'category',
-                'Categoría',
-                type: 'select',
-                options: {
-                  'general': 'General',
-                  'urgente': 'Urgente',
-                  'aviso': 'Aviso',
-                  'turno': 'Turno',
-                },
-                required: true,
-              ),
-              RxField(
-                'body',
-                'Mensaje (sin datos sensibles de pacientes o personal)',
-                required: true,
-              ),
-            ]),
-            child: const Text('Escribir mensaje'),
-          ),
-          for (final m in model.rows('messages'))
-            ListTile(
-              title: Text('${m['category']} · ${m['body']}'),
-              subtitle: Text(
-                '${person(m['author_id'] as String)} · ${m['created_at']}',
-              ),
-            ),
-        ],
-        if (activeSection == 'suppliers') ...[
-          if (admin || widget.member.role == ClinicRole.recepcion)
-            FilledButton(
-              onPressed: () => form('Distribuidor', 'supplier', const [
-                RxField('name', 'Nombre', required: true),
-                RxField('phone', 'Teléfono con código de país'),
-                RxField('notes', 'Notas'),
-              ]),
-              child: const Text('Agregar distribuidor'),
-            ),
-          for (final s in model.rows('suppliers'))
-            ListTile(
-              title: Text('${s['name']}'),
-              subtitle: Text('${s['phone']} · ${s['notes']}'),
-              trailing: PopupMenuButton<String>(
-                itemBuilder: (_) => [
-                  for (final x in ['WhatsApp', 'Llamar', 'SMS'])
-                    PopupMenuItem(value: x, child: Text(x)),
                 ],
-                onSelected: (x) async {
-                  final p = (s['phone'] as String).replaceAll(
-                    RegExp(r'[^0-9+]'),
-                    '',
-                  );
-                  if (p.isEmpty) return;
-                  final uri = x == 'WhatsApp'
-                      ? Uri.https('wa.me', p.replaceAll('+', ''))
-                      : Uri(scheme: x == 'Llamar' ? 'tel' : 'sms', path: p);
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                },
               ),
+              child: const Text('Registrar servicio realizado'),
             ),
-        ],
-        if (activeSection == 'acts') ...[
-          TextButton(
-            onPressed: exportPerformance,
-            child: const Text('Exportar servicios y comisiones CSV'),
-          ),
+          if (model.allowed('service.act.read') || !model.explicitPermissions)
+            TextButton(
+              onPressed: exportPerformance,
+              child: const Text('Exportar servicios y comisiones CSV'),
+            ),
           for (final e in performance.entries)
             ListTile(
               title: Text(person(e.key)),
@@ -823,6 +1006,10 @@ class _OperationsScreenState extends State<OperationsScreen>
               subtitle: Text(
                 '${a['professional_id'] is String ? person(a['professional_id'] as String) : 'Sin asignar'} · comisión \$${a['commission']} · ${a['paid'] == true ? 'Cobrado' : 'Pendiente de cobro'}',
               ),
+            ),
+          if (!model.allowed('service.act.read') && model.explicitPermissions)
+            const Text(
+              'Solo se muestran los servicios realizados por tu cuenta.',
             ),
         ],
         if (!model.busy &&
@@ -875,19 +1062,44 @@ class _OperationsScreenState extends State<OperationsScreen>
     }
   }
 
-  Future<void> service([Map<String, dynamic>? s]) =>
-      form(s == null ? 'Nuevo servicio' : 'Editar servicio', 'service', const [
-        RxField('name', 'Nombre', required: true),
-        RxField('price', 'Precio MXN', required: true),
-        RxField(
-          'commission_kind',
-          'Tipo de comisión',
-          type: 'select',
-          options: {'porcentaje': 'Porcentaje', 'bono': 'Bono fijo MXN'},
-          required: true,
-        ),
-        RxField('commission_value', 'Valor de comisión', required: true),
-      ], initial: s ?? {});
+  Future<void> service([
+    Map<String, dynamic>? s,
+    String category = 'otro',
+    String name = '',
+    String subcategory = '',
+  ]) => form(
+    s == null ? 'Nuevo servicio' : 'Editar servicio',
+    'service',
+    const [
+      RxField(
+        'category',
+        'Categoría del servicio',
+        type: 'select',
+        options: serviceCategories,
+        required: true,
+      ),
+      RxField('name', 'Nombre del servicio / tipo de cirugía', required: true),
+      RxField('subcategory', 'Subcategoría (puedes escribir una nueva)'),
+      RxField('price', 'Precio MXN', required: true),
+      RxField(
+        'commission_kind',
+        'Tipo de comisión',
+        type: 'select',
+        options: {'porcentaje': 'Porcentaje', 'bono': 'Bono fijo MXN'},
+        required: true,
+      ),
+      RxField('commission_value', 'Valor de comisión', required: true),
+    ],
+    initial: s == null
+        ? {
+            'category': category,
+            'subcategory': subcategory,
+            'name': name,
+            'commission_kind': 'bono',
+            'commission_value': '0',
+          }
+        : {...s, 'category': serviceCategory(s)},
+  );
 }
 
 String appointmentStateLabel(String state) => switch (state) {

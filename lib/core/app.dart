@@ -872,6 +872,9 @@ class CoreShell extends StatelessWidget {
                               ? 'tasks'
                               : 'appointments',
                           initialPatientId: model.activityPatientId,
+                          onNavigate: model.navigate,
+                          canOpenInventory: allowed('Inventario'),
+                          canOpenSales: allowed('Caja'),
                           repository: operations!,
                           member: auth!.active!,
                           onOpenPatient:
