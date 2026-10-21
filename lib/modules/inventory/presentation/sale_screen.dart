@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../doses/domain/quantity.dart';
 import '../../prescribing/presentation/rx_entry_screen.dart';
 import '../../patients/presentation/patient_view_model.dart'
@@ -14,6 +15,13 @@ import 'barcode_screen.dart';
 String inventoryError(Object error) {
   final planMessage = planActionError(error);
   if (planMessage != null) return planMessage;
+  if (error is PostgrestException &&
+      (error.code == 'PGRST202' || error.code == '42883')) {
+    return 'Falta una función de base de datos para esta versión. Comprueba las migraciones SQL.';
+  }
+  if (error is ArgumentError) {
+    return 'La app aún no permite esta operación. Actualiza a la beta más reciente.';
+  }
   final text = error.toString();
   const messages = {
     'explicit_permission_required':

@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../auth/domain/clinic_membership.dart';
 import '../../doses/domain/quantity.dart';
 import '../../prescribing/presentation/rx_entry_screen.dart';
@@ -384,12 +385,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Future<void> sale() async {
+    var loading = 'cargos y entregas';
     try {
       final workflow = Map<String, dynamic>.from(
         await widget.repository.read('inv_workflow_dashboard', {
           'p_clinic': widget.member.clinicId,
         }),
       );
+      loading = 'servicios del catálogo';
       final catalogServices = model.canManual
           ? (await widget.repository.read('inv_catalog_services', {
               'p_clinic': widget.member.clinicId,
@@ -397,6 +400,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 .map((e) => Map<String, dynamic>.from(e as Map))
                 .toList()
           : <Map<String, dynamic>>[];
+      loading = 'servicios pendientes de cobro';
       final operations = model.managementKnown
           ? {
               'acts': await widget.repository.read('inv_billable_services', {
@@ -442,9 +446,19 @@ class _InventoryScreenState extends State<InventoryScreen> {
       if (result == true && mounted) await model.load();
     } catch (e) {
       if (mounted) {
+        final detail = switch (e) {
+          PostgrestException(:final code) when code != null =>
+            ' (código $code)',
+          ArgumentError() => ' (operación no disponible en esta versión)',
+          TypeError() => ' (respuesta inesperada)',
+          _ => '',
+        };
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(inventoryError(e))));
+        ).showSnackBar(SnackBar(
+          content: Text('Error al cargar $loading$detail. ${inventoryError(e)}'),
+          duration: const Duration(seconds: 10),
+        ));
       }
     }
   }
