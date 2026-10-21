@@ -390,17 +390,19 @@ class _InventoryScreenState extends State<InventoryScreen> {
           'p_clinic': widget.member.clinicId,
         }),
       );
+      final catalog = Map<String, dynamic>.from(
+        await widget.repository.read('ops_dashboard', {
+          'p_clinic': widget.member.clinicId,
+        }),
+      );
       final operations = model.managementKnown
           ? {
               'acts': await widget.repository.read('inv_billable_services', {
                 'p_clinic': widget.member.clinicId,
               }),
+              'services': catalog['services'],
             }
-          : Map<String, dynamic>.from(
-              await widget.repository.read('ops_dashboard', {
-                'p_clinic': widget.member.clinicId,
-              }),
-            );
+          : catalog;
       if (!mounted) return;
 
       final result = await Navigator.push<bool>(
@@ -417,6 +419,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 : model.products,
             prescriptions: model.rows('prescription_items'),
             staff: model.rows('staff'),
+            services: (operations['services'] as List? ?? [])
+                .map((e) => Map<String, dynamic>.from(e as Map))
+                .toList(),
+            canUpdateCatalog: widget.member.role == ClinicRole.admin &&
+                (catalog['permissions'] is! Map ||
+                    (catalog['permissions'] as Map)['service.manage'] == true),
             charges: (workflow['charges'] as List? ?? [])
                 .map((e) => Map<String, dynamic>.from(e))
                 .toList(),

@@ -50,6 +50,12 @@ String inventoryError(Object error) {
     'sale_price_changed': 'El precio cambió. Actualiza antes de cobrar.',
     'sale_total_changed':
         'El total no coincide. Revisa el carrito antes de cobrar.',
+    'service_version_changed':
+        'El servicio cambió. Vuelve a abrir Caja y revisa su precio.',
+    'price_below_service_commission':
+        'El nuevo precio del catálogo no puede ser menor que la comisión fija configurada.',
+    'catalog_service_line_invalid':
+        'Un servicio del catálogo aparece repetido o tiene datos inválidos.',
     'closed_shift': 'El turno está cerrado. Abre un turno nuevo.',
     'verified_medication_reference_required':
         'Falta clasificación verificada de la presentación comercial. No se dispensa.',
@@ -93,6 +99,8 @@ class SaleScreen extends StatefulWidget {
     required this.prescriptions,
     required this.staff,
     required this.admin,
+    this.canUpdateCatalog = false,
+    this.services = const [],
     this.clinicName = 'Clínica veterinaria',
     this.charges = const [],
     this.deliveries = const [],
@@ -102,6 +110,8 @@ class SaleScreen extends StatefulWidget {
   final String shift;
   final List<Map<String, dynamic>> products, prescriptions, staff;
   final bool admin;
+  final bool canUpdateCatalog;
+  final List<Map<String, dynamic>> services;
   final String clinicName;
   final List<Map<String, dynamic>> charges, deliveries, acts;
   @override
@@ -305,13 +315,71 @@ class _SaleScreenState extends State<SaleScreen> {
     );
   }
 
+  Future<void> addCatalogService(Map<String, dynamic> service) async {
+    if (lines.any((line) => line['catalog_service_id'] == service['id'])) {
+      setState(() => error = 'Ese servicio ya está en la nota. Elimínalo para cambiar su precio.');
+      return;
+    }
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => RxEntryScreen(
+          title: '${service['name']} · precio para esta venta',
+          initial: {'price': '${service['price']}', 'quantity': '1', 'cost': '0'},
+          fields: [
+            const RxField('quantity', 'Cantidad', type: 'quantity', required: true),
+            const RxField('price', 'Precio unitario de esta venta MXN', required: true),
+            const RxField('cost', 'Costo TOTAL interno MXN', required: true),
+            RxField(
+              'price_mode',
+              'Qué hacer con el precio del catálogo',
+              type: 'select',
+              required: true,
+              options: {
+                'solo_venta': 'Usar solo en esta venta',
+                if (widget.canUpdateCatalog) 'actualizar_catalogo': 'Actualizar precio para ventas futuras',
+              },
+            ),
+          ],
+          submit: (data, _) async {
+            final price = Money.parse(data['price'] as String);
+            if (price.cents <= BigInt.zero) {
+              throw const FormatException('El precio debe ser mayor que cero.');
+            }
+            final cost = Money.parse(data['cost'] as String);
+            final quantity = Quantity.parse(data['quantity'] as String);
+            if (!quantity.positive) throw const FormatException('La cantidad debe ser mayor que cero.');
+            setState(() {
+              lines.add({
+                'kind': 'servicio',
+                'catalog_service_id': service['id'],
+                'catalog_service_version': service['version'],
+                'catalog_price_mode': data['price_mode'],
+                'name': service['name'],
+                'display': service['name'],
+                'quantity': data['quantity'],
+                'price': price.decimal,
+                'cost': cost.decimal,
+                'commission': '0.00',
+              });
+              changed();
+            });
+          },
+        ),
+      ),
+    );
+  }
+
   Future<void> post() async {
     setState(() {
       busy = true;
       error = null;
     });
     try {
-      final saleId = await widget.repository.write('inv_sale_post', {
+      final saleId = await widget.repository.write(
+          lines.any((line) => line['catalog_service_id'] != null)
+              ? 'inv_catalog_service_sale_post'
+              : 'inv_sale_post', {
         'p_shift': widget.shift,
         'p_method': method,
         'p_lines': [
@@ -395,6 +463,17 @@ class _SaleScreenState extends State<SaleScreen> {
                 icon: const Icon(Icons.add_shopping_cart),
               ),
             ),
+          if (widget.admin)
+            for (final service in widget.services.where((s) => s['active'] == true))
+              ListTile(
+                title: Text('${service['name']} · ${Money.parse('${service['price']}').display}'),
+                subtitle: const Text('Puedes usar otro precio solo en esta venta.'),
+                trailing: IconButton(
+                  tooltip: 'Agregar servicio del catálogo',
+                  onPressed: busy ? null : () => addCatalogService(service),
+                  icon: const Icon(Icons.add_shopping_cart),
+                ),
+              ),
           if (widget.admin)
             TextButton(
               onPressed: busy ? null : addService,
