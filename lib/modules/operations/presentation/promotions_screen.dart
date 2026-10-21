@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/presentation/module_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../auth/domain/clinic_membership.dart';
 import '../../ai/domain/ai_repository.dart';
@@ -10,10 +11,11 @@ import 'promotion_image_screen.dart';
 import '../domain/operations_repository.dart';
 
 class PromotionsScreen extends StatefulWidget {
-  const PromotionsScreen({super.key, required this.repository, required this.member, this.ai});
+  const PromotionsScreen({super.key, required this.repository, required this.member, this.ai, this.embedded=false});
   final OperationsRepository repository;
   final ClinicMembership member;
   final AiRepository? ai;
+  final bool embedded;
   @override
   State<PromotionsScreen> createState() => _PromotionsScreenState();
 }
@@ -125,9 +127,9 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Promociones y fidelidad'), actions: [IconButton(onPressed: busy ? null : load, icon: const Icon(Icons.refresh))]),
-    body: ListView(padding: const EdgeInsets.all(16), children: [
+  Widget build(BuildContext context) => ModulePage(embedded:widget.embedded,
+    title:'Promociones y fidelidad', actions: [IconButton(onPressed: busy ? null : load, icon: const Icon(Icons.refresh))],
+    body: ListView(shrinkWrap:widget.embedded,physics:widget.embedded?const NeverScrollableScrollPhysics():null,padding: const EdgeInsets.all(16), children: [
       const Text('Crea promociones, recompensas y eventos. Los descuentos son informativos; aplicarlos en una venta requiere capturar el precio correspondiente en Caja.'),
       if (busy) const LinearProgressIndicator(),
       if (error != null) Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),

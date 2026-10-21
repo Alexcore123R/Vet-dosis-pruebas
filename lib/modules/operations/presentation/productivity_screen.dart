@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/presentation/module_page.dart';
 import '../../ai/domain/ai_repository.dart';
 import '../../ai/presentation/request_ai_draft.dart';
 import '../../auth/domain/clinic_membership.dart';
@@ -10,10 +11,11 @@ const _days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 String _date(DateTime d) => '${d.year.toString().padLeft(4,'0')}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}';
 
 class ProductivityScreen extends StatefulWidget {
-  const ProductivityScreen({super.key, required this.repository, required this.member, this.ai});
+  const ProductivityScreen({super.key, required this.repository, required this.member, this.ai, this.embedded=false});
   final ProductivityRepository repository;
   final ClinicMembership member;
   final AiRepository? ai;
+  final bool embedded;
   @override
   State<ProductivityScreen> createState() => _ProductivityScreenState();
 }
@@ -132,8 +134,8 @@ class _ProductivityScreenState extends State<ProductivityScreen> {
     final tasks=rows('tasks');
     final completed=tasks.where((t)=>t['completed_at']!=null).length;
     final unassigned=tasks.where((t)=>t['assigned_to']==null&&t['completed_at']==null).length;
-    return Scaffold(appBar:AppBar(title:const Text('Productividad y semana'),actions:[IconButton(onPressed:busy?null:load,icon:const Icon(Icons.refresh))]),
-      body:ListView(padding:const EdgeInsets.all(16),children:[
+    return ModulePage(embedded:widget.embedded,title:'Productividad y semana',actions:[IconButton(onPressed:busy?null:load,icon:const Icon(Icons.refresh))],
+      body:ListView(shrinkWrap:widget.embedded,physics:widget.embedded?const NeverScrollableScrollPhysics():null,padding:const EdgeInsets.all(16),children:[
         Row(children:[IconButton(onPressed:busy?null:(){week=week.subtract(const Duration(days:7));load();},icon:const Icon(Icons.chevron_left)),
           Expanded(child:Text('${_date(week)} — ${_date(week.add(const Duration(days:6)))}',textAlign:TextAlign.center)),
           IconButton(onPressed:busy?null:(){week=week.add(const Duration(days:7));load();},icon:const Icon(Icons.chevron_right))]),

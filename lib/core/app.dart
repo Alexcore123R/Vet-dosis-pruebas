@@ -858,15 +858,15 @@ class CoreShell extends StatelessWidget {
                         )
                 else if (model.screen == 'Agenda telefónica')
                   operations != null && auth?.active != null && auth?.offline != true
-                      ? ContactDirectoryScreen(repository: operations!, member: auth!.active!)
+                      ? ContactDirectoryScreen(embedded:true,repository: operations!, member: auth!.active!)
                       : const Text('El directorio de la clínica requiere cuenta y conexión.')
                 else if (model.screen == 'Productividad y semana')
                   operations is ProductivityRepository && auth?.active != null && auth?.offline != true
-                      ? ProductivityScreen(repository: operations as ProductivityRepository, member: auth!.active!, ai: ai)
+                      ? ProductivityScreen(embedded:true,repository: operations as ProductivityRepository, member: auth!.active!, ai: ai)
                       : const Text('La planificación semanal requiere cuenta y conexión.')
                 else if (model.screen == 'Promociones')
                   operations != null && auth?.active != null && auth?.offline != true
-                      ? PromotionsScreen(repository: operations!, member: auth!.active!, ai: ai)
+                      ? PromotionsScreen(embedded:true,repository: operations!, member: auth!.active!, ai: ai)
                       : const Text('Las promociones requieren cuenta y conexión.')
                 else if (model.screen == 'Agenda' ||
                     model.screen == 'Equipo y avisos' ||

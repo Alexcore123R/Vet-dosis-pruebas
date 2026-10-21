@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/presentation/module_page.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../auth/domain/clinic_membership.dart';
@@ -7,9 +8,10 @@ import '../../prescribing/presentation/rx_entry_screen.dart';
 import '../domain/operations_repository.dart';
 
 class ContactDirectoryScreen extends StatefulWidget {
-  const ContactDirectoryScreen({super.key, required this.repository, required this.member});
+  const ContactDirectoryScreen({super.key, required this.repository, required this.member, this.embedded=false});
   final OperationsRepository repository;
   final ClinicMembership member;
+  final bool embedded;
   @override
   State<ContactDirectoryScreen> createState() => _ContactDirectoryScreenState();
 }
@@ -123,9 +125,9 @@ class _ContactDirectoryScreenState extends State<ContactDirectoryScreen> {
     final source = (data?[kind] as List? ?? []).map((e) => Map<String, dynamic>.from(e as Map)).where((e) => '${e['name']} ${e['phone']} ${e['email']}'.toLowerCase().contains(search.toLowerCase())).toList();
     final allowed = data?['${kind == 'staff' ? 'team' : kind}_allowed'] == true;
     final editable = kind != 'clients' && data?['${kind == 'staff' ? 'team' : 'supplier'}_manage'] == true;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Agenda telefónica'), actions: [IconButton(onPressed: busy ? null : load, icon: const Icon(Icons.refresh), tooltip: 'Actualizar')]),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
+    return ModulePage(embedded:widget.embedded,
+      title:'Agenda telefónica', actions: [IconButton(onPressed: busy ? null : load, icon: const Icon(Icons.refresh), tooltip: 'Actualizar')],
+      body: ListView(shrinkWrap:widget.embedded,physics:widget.embedded?const NeverScrollableScrollPhysics():null,padding: const EdgeInsets.all(16), children: [
         const Text('Directorio de la clínica. Guardar en el teléfono requiere tu confirmación.'),
         const SizedBox(height: 12),
         SegmentedButton<String>(segments: const [ButtonSegment(value: 'staff', label: Text('Personal')), ButtonSegment(value: 'suppliers', label: Text('Proveedores')), ButtonSegment(value: 'clients', label: Text('Clientes'))], selected: {kind}, onSelectionChanged: (value) => setState(() => kind = value.first)),

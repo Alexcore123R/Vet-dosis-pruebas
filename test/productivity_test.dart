@@ -50,6 +50,12 @@ void main(){
     expect(find.text('Preparar semana'),findsNothing);
     expect(tester.takeException(),isNull);
   });
+  testWidgets('The planner also fits inside the host scroll view',(tester)async{
+    await tester.pumpWidget(MaterialApp(home:Scaffold(body:ListView(children:[ProductivityScreen(embedded:true,repository:ProductivityFake(),member:member)]))));
+    await tester.pumpAndSettle();
+    expect(find.text('Productividad y semana'),findsOneWidget);
+    expect(tester.takeException(),isNull);
+  });
   testWidgets('An AI response is returned only when explicitly selected',(tester)async{
     String? result;
     await tester.pumpWidget(MaterialApp(home:Builder(builder:(context)=>Scaffold(body:TextButton(onPressed:()async{
