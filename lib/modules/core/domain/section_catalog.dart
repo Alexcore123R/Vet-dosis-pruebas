@@ -16,7 +16,7 @@ const sectionGroups = [
   ]),
   SectionGroup('Medicamentos y herramientas', [
     'Cálculo rápido',
-    'Cálculo rápido manual',
+    'Operaciones de dosis',
     'Cálculos clínicos',
     'Inventario',
     'Escanear producto',

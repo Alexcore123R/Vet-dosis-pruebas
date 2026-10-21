@@ -122,10 +122,10 @@ class CalculationMenu extends StatelessWidget {
         if (canDose)
           _CalculationChoice(
             icon: Icons.calculate_outlined,
-            title: 'Operación rápida de dosis',
+            title: 'Otras operaciones de dosis',
             description:
-                'Calcula volumen con peso, dosis y concentración indicados por el MVZ. No sugiere pautas.',
-            onTap: () => onNavigate('Cálculo rápido manual'),
+                'Regla de tres, concentración tras reconstitución, UI y conversión métrica con parámetros explícitos.',
+            onTap: () => onNavigate('Operaciones de dosis'),
           ),
         if (canClinical)
           _CalculationChoice(

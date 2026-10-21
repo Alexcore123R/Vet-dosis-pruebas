@@ -25,10 +25,10 @@ void main() {
       ),
     );
     expect(find.text('Calcular dosis de un producto'), findsOneWidget);
-    expect(find.text('Operación rápida de dosis'), findsOneWidget);
+    expect(find.text('Otras operaciones de dosis'), findsOneWidget);
     expect(find.text('Cálculos clínicos'), findsOneWidget);
-    await tester.tap(find.text('Operación rápida de dosis'));
+    await tester.tap(find.text('Otras operaciones de dosis'));
     await tester.pumpAndSettle();
-    expect(find.text('Cálculo rápido manual'), findsOneWidget);
+    expect(find.text('Operaciones de dosis'), findsOneWidget);
   });
 }

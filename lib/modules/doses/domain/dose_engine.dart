@@ -15,11 +15,13 @@ class DoseEngine {
     required Presentation presentation,
     required Quantity weightKg,
     required Quantity doseMgKg,
-    required Quantity syringeStepMl,
+    required Quantity? syringeStepMl,
     String breed = '',
     List<String> conditions = const [],
   }) {
-    if (!weightKg.positive || !doseMgKg.positive || !syringeStepMl.positive) {
+    if (!weightKg.positive ||
+        !doseMgKg.positive ||
+        (syringeStepMl != null && !syringeStepMl.positive)) {
       throw const FormatException(
         'Peso, dosis y graduación deben ser mayores que cero.',
       );
@@ -35,7 +37,9 @@ class DoseEngine {
     }
     final mass = weightKg * doseMgKg;
     final volume = mass / concentration;
-    final rounded = volume.nearestStep(syringeStepMl);
+    final rounded = syringeStepMl == null
+        ? volume
+        : volume.nearestStep(syringeStepMl);
     final deliveredDose = rounded * concentration / weightKg;
     final alerts = <String>[];
     if (drug.min == null || drug.max == null) {
@@ -53,7 +57,7 @@ class DoseEngine {
     if (drug.max != null && doseMgKg.compareTo(drug.max!) > 0) {
       alerts.add('Dosis por encima del máximo.');
     }
-    if (!rounded.positive) {
+    if (syringeStepMl != null && !rounded.positive) {
       alerts.add('La graduación produce un volumen de cero.');
     }
     if ((drug.min != null && deliveredDose.compareTo(drug.min!) < 0) ||

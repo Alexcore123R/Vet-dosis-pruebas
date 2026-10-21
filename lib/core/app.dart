@@ -47,7 +47,7 @@ import '../modules/patients/domain/patient_repository.dart';
 import '../modules/patients/presentation/patients_screen.dart';
 import 'package:flutter/material.dart';
 import '../modules/doses/presentation/dose_screen.dart';
-import '../modules/doses/presentation/quick_dose_calculator.dart';
+import '../modules/doses/presentation/dose_math_tools.dart';
 import '../modules/doses/data/personal_dose_repository.dart';
 import '../modules/auth/domain/clinic_membership.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -339,7 +339,7 @@ class CoreShell extends StatelessWidget {
     ];
     final page = switch (model.screen) {
       'Cálculo rápido' ||
-      'Cálculo rápido manual' ||
+      'Operaciones de dosis' ||
       'Cálculos clínicos' => 'Cálculos',
       'Producción y grandes especies' => 'Inicio',
       _ => model.screen,
@@ -644,13 +644,13 @@ class CoreShell extends StatelessWidget {
                       : const Text(
                           'El cálculo clínico requiere acceso de MVZ o administrador.',
                         )
-                else if (model.screen == 'Cálculo rápido manual')
+                else if (model.screen == 'Operaciones de dosis')
                   auth == null ||
                           [
                             ClinicRole.admin,
                             ClinicRole.mvz,
                           ].contains(auth!.active?.role)
-                      ? const QuickDoseCalculator()
+                      ? const DoseMathTools()
                       : const Text(
                           'El cálculo clínico requiere acceso de MVZ o administrador.',
                         )
@@ -1352,7 +1352,7 @@ class _ModuleSearchState extends State<_ModuleSearch> {
     'Receta',
     'Formatos',
     'Cálculo rápido',
-    'Cálculo rápido manual',
+    'Operaciones de dosis',
     'Cálculos clínicos',
     'Estadísticas',
     'Escanear producto',

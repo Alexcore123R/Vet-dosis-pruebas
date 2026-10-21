@@ -40,7 +40,7 @@ IconData sectionIcon(String page) => switch (page) {
   'Inicio' => Icons.dashboard_outlined,
   'Cálculos' ||
   'Cálculo rápido' ||
-  'Cálculo rápido manual' => Icons.calculate_outlined,
+  'Operaciones de dosis' => Icons.calculate_outlined,
   'Cálculos clínicos' => Icons.science_outlined,
   'Escanear producto' => Icons.qr_code_scanner,
   'Hospitalización' => Icons.local_hospital_outlined,

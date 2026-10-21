@@ -63,12 +63,23 @@ class DoseViewModel extends ChangeNotifier {
       if (drug == null || presentation == null) {
         throw const FormatException('Elige fármaco y presentación.');
       }
+      final prescribed = drug!.prescribedDose;
+      if (prescribed == null || dose.trim().isEmpty) {
+        throw const FormatException(
+          'Este producto no tiene una dosis única y verificada. No se puede calcular automáticamente.',
+        );
+      }
+      if (Quantity.parse(dose).compareTo(prescribed) != 0) {
+        throw const FormatException(
+          'La dosis no coincide con la dosis única registrada en el Vademécum.',
+        );
+      }
       result = const DoseEngine().calculate(
         drug: drug!,
         presentation: presentation!,
         weightKg: Quantity.parse(weight),
         doseMgKg: Quantity.parse(dose),
-        syringeStepMl: Quantity.parse(step),
+        syringeStepMl: step.trim().isEmpty ? null : Quantity.parse(step),
         breed: breed,
         conditions: conditions
             .split(',')
