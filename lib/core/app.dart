@@ -859,7 +859,7 @@ class CoreShell extends StatelessWidget {
                       : const Text('El directorio de la clínica requiere cuenta y conexión.')
                 else if (model.screen == 'Promociones')
                   operations != null && auth?.active != null && auth?.offline != true
-                      ? PromotionsScreen(repository: operations!, member: auth!.active!)
+                      ? PromotionsScreen(repository: operations!, member: auth!.active!, ai: ai)
                       : const Text('Las promociones requieren cuenta y conexión.')
                 else if (model.screen == 'Agenda' ||
                     model.screen == 'Equipo y avisos' ||

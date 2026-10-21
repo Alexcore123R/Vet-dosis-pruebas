@@ -37,6 +37,20 @@ class SupabaseOperationsRepository
     await client.rpc('ops_promotion_save', params: {'p_clinic': clinic, 'p_data': data});
   }
   @override
+  Future<Map<String, dynamic>> loyaltyAccount(String clinic, String owner) async =>
+      Map<String, dynamic>.from(await client.rpc('ops_loyalty_account',
+          params: {'p_clinic': clinic, 'p_owner': owner}) as Map);
+
+  @override
+  Future<void> recordLoyalty(String clinic, String owner, String promotion,
+      String action, int units, String note, String operation) async {
+    await client.rpc('ops_loyalty_record', params: {
+      'p_clinic': clinic, 'p_owner': owner, 'p_promotion': promotion,
+      'p_action': action, 'p_units': units, 'p_note': note,
+      'p_operation': operation,
+    });
+  }
+  @override
   Future<Map<String, dynamic>> contactDirectory(String clinic) async =>
       Map<String, dynamic>.from(await client.rpc('ops_contact_directory',
           params: {'p_clinic': clinic}) as Map);

@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../auth/domain/clinic_membership.dart';
+import '../../ai/domain/ai_repository.dart';
+import '../../ai/presentation/ai_screen.dart';
 import '../../patients/domain/patient_contacts.dart';
+import '../../patients/presentation/patient_view_model.dart' show newOperationId;
 import '../../prescribing/presentation/rx_entry_screen.dart';
 import '../domain/operations_repository.dart';
 
 class PromotionsScreen extends StatefulWidget {
-  const PromotionsScreen({super.key, required this.repository, required this.member});
+  const PromotionsScreen({super.key, required this.repository, required this.member, this.ai});
   final OperationsRepository repository;
   final ClinicMembership member;
+  final AiRepository? ai;
   @override
   State<PromotionsScreen> createState() => _PromotionsScreenState();
 }
@@ -39,7 +43,7 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
 
   Future<void> edit([Map<String, dynamic>? promotion]) async {
     final saved = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => RxEntryScreen(
-      title: promotion == null ? 'Nueva promoción' : 'Editar promoción',
+      title: promotion == null ? 'Nueva oferta o promoción' : 'Editar oferta o promoción',
       initial: promotion == null ? const {'kind': 'promocion'} : {
         'id': promotion['id'], 'kind': promotion['kind'], 'title': promotion['title'],
         'message': promotion['message'], 'discount_percent': promotion['discount_percent']?.toString() ?? '',
@@ -47,7 +51,7 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
       },
       fields: const [
         RxField('kind', 'Tipo', type: 'select', required: true, options: {
-          'promocion': 'Promoción', 'recompensa': 'Recompensa de fidelidad', 'evento': 'Evento promocional',
+          'promocion': 'Oferta o promoción', 'recompensa': 'Recompensa de fidelidad', 'evento': 'Evento promocional',
         }),
         RxField('title', 'Nombre', required: true),
         RxField('message', 'Mensaje o condiciones de la recompensa', required: true),
@@ -75,6 +79,21 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
     if (yes != true) return;
     try { await marketing.savePromotion(widget.member.clinicId, {'id': promotion['id'], 'archive': true}); await load(); }
     catch (_) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo archivar la promoción.'))); }
+  }
+
+  void suggestWithAi() {
+    if (widget.ai == null) return;
+    Navigator.push(context, MaterialPageRoute(builder: (_) => AiScreen(
+      repository: widget.ai!, member: widget.member,
+      initialDraft: 'Sugiere tres borradores breves de oferta, promoción o recompensa de fidelidad para una clínica veterinaria. Incluye título, condiciones y vigencia sugerida. No inventes beneficios clínicos, precios ni descuentos concretos. No uses datos de pacientes. La clínica revisará y editará el texto antes de publicarlo.',
+    )));
+  }
+
+  Future<void> openLoyalty(Map<String, dynamic> owner) async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => _LoyaltyAccountScreen(
+      repository: marketing, member: widget.member, owner: owner,
+      rewards: promotions.where((p) => p['kind'] == 'recompensa').toList(),
+    )));
   }
 
   Future<void> recipients(Map<String, dynamic> promotion, String channel) async {
@@ -109,7 +128,17 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
       const Text('Crea promociones, recompensas y eventos. Los descuentos son informativos; aplicarlos en una venta requiere capturar el precio correspondiente en Caja.'),
       if (busy) const LinearProgressIndicator(),
       if (error != null) Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-      if (admin) FilledButton.icon(onPressed: () => edit(), icon: const Icon(Icons.add), label: const Text('Agregar promoción, recompensa o evento')),
+      if (admin) FilledButton.icon(onPressed: () => edit(), icon: const Icon(Icons.add), label: const Text('Agregar oferta, promoción, recompensa o evento')),
+      if (admin && widget.ai != null) OutlinedButton.icon(onPressed: suggestWithAi, icon: const Icon(Icons.auto_awesome), label: const Text('Pedir ideas a la IA')),
+      if (promotions.any((p) => p['kind'] == 'recompensa')) ExpansionTile(
+        title: const Text('Recompensas por cliente'),
+        subtitle: const Text('Registrar otorgamientos y canjes; ver saldo e historial.'),
+        children: [for (final client in clients) ListTile(
+          title: Text('${client['name']}'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => openLoyalty(client),
+        )],
+      ),
       for (final promotion in promotions.where((p) => p['active'] == true)) Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('${promotion['title']} · ${promotion['kind']}', style: Theme.of(context).textTheme.titleMedium),
         Text('${promotion['message']}'),
@@ -125,4 +154,105 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
       if (!busy && error == null && promotions.where((p) => p['active'] == true).isEmpty) const Text('Aún no hay promociones activas.'),
     ]),
   );
+}
+
+class _LoyaltyAccountScreen extends StatefulWidget {
+  const _LoyaltyAccountScreen({required this.repository, required this.member,
+    required this.owner, required this.rewards});
+  final MarketingRepository repository;
+  final ClinicMembership member;
+  final Map<String, dynamic> owner;
+  final List<Map<String, dynamic>> rewards;
+  @override
+  State<_LoyaltyAccountScreen> createState() => _LoyaltyAccountScreenState();
+}
+
+class _LoyaltyAccountScreenState extends State<_LoyaltyAccountScreen> {
+  Map<String, dynamic> data = {};
+  bool busy = false;
+  String? error;
+  @override
+  void initState() { super.initState(); load(); }
+  Future<void> load() async {
+    setState(() { busy = true; error = null; });
+    try {
+      final result = await widget.repository.loyaltyAccount(widget.member.clinicId, '${widget.owner['id']}');
+      if (mounted) setState(() => data = result);
+    } catch (_) {
+      if (mounted) setState(() => error = 'No se pudo cargar el saldo. Revisa permisos y SQL 14K.');
+    } finally { if (mounted) setState(() => busy = false); }
+  }
+
+  Future<void> record(String action) async {
+    final rewards = widget.rewards.where((p) => p['active'] == true || action == 'redeem').toList();
+    if (rewards.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Primero crea una recompensa activa.')));
+      return;
+    }
+    String selected = '${rewards.first['id']}';
+    final units = TextEditingController(text: '1');
+    final note = TextEditingController();
+    final operation = newOperationId();
+    String? formError;
+    bool saving = false;
+    try {
+      await showDialog<void>(context: context, builder: (dialogContext) => StatefulBuilder(builder: (context, update) => AlertDialog(
+        title: Text(action == 'grant' ? 'Otorgar recompensa' : 'Canjear recompensa'),
+        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          DropdownButtonFormField<String>(initialValue: selected, decoration: const InputDecoration(labelText: 'Recompensa'),
+            items: [for (final reward in rewards) DropdownMenuItem(value: '${reward['id']}', child: Text('${reward['title']}'))],
+            onChanged: saving ? null : (v) => update(() => selected = v ?? selected)),
+          TextField(controller: units, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Unidades')),
+          TextField(controller: note, maxLength: 500, decoration: const InputDecoration(labelText: 'Motivo o referencia (opcional)')),
+          if (formError != null) Text(formError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        ])),
+        actions: [
+          TextButton(onPressed: saving ? null : () => Navigator.pop(dialogContext), child: const Text('Cancelar')),
+          FilledButton(onPressed: saving ? null : () async {
+            final count = int.tryParse(units.text.trim());
+            if (count == null || count < 1 || count > 100000) {
+              update(() => formError = 'Ingresa entre 1 y 100000 unidades.'); return;
+            }
+            update(() { saving = true; formError = null; });
+            try {
+              await widget.repository.recordLoyalty(widget.member.clinicId, '${widget.owner['id']}', selected,
+                action, count, note.text.trim(), operation);
+              if (dialogContext.mounted) Navigator.pop(dialogContext);
+              if (mounted) await load();
+            } catch (_) {
+              update(() => formError = action == 'redeem'
+                  ? 'No se pudo canjear. Revisa el saldo, permisos y SQL 14K.'
+                  : 'No se pudo otorgar. Revisa permisos y SQL 14K.');
+            } finally { if (dialogContext.mounted) update(() => saving = false); }
+          }, child: const Text('Guardar')),
+        ],
+      )));
+    } finally { units.dispose(); note.dispose(); }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final balances = (data['balances'] as List? ?? []).cast<Map<String, dynamic>>();
+    final movements = (data['movements'] as List? ?? []).cast<Map<String, dynamic>>();
+    return Scaffold(appBar: AppBar(title: Text('Recompensas · ${widget.owner['name']}'), actions: [
+      IconButton(onPressed: busy ? null : load, icon: const Icon(Icons.refresh)),
+    ]), body: ListView(padding: const EdgeInsets.all(16), children: [
+      if (busy) const LinearProgressIndicator(),
+      if (error != null) Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+      Wrap(spacing: 8, children: [
+        FilledButton(onPressed: busy || error != null ? null : () => record('grant'), child: const Text('Otorgar')),
+        OutlinedButton(onPressed: busy || error != null ? null : () => record('redeem'), child: const Text('Canjear')),
+      ]),
+      Text('Saldos', style: Theme.of(context).textTheme.titleLarge),
+      if (!busy && error == null && balances.isEmpty) const Text('Sin recompensas registradas.'),
+      for (final balance in balances) ListTile(title: Text('${balance['title']}'),
+        trailing: Text('${balance['units']} disponibles')),
+      Text('Movimientos', style: Theme.of(context).textTheme.titleLarge),
+      for (final movement in movements) ListTile(
+        title: Text('${movement['action'] == 'grant' ? 'Otorgada' : 'Canjeada'} · ${movement['title']}'),
+        subtitle: Text('${movement['created_at']} · ${movement['note']}'),
+        trailing: Text('${movement['action'] == 'grant' ? '+' : '-'}${movement['units']}'),
+      ),
+    ]));
+  }
 }

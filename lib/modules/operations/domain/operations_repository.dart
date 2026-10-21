@@ -23,6 +23,9 @@ abstract interface class ContactDirectoryRepository {
 abstract interface class MarketingRepository {
   Future<List<Map<String, dynamic>>> promotions(String clinic);
   Future<void> savePromotion(String clinic, Map<String, dynamic> data);
+  Future<Map<String, dynamic>> loyaltyAccount(String clinic, String owner);
+  Future<void> recordLoyalty(String clinic, String owner, String promotion,
+      String action, int units, String note, String operation);
 }
 
 abstract interface class CommissionRepository {
