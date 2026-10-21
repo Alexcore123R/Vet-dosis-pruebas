@@ -740,7 +740,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         'card': 'Tarjeta',
         'transfer': 'Transferencia',
         'cost': 'Costo de mercancía/servicios',
-        'commission': 'Comisiones',
+        'commission': 'Comisiones del equipo (internas; no se suman al cobro)',
         'margin': 'Margen después de costos y comisiones',
         'expense': 'Gastos capturados en efectivo',
         'recorded_net': 'Resultado con gastos capturados',

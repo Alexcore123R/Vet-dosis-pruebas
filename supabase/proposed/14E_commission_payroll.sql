@@ -6,8 +6,7 @@ create table if not exists public.clinic_commission_schedule (
  period_start timestamptz not null,
  next_pay_on date not null,
  updated_by uuid not null references auth.users(id),
- updated_at timestamptz not null default clock_timestamp(),
- check(period_start < next_pay_on::timestamptz)
+ updated_at timestamptz not null default clock_timestamp()
 );
 create table if not exists public.clinic_commission_payments (
  id uuid primary key default gen_random_uuid(),
@@ -31,9 +30,11 @@ create or replace function public.commission_schedule_save(p_clinic uuid,p_caden
 returns void language plpgsql security definer set search_path='' as $$
 declare old public.clinic_commission_schedule;begin
  if not private.has_clinic_role(p_clinic,array['admin']) then raise exception 'admin_required';end if;
- if p_cadence not in ('diario','semanal','quincenal','mensual') or p_next_pay_on <= current_date then raise exception 'invalid_schedule';end if;
+ if p_cadence not in ('diario','semanal','quincenal','mensual') or p_next_pay_on <= (clock_timestamp() at time zone private.inv_timezone(p_clinic))::date then raise exception 'invalid_schedule';end if;
+ if (p_next_pay_on::timestamp at time zone private.inv_timezone(p_clinic))<=clock_timestamp() then raise exception 'invalid_schedule';end if;
  select * into old from public.clinic_commission_schedule where clinic_id=p_clinic for update;
  if found then
+  if (p_next_pay_on::timestamp at time zone private.inv_timezone(p_clinic))<=old.period_start then raise exception 'invalid_schedule';end if;
   update public.clinic_commission_schedule set cadence=p_cadence,next_pay_on=p_next_pay_on,updated_by=auth.uid(),updated_at=clock_timestamp() where clinic_id=p_clinic;
  else
   insert into public.clinic_commission_schedule(clinic_id,cadence,period_start,next_pay_on,updated_by)
@@ -51,8 +52,9 @@ declare cfg public.clinic_commission_schedule;is_admin boolean;begin
  select * into cfg from public.clinic_commission_schedule where clinic_id=p_clinic;
  return jsonb_build_object(
   'schedule',case when cfg.clinic_id is null then null else jsonb_build_object('cadence',cfg.cadence,'period_start',cfg.period_start,'next_pay_on',cfg.next_pay_on) end,
-  'accrued',coalesce((select jsonb_agg(jsonb_build_object('professional_id',m.user_id,'amount',(coalesce(e.amount,0)-coalesce(p.amount,0))::text))
+  'accrued',coalesce((select jsonb_agg(jsonb_build_object('professional_id',m.user_id,'professional_name',coalesce(n.name,'Sin nombre'),'amount',(coalesce(e.amount,0)-coalesce(p.amount,0))::text))
     from public.clinic_members m
+    left join public.staff_display_names n on n.clinic_id=m.clinic_id and n.user_id=m.user_id
     left join lateral (
       select sum(l.commission) amount from public.inventory_sale_lines l
       join public.inventory_sales s on s.id=l.sale_id and s.clinic_id=l.clinic_id
@@ -65,8 +67,8 @@ declare cfg public.clinic_commission_schedule;is_admin boolean;begin
     ) p on true
     where m.clinic_id=p_clinic and (is_admin or m.user_id=auth.uid())
       and (coalesce(e.amount,0)-coalesce(p.amount,0))<>0),'[]'::jsonb),
-  'payments',coalesce((select jsonb_agg(jsonb_build_object('professional_id',p.professional_id,'amount',p.amount::text,'scheduled_on',p.scheduled_on,'recorded_at',p.recorded_at,'period_start',p.period_start,'period_end',p.period_end) order by p.recorded_at desc)
-    from public.clinic_commission_payments p where p.clinic_id=p_clinic and (is_admin or p.professional_id=auth.uid())),'[]'::jsonb)
+  'payments',coalesce((select jsonb_agg(jsonb_build_object('professional_id',p.professional_id,'professional_name',coalesce(n.name,'Sin nombre'),'amount',p.amount::text,'scheduled_on',p.scheduled_on,'recorded_at',p.recorded_at,'period_start',p.period_start,'period_end',p.period_end) order by p.recorded_at desc)
+    from public.clinic_commission_payments p left join public.staff_display_names n on n.clinic_id=p.clinic_id and n.user_id=p.professional_id where p.clinic_id=p_clinic and (is_admin or p.professional_id=auth.uid())),'[]'::jsonb)
  );
 end$$;
 
@@ -76,8 +78,8 @@ declare cfg public.clinic_commission_schedule;v_batch uuid=gen_random_uuid();v_e
  if not private.has_clinic_role(p_clinic,array['admin']) then raise exception 'admin_required';end if;
  select * into cfg from public.clinic_commission_schedule where clinic_id=p_clinic for update;
  if not found then raise exception 'schedule_required';end if;
- if current_date<cfg.next_pay_on then raise exception 'payment_day_not_reached';end if;
- v_end=cfg.next_pay_on::timestamptz;
+ if (clock_timestamp() at time zone private.inv_timezone(p_clinic))::date<cfg.next_pay_on then raise exception 'payment_day_not_reached';end if;
+ v_end=cfg.next_pay_on::timestamp at time zone private.inv_timezone(p_clinic);
  if v_end<=cfg.period_start then raise exception 'invalid_period';end if;
  insert into public.clinic_commission_payments(clinic_id,professional_id,period_start,period_end,scheduled_on,amount,recorded_by)
  select p_clinic,m.user_id,cfg.period_start,v_end,cfg.next_pay_on,

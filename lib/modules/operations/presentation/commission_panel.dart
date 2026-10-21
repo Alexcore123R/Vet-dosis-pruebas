@@ -90,7 +90,7 @@ class _CommissionPanelState extends State<CommissionPanel> {
         if (schedule != null) Text('Periodo actual desde ${schedule['period_start']} · próximo pago ${schedule['next_pay_on']} · ${schedule['cadence']}'),
         if (data != null && schedule == null) const Text('El administrador aún no ha configurado un periodo de pago.'),
         for (final row in accrued)
-          ListTile(title: Text(admin ? '${row['professional_id']}' : 'Saldo actual'), subtitle: Text(Money.parse('${row['amount']}', signed: true).display)),
+          ListTile(title: Text(admin ? '${row['professional_name']}' : 'Saldo actual'), subtitle: Text(Money.parse('${row['amount']}', signed: true).display)),
         if (data != null && accrued.isEmpty) const Text('Sin comisiones acumuladas en este periodo.'),
         if (admin) ...[
           const Divider(),
@@ -120,7 +120,7 @@ class _CommissionPanelState extends State<CommissionPanel> {
         const Divider(),
         const Text('Liquidaciones registradas'),
         for (final row in payments.take(12))
-          ListTile(title: Text(Money.parse('${row['amount']}').display), subtitle: Text('${row['scheduled_on']} · ${admin ? row['professional_id'] : 'Pago registrado'}')),
+          ListTile(title: Text(Money.parse('${row['amount']}').display), subtitle: Text('${row['scheduled_on']} · ${admin ? row['professional_name'] : 'Pago registrado'}')),
       ]),
     ));
   }
