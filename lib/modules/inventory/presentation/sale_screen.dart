@@ -128,6 +128,33 @@ class _SaleScreenState extends State<SaleScreen> {
       MaterialPageRoute(builder: (_) => const BarcodeScreen()),
     );
     if (!mounted || code == null) return;
+    await addByCode(code);
+  }
+
+  Future<void> enterBarcode() async {
+    final controller = TextEditingController();
+    final code = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Ingresar código de barras'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Código del producto'),
+          onSubmitted: (value) => Navigator.pop(dialogContext, value),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text), child: const Text('Buscar')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (!mounted || code == null || code.trim().isEmpty) return;
+    await addByCode(code);
+  }
+
+  Future<void> addByCode(String code) async {
     final matches = widget.products.where(
       (p) => p['m8_enabled'] == true &&
           p['active'] == true &&
@@ -358,6 +385,11 @@ class _SaleScreenState extends State<SaleScreen> {
             onPressed: busy ? null : scanProduct,
             icon: const Icon(Icons.qr_code_scanner),
             label: const Text('Escanear producto para la nota de venta'),
+          ),
+          TextButton.icon(
+            onPressed: busy ? null : enterBarcode,
+            icon: const Icon(Icons.keyboard),
+            label: const Text('Ingresar código de barras'),
           ),
           for (final p in widget.products.where(
             (p) => p['m8_enabled'] == true && p['active'] == true,

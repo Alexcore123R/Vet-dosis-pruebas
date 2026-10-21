@@ -239,7 +239,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Total: \$0,00 MXN'), findsOneWidget);
+    expect(find.text('Total a pagar: \$0,00 MXN'), findsOneWidget);
     final button = tester.widget<FilledButton>(find.byType(FilledButton));
     expect(button.onPressed, isNull);
     expect(repo.writes, isEmpty);
@@ -272,7 +272,7 @@ void main() {
     await tester.ensureVisible(find.text('Guardar'));
     await tester.tap(find.text('Guardar'));
     await tester.pumpAndSettle();
-    expect(find.text('Total: \$0,20 MXN'), findsOneWidget);
+    expect(find.text('Total a pagar: \$0,20 MXN'), findsOneWidget);
     await tester.ensureVisible(find.byType(CheckboxListTile));
     await tester.tap(find.byType(CheckboxListTile));
     await tester.pump();
@@ -324,7 +324,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.byIcon(Icons.add).first);
       await tester.pump();
-      expect(find.text('Total: \$30,00 MXN'), findsOneWidget);
+      expect(find.text('Total a pagar: \$30,00 MXN'), findsOneWidget);
       await tester.ensureVisible(find.byType(CheckboxListTile));
       await tester.tap(find.byType(CheckboxListTile));
       await tester.pump();

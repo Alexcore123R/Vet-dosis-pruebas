@@ -679,7 +679,7 @@ class _OperationsScreenState extends State<OperationsScreen>
         if (activeSection == 'services' &&
             !model.busy &&
             model.data.isNotEmpty) ...[
-          if (canWrite('service.manage', legacy: admin))
+          if (admin && canWrite('service.manage', legacy: admin))
             FilledButton(
               onPressed: () => service(),
               child: const Text('Nuevo servicio'),
@@ -698,7 +698,7 @@ class _OperationsScreenState extends State<OperationsScreen>
                 '${model.rows('services').where((s) => serviceCategory(s) == category.key).length} servicios registrados',
               ),
               children: [
-                if (canWrite('service.manage', legacy: admin))
+                if (admin && canWrite('service.manage', legacy: admin))
                   Wrap(
                     spacing: 8,
                     children: [
@@ -710,7 +710,7 @@ class _OperationsScreenState extends State<OperationsScreen>
                         ),
                     ],
                   ),
-                if (canWrite('service.manage', legacy: admin))
+                if (admin && canWrite('service.manage', legacy: admin))
                   TextButton.icon(
                     icon: const Icon(Icons.add),
                     label: const Text(
@@ -729,7 +729,7 @@ class _OperationsScreenState extends State<OperationsScreen>
                   ExpansionTile(
                     title: Text(sub.isEmpty ? 'Sin subcategoría' : sub),
                     children: [
-                      if (canWrite('service.manage', legacy: admin))
+                      if (admin && canWrite('service.manage', legacy: admin))
                         TextButton.icon(
                           icon: const Icon(Icons.add),
                           label: const Text('Agregar servicio aquí'),
@@ -748,7 +748,7 @@ class _OperationsScreenState extends State<OperationsScreen>
                           subtitle: Text(
                             'Comisión: ${row['commission_kind']} ${row['commission_value']}',
                           ),
-                          trailing: canWrite('service.manage', legacy: admin)
+                          trailing: admin && canWrite('service.manage', legacy: admin)
                               ? IconButton(
                                   tooltip: 'Editar servicio',
                                   icon: const Icon(Icons.edit),
