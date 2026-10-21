@@ -20,6 +20,7 @@ class SupabaseInventoryRepository
     'inv_workflow_dashboard',
     'inv_delivery_items',
     'inv_billable_services',
+    'inv_catalog_services',
   };
   static const writes = {
     'inv_settings',
@@ -37,6 +38,7 @@ class SupabaseInventoryRepository
     'inv_stock_adjust',
     'inv_shift_open',
     'inv_sale_post',
+    'inv_catalog_service_sale_post',
     'inv_sale_reverse',
     'inv_cash_move',
     'inv_shift_close',
