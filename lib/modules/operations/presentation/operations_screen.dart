@@ -49,6 +49,7 @@ class _OperationsScreenState extends State<OperationsScreen>
   );
   String section = 'appointments', filter = 'pendientes';
   DateTime? calendarDay;
+  DateTime commissionMonth = DateTime(DateTime.now().year, DateTime.now().month);
   bool careDay = true;
   bool get careEnabled => widget.repository is AppointmentCareRepository;
   String? appointmentState;
@@ -944,6 +945,28 @@ class _OperationsScreenState extends State<OperationsScreen>
             ),
         ],
         if (activeSection == 'acts') ...[
+          Row(
+            children: [
+              IconButton(
+                tooltip: 'Mes anterior',
+                onPressed: () => setState(() => commissionMonth =
+                    DateTime(commissionMonth.year, commissionMonth.month - 1)),
+                icon: const Icon(Icons.chevron_left),
+              ),
+              Expanded(
+                child: Text(
+                  'Comisiones de ${commissionMonth.month.toString().padLeft(2, '0')}/${commissionMonth.year}',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Mes siguiente',
+                onPressed: () => setState(() => commissionMonth =
+                    DateTime(commissionMonth.year, commissionMonth.month + 1)),
+                icon: const Icon(Icons.chevron_right),
+              ),
+            ],
+          ),
           if (canWrite(
             'service.act.record',
             legacy: admin || widget.member.role == ClinicRole.recepcion,
@@ -1000,7 +1023,7 @@ class _OperationsScreenState extends State<OperationsScreen>
           const Text(
             'Servicios realizados y comisión congelada. “Cobrado” exige venta vigente en caja; las devoluciones se muestran por separado en inventario.',
           ),
-          for (final a in model.rows('acts'))
+          for (final a in periodActs)
             ListTile(
               title: Text('${a['name']} · \$${a['price']}'),
               subtitle: Text(
@@ -1027,7 +1050,7 @@ class _OperationsScreenState extends State<OperationsScreen>
 
   Map<String, List<Money>> get performance {
     final sums = <String, List<Money>>{};
-    for (final a in model.rows('acts')) {
+    for (final a in periodActs) {
       final key = a['professional_id'] as String;
       final v = sums.putIfAbsent(
         key,
@@ -1039,6 +1062,13 @@ class _OperationsScreenState extends State<OperationsScreen>
     }
     return sums;
   }
+
+  List<Map<String, dynamic>> get periodActs => model.rows('acts').where((a) {
+    final date = DateTime.tryParse(a['created_at']?.toString() ?? '');
+    return date != null &&
+        date.toLocal().year == commissionMonth.year &&
+        date.toLocal().month == commissionMonth.month;
+  }).toList();
 
   Future<void> exportPerformance() async {
     try {

@@ -6,6 +6,7 @@ import '../../patients/presentation/patient_view_model.dart'
     show newOperationId;
 import '../domain/inventory_models.dart';
 import '../domain/inventory_repository.dart';
+import 'barcode_screen.dart';
 
 String inventoryError(Object error) {
   final planMessage = planActionError(error);
@@ -121,6 +122,27 @@ class _SaleScreenState extends State<SaleScreen> {
     error = null;
   }
 
+  Future<void> scanProduct() async {
+    final code = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const BarcodeScreen()),
+    );
+    if (!mounted || code == null) return;
+    final matches = widget.products.where(
+      (p) => p['m8_enabled'] == true &&
+          p['active'] == true &&
+          (p['codigo_barras']?.toString().trim() == code.trim() ||
+              p['barcode']?.toString().trim() == code.trim()),
+    ).toList();
+    if (matches.length == 1) {
+      await addProduct(matches.single);
+    } else {
+      setState(() => error = matches.isEmpty
+          ? 'No se encontró un producto activo con ese código de barras.'
+          : 'El código coincide con varios productos. Selecciona uno de la lista.');
+    }
+  }
+
   Future<void> addProduct(Map<String, dynamic> p) async {
     final lots = (p['lots'] as List)
         .map((e) => Map<String, dynamic>.from(e))
@@ -232,8 +254,15 @@ class _SaleScreenState extends State<SaleScreen> {
             const RxField('price', 'Precio unitario MXN', required: true),
             const RxField('cost', 'Costo TOTAL capturado MXN', required: true),
             const RxField(
+              'commission_kind',
+              'Cómo calcular la comisión',
+              type: 'select',
+              options: {'porcentaje': 'Porcentaje del servicio', 'bono': 'Importe fijo MXN'},
+              required: true,
+            ),
+            const RxField(
               'commission',
-              'Comisión TOTAL capturada MXN',
+              'Porcentaje o importe fijo',
               required: true,
             ),
             RxField(
@@ -247,8 +276,22 @@ class _SaleScreenState extends State<SaleScreen> {
             ),
           ],
           submit: (d, _) async {
-            for (final key in ['price', 'cost', 'commission']) {
+            for (final key in ['price', 'cost']) {
               d[key] = Money.parse(d[key] as String).decimal;
+            }
+            final amount = Money.parse(d['price'] as String)
+                .times(Quantity.parse(d['quantity'] as String));
+            if (d['commission_kind'] == 'porcentaje') {
+              final percentage = Money.parse(d['commission'] as String);
+              if (percentage.cents > BigInt.from(10000)) {
+                throw const FormatException('El porcentaje no puede superar 100%.');
+              }
+              d['commission'] = Money(
+                (amount.cents * percentage.cents + BigInt.from(5000)) ~/
+                    BigInt.from(10000),
+              ).decimal;
+            } else {
+              d['commission'] = Money.parse(d['commission'] as String).decimal;
             }
             if (Money.parse(d['commission']).cents > BigInt.zero &&
                 d['professional_id'] == null) {
@@ -256,14 +299,15 @@ class _SaleScreenState extends State<SaleScreen> {
                 'Selecciona al profesional para la comisión.',
               );
             }
-            if (Money.parse(d['commission']).cents >
-                Money.parse(
-                  d['price'],
-                ).times(Quantity.parse(d['quantity'])).cents) {
+            if (Money.parse(d['commission']).cents > amount.cents) {
               throw const FormatException('La comisión supera el importe.');
             }
             setState(() {
-              lines.add({...d, 'kind': 'servicio', 'display': d['name']});
+              lines.add({
+                ...d,
+                'kind': 'servicio',
+                'display': d['name'],
+              }..remove('commission_kind'));
               changed();
             });
           },
@@ -309,6 +353,11 @@ class _SaleScreenState extends State<SaleScreen> {
         children: [
           const Text(
             'Venta interna en MXN. Los precios capturados son finales; no se genera factura fiscal. El servidor confirma lote, caducidad, stock, precio y permisos al registrar.',
+          ),
+          OutlinedButton.icon(
+            onPressed: busy ? null : scanProduct,
+            icon: const Icon(Icons.qr_code_scanner),
+            label: const Text('Escanear producto para la nota de venta'),
           ),
           for (final p in widget.products.where(
             (p) => p['m8_enabled'] == true && p['active'] == true,
@@ -390,9 +439,10 @@ class _SaleScreenState extends State<SaleScreen> {
               ),
             ),
           Text(
-            'Total: ${total.display}',
+            'Total a pagar: ${total.display}',
             style: Theme.of(context).textTheme.titleLarge,
           ),
+          const Text('Las comisiones son internas; no se suman al total del cliente.'),
           DropdownButtonFormField<String>(
             initialValue: method,
             decoration: const InputDecoration(labelText: 'Método de pago'),
