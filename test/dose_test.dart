@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vetdosis_pro/modules/doses/presentation/dose_screen.dart';
+import 'package:vetdosis_pro/modules/doses/presentation/quick_dose_calculator.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vetdosis_pro/modules/doses/domain/catalog.dart';
 import 'package:vetdosis_pro/modules/doses/domain/quantity.dart';
@@ -63,6 +64,26 @@ class Repo implements CatalogRepository {
 }
 
 void main() {
+  testWidgets('Quick arithmetic calculator requires positive manual inputs', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: QuickDoseCalculator())),
+    );
+    await tester.enterText(find.byType(TextField).at(0), '10');
+    await tester.enterText(find.byType(TextField).at(1), '2');
+    await tester.enterText(find.byType(TextField).at(2), '5');
+    await tester.tap(find.text('Calcular volumen'));
+    await tester.pumpAndSettle();
+    expect(find.text('4 mL'), findsOneWidget);
+    expect(find.textContaining('No recomienda ni valida'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).at(0), '0');
+    await tester.tap(find.text('Calcular volumen'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('mayores que cero'), findsOneWidget);
+  });
+
   test('Known fictitious vector: 10 kg × 2 mg/kg / 10 mg/ml', () {
     final r = calc(drug());
     expect(r.mass.display(), '20');

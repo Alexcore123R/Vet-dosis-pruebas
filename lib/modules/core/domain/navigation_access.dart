@@ -16,6 +16,7 @@ bool navigationAllowed(
     'Planeación financiera' => role == ClinicRole.admin,
     'Cálculos' ||
     'Cálculo rápido' ||
+    'Cálculo rápido manual' ||
     'Cálculos clínicos' => [ClinicRole.admin, ClinicRole.mvz].contains(role),
     'Hospitalización' || 'Receta' when access == null => [
       ClinicRole.admin,
