@@ -1,5 +1,8 @@
 import '../../core/domain/plan_errors.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../../doses/domain/quantity.dart';
 import '../../prescribing/presentation/rx_entry_screen.dart';
 import '../../patients/presentation/patient_view_model.dart'
@@ -349,7 +352,7 @@ class _SaleScreenState extends State<SaleScreen> {
       error = null;
     });
     try {
-      await widget.repository.write('inv_sale_post', {
+      final saleId = await widget.repository.write('inv_sale_post', {
         'p_shift': widget.shift,
         'p_method': method,
         'p_lines': [
@@ -362,11 +365,39 @@ class _SaleScreenState extends State<SaleScreen> {
         'p_expected_total': total.decimal,
         'p_operation': operation,
       });
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) {
+        Navigator.pop(context, true);
+        await printReceipt('$saleId');
+      }
     } catch (e) {
       if (mounted) setState(() => error = inventoryError(e));
     } finally {
       if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> printReceipt(String saleId) async {
+    try {
+      final font = pw.Font.ttf(await rootBundle.load('assets/fonts/DejaVuSans.ttf'));
+      final pdf = pw.Document(theme: pw.ThemeData.withFont(base: font, bold: font));
+      pdf.addPage(pw.Page(build: (_) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text('Nota de venta', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.Text('Folio: $saleId'),
+          pw.Text('Fecha: ${DateTime.now().toLocal()}'),
+          pw.SizedBox(height: 16),
+          for (final line in lines)
+            pw.Text('${line['display']} · ${line['quantity']} × ${Money.parse(line['price'] as String).display} = ${Money.parse(line['price'] as String).times(Quantity.parse(line['quantity'] as String)).display}'),
+          pw.Divider(),
+          pw.Text('Total a pagar: ${total.display}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          pw.Text('Método de pago: $method'),
+          pw.Text('Nota interna de venta. No es factura fiscal.'),
+        ],
+      )));
+      await Printing.layoutPdf(onLayout: (_) => pdf.save());
+    } catch (_) {
+      // La venta ya fue registrada; un fallo de impresión no la revierte.
     }
   }
 

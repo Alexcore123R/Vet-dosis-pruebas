@@ -3,6 +3,7 @@ import 'appointment_links_panel.dart';
 import 'appointment_care_panel.dart';
 import '../domain/appointment_care.dart';
 import 'appointment_summary.dart';
+import 'commission_panel.dart';
 import '../../../vet_ui/vet_components.dart';
 import '../../auth/domain/staff_labels.dart';
 import 'appointment_patient_picker.dart';
@@ -945,6 +946,11 @@ class _OperationsScreenState extends State<OperationsScreen>
             ),
         ],
         if (activeSection == 'acts') ...[
+          if (widget.repository is CommissionRepository)
+            CommissionPanel(
+              repository: widget.repository as CommissionRepository,
+              member: widget.member,
+            ),
           Row(
             children: [
               IconButton(

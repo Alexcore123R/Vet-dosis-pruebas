@@ -27,6 +27,7 @@ import '../modules/subscriptions/domain/subscription_repository.dart';
 import '../modules/subscriptions/presentation/subscription_screen.dart';
 import '../modules/operations/domain/operations_repository.dart';
 import '../modules/operations/presentation/operations_screen.dart';
+import '../modules/operations/presentation/commission_panel.dart';
 import '../modules/attendance/domain/attendance_repository.dart';
 import '../modules/attendance/presentation/attendance_screen.dart';
 import '../modules/backup/domain/backup_repository.dart';
@@ -1151,6 +1152,27 @@ class CoreShell extends StatelessWidget {
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute<void>(builder: (_) => AuthScreen(model: auth)),
+        ),
+      ),
+    if (operations is CommissionRepository && auth?.active != null && auth?.offline != true)
+      ListTile(
+        leading: const Icon(Icons.payments_outlined),
+        title: const Text('Mis comisiones'),
+        subtitle: const Text('Saldo, próximo pago e historial'),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => Scaffold(
+              appBar: AppBar(title: const Text('Mis comisiones')),
+              body: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: CommissionPanel(
+                  repository: operations as CommissionRepository,
+                  member: auth!.active!,
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     Text(

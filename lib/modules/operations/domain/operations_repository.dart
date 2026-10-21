@@ -13,6 +13,12 @@ abstract class OperationsRepository {
   });
 }
 
+abstract interface class CommissionRepository {
+  Future<Map<String, dynamic>> commissionAccount(String clinic);
+  Future<void> saveCommissionSchedule(String clinic, String cadence, DateTime payOn);
+  Future<void> payCommissionPeriod(String clinic);
+}
+
 abstract interface class AppointmentPatientRepository {
   Future<List<Map<String, dynamic>>> searchPatients(
     String clinic,
