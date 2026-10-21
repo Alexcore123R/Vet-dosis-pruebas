@@ -14,6 +14,17 @@ create table if not exists public.inventory_catalog_service_sales (
 alter table public.inventory_catalog_service_sales enable row level security;
 revoke all on public.inventory_catalog_service_sales from public,anon,authenticated;
 
+create or replace function public.inv_catalog_services(p_clinic uuid)
+returns jsonb language plpgsql stable security definer set search_path='' as $$
+begin
+ if not private.inventory_current(p_clinic,'sales.manual') then raise exception 'explicit_permission_required';end if;
+ return coalesce((select jsonb_agg(jsonb_build_object(
+  'id',s.id,'name',s.name,'price',s.price::text,'version',s.version,'active',s.active
+ ) order by s.name) from public.clinic_services s where s.clinic_id=p_clinic and s.active),'[]'::jsonb);
+end$$;
+revoke all on function public.inv_catalog_services(uuid) from public,anon;
+grant execute on function public.inv_catalog_services(uuid) to authenticated;
+
 create or replace function public.inv_catalog_service_sale_post(
  p_shift uuid,p_method text,p_lines jsonb,p_expected_total text,p_operation text
 ) returns uuid language plpgsql security definer set search_path='' as $$
