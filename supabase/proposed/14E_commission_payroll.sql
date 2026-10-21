@@ -3,6 +3,7 @@ begin;
 create table if not exists public.clinic_commission_schedule (
  clinic_id uuid primary key references public.clinics(id),
  cadence text not null check(cadence in ('diario','semanal','quincenal','mensual')),
+ pay_day integer not null check(pay_day between 1 and 31),
  period_start timestamptz not null,
  next_pay_on date not null,
  updated_by uuid not null references auth.users(id),
@@ -35,10 +36,10 @@ declare old public.clinic_commission_schedule;begin
  select * into old from public.clinic_commission_schedule where clinic_id=p_clinic for update;
  if found then
   if (p_next_pay_on::timestamp at time zone private.inv_timezone(p_clinic))<=old.period_start then raise exception 'invalid_schedule';end if;
-  update public.clinic_commission_schedule set cadence=p_cadence,next_pay_on=p_next_pay_on,updated_by=auth.uid(),updated_at=clock_timestamp() where clinic_id=p_clinic;
+  update public.clinic_commission_schedule set cadence=p_cadence,pay_day=extract(day from p_next_pay_on)::integer,next_pay_on=p_next_pay_on,updated_by=auth.uid(),updated_at=clock_timestamp() where clinic_id=p_clinic;
  else
-  insert into public.clinic_commission_schedule(clinic_id,cadence,period_start,next_pay_on,updated_by)
-  values(p_clinic,p_cadence,clock_timestamp(),p_next_pay_on,auth.uid());
+  insert into public.clinic_commission_schedule(clinic_id,cadence,pay_day,period_start,next_pay_on,updated_by)
+  values(p_clinic,p_cadence,extract(day from p_next_pay_on)::integer,clock_timestamp(),p_next_pay_on,auth.uid());
  end if;
  insert into public.audit_log(clinic_id,actor_id,action,entity_id,details)
  values(p_clinic,auth.uid(),'commission_schedule_saved',p_clinic::text,jsonb_build_object('cadence',p_cadence,'next_pay_on',p_next_pay_on));
@@ -51,7 +52,7 @@ declare cfg public.clinic_commission_schedule;is_admin boolean;begin
  is_admin=private.has_clinic_role(p_clinic,array['admin']);
  select * into cfg from public.clinic_commission_schedule where clinic_id=p_clinic;
  return jsonb_build_object(
-  'schedule',case when cfg.clinic_id is null then null else jsonb_build_object('cadence',cfg.cadence,'period_start',cfg.period_start,'next_pay_on',cfg.next_pay_on) end,
+  'schedule',case when cfg.clinic_id is null then null else jsonb_build_object('cadence',cfg.cadence,'pay_day',cfg.pay_day,'period_start',cfg.period_start,'next_pay_on',cfg.next_pay_on) end,
   'accrued',coalesce((select jsonb_agg(jsonb_build_object('professional_id',m.user_id,'professional_name',coalesce(n.name,'Sin nombre'),'amount',(coalesce(e.amount,0)-coalesce(p.amount,0))::text))
     from public.clinic_members m
     left join public.staff_display_names n on n.clinic_id=m.clinic_id and n.user_id=m.user_id
@@ -97,7 +98,15 @@ declare cfg public.clinic_commission_schedule;v_batch uuid=gen_random_uuid();v_e
    where x.clinic_id=p_clinic and x.professional_id=m.user_id
  ) p on true
  where m.clinic_id=p_clinic and coalesce(e.amount,0)>coalesce(p.amount,0);
- v_next=case cfg.cadence when 'diario' then cfg.next_pay_on+1 when 'semanal' then cfg.next_pay_on+7 when 'quincenal' then cfg.next_pay_on+15 else (cfg.next_pay_on+interval '1 month')::date end;
+ v_next=case cfg.cadence
+  when 'diario' then cfg.next_pay_on+1
+  when 'semanal' then cfg.next_pay_on+7
+  when 'quincenal' then cfg.next_pay_on+15
+  else make_date(
+   extract(year from cfg.next_pay_on+interval '1 month')::integer,
+   extract(month from cfg.next_pay_on+interval '1 month')::integer,
+   least(cfg.pay_day,extract(day from date_trunc('month',cfg.next_pay_on+interval '2 months')-interval '1 day')::integer)
+  ) end;
  update public.clinic_commission_schedule set period_start=v_end,next_pay_on=v_next,updated_by=auth.uid(),updated_at=clock_timestamp() where clinic_id=p_clinic;
  insert into public.audit_log(clinic_id,actor_id,action,entity_id,details)
  values(p_clinic,auth.uid(),'commission_period_paid',v_batch::text,jsonb_build_object('period_start',cfg.period_start,'period_end',v_end,'scheduled_on',cfg.next_pay_on));
