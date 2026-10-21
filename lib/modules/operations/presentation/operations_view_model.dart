@@ -156,6 +156,11 @@ String operationError(Object e) {
   const errors = {
     'explicit_permission_required':
         'Necesitas un permiso vigente para esta acción. Solicítalo a administración.',
+    'supplier_archive_blocked':
+        'No se puede archivar un proveedor con adeudo pendiente. Actualiza el saldo primero.',
+    'supplier_fields_invalid':
+        'Revisa nombre, contacto, tipo de proveedor y adeudo.',
+    'supplier_not_found': 'El proveedor ya no está activo. Actualiza la lista.',
     'clinic_appointments_check':
         'Revisa el horario: el fin debe ser posterior al inicio y la cita no puede durar más de 24 horas.',
     'invalid_display_name': 'Usa un nombre de entre 2 y 120 caracteres.',

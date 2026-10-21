@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../auth/domain/clinic_membership.dart';
 import '../../prescribing/presentation/rx_entry_screen.dart';
+import '../../patients/presentation/patient_view_model.dart' show newOperationId;
 import '../domain/operations_repository.dart';
 import 'operations_view_model.dart';
 
@@ -77,6 +78,14 @@ class _OperationsScreenState extends State<OperationsScreen>
       )
       .toList();
   bool get admin => widget.member.role == ClinicRole.admin;
+  int? supplierVisitDays(Map<String, dynamic> supplier) {
+    final visit = DateTime.tryParse('${supplier['visit_on'] ?? ''}');
+    if (visit == null) return null;
+    final now = DateTime.now();
+    return DateTime(visit.year, visit.month, visit.day)
+        .difference(DateTime(now.year, now.month, now.day))
+        .inDays;
+  }
   bool canWrite(String permission, {required bool legacy}) =>
       model.explicitPermissions ? model.allowed(permission) : legacy;
   String sectionTitle(String value) => switch (value) {
@@ -183,6 +192,64 @@ class _OperationsScreenState extends State<OperationsScreen>
       ),
     );
     if (ok == true && mounted) await model.load();
+  }
+
+  Future<void> supplierForm([Map<String, dynamic>? supplier]) => form(
+    supplier == null ? 'Agregar proveedor' : 'Editar proveedor',
+    'supplier',
+    const [
+      RxField('name', 'Nombre del proveedor', required: true),
+      RxField('kind', 'Tipo de proveedor', type: 'select', required: true, options: {
+        'farmacia': 'Farmacia y medicamentos',
+        'alimentos': 'Alimentos',
+        'material': 'Material e insumos',
+        'laboratorio': 'Laboratorio',
+        'equipo': 'Equipo',
+        'estetica': 'Estética',
+        'servicios': 'Servicios',
+        'otro': 'Otro',
+      }),
+      RxField('phone', 'Teléfono (opcional)'),
+      RxField('whatsapp', 'WhatsApp (opcional)'),
+      RxField('email', 'Correo (opcional)'),
+      RxField('balance', 'Adeudo pendiente MXN (registro manual)'),
+      RxField('visit_on', 'Próxima visita programada', type: 'local_date'),
+      RxField('notes', 'Notas'),
+    ],
+    initial: supplier == null ? const {'kind': 'otro', 'balance': '0'} : {
+      'id': supplier['id'],
+      'name': supplier['name'],
+      'kind': supplier['kind'] ?? 'otro',
+      'phone': supplier['phone'] ?? '',
+      'whatsapp': supplier['whatsapp'] ?? '',
+      'email': supplier['email'] ?? '',
+      'balance': '${supplier['balance'] ?? 0}',
+      'visit_on': supplier['visit_on'] ?? '',
+      'notes': supplier['notes'] ?? '',
+    },
+  );
+
+  Future<void> archiveSupplier(Map<String, dynamic> supplier) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Eliminar proveedor'),
+        content: Text('Se archivará ${supplier['name']} y dejará de aparecer en la lista. Sus referencias anteriores se conservarán.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Archivar')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await widget.repository.write(widget.member.clinicId, 'supplier', {
+        'id': supplier['id'], 'archive': true,
+      }, newOperationId());
+      if (mounted) await model.load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(operationError(e))));
+    }
   }
 
   Future<void> openPatient(String id) async {
@@ -903,43 +970,71 @@ class _OperationsScreenState extends State<OperationsScreen>
             ),
         ],
         if (activeSection == 'suppliers') ...[
+          const Text('Directorio y seguimiento de proveedores. Los adeudos se capturan manualmente y no modifican Caja.'),
+          if (model.rows('suppliers').where((s) => s['active'] != false && supplierVisitDays(s) != null && supplierVisitDays(s)! <= 3).isNotEmpty)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text('Visitas próximas o pendientes: ${model.rows('suppliers').where((s) => s['active'] != false && supplierVisitDays(s) != null && supplierVisitDays(s)! <= 3).length}. Revisa las fechas en la lista.'),
+              ),
+            ),
           if (canWrite(
             'supplier.manage',
             legacy: admin || widget.member.role == ClinicRole.recepcion,
           ))
             FilledButton(
-              onPressed: () => form('Distribuidor', 'supplier', const [
-                RxField('name', 'Nombre', required: true),
-                RxField('phone', 'Teléfono con código de país'),
-                RxField('notes', 'Notas'),
-              ]),
-              child: const Text('Agregar distribuidor'),
+              onPressed: supplierForm,
+              child: const Text('Agregar proveedor'),
             ),
-          for (final s in model.rows('suppliers'))
+          for (final s in model.rows('suppliers').where((s) => s['active'] != false))
             ListTile(
-              title: Text('${s['name']}'),
+              title: Text('${s['name']} · ${s['kind'] ?? 'otro'}'),
               subtitle: Text(
                 [
                   if ('${s['phone'] ?? ''}'.trim().isNotEmpty)
-                    '${s['phone']}'.trim(),
+                    'Tel. ${s['phone']}'.trim(),
+                  if ('${s['whatsapp'] ?? ''}'.trim().isNotEmpty)
+                    'WhatsApp ${s['whatsapp']}',
+                  if ('${s['email'] ?? ''}'.trim().isNotEmpty)
+                    '${s['email']}',
+                  'Adeudo: ${displayMoney(s['balance'] ?? 0)}',
+                  if (supplierVisitDays(s) != null)
+                    supplierVisitDays(s)! < 0
+                        ? 'Visita pendiente: ${s['visit_on']}'
+                        : supplierVisitDays(s) == 0
+                            ? 'Visita hoy'
+                            : 'Próxima visita: ${s['visit_on']}',
                   if ('${s['notes'] ?? ''}'.trim().isNotEmpty)
                     '${s['notes']}'.trim(),
-                ].join(' · '),
+                ].join('\n'),
               ),
+              isThreeLine: true,
               trailing: PopupMenuButton<String>(
                 itemBuilder: (_) => [
-                  for (final x in ['WhatsApp', 'Llamar', 'SMS'])
+                  for (final x in [
+                    if ('${s['whatsapp'] ?? s['phone'] ?? ''}'.trim().isNotEmpty) 'WhatsApp',
+                    if ('${s['phone'] ?? ''}'.trim().isNotEmpty) 'Llamar',
+                    if ('${s['email'] ?? ''}'.trim().isNotEmpty) 'Correo',
+                    if (canWrite('supplier.manage', legacy: admin || widget.member.role == ClinicRole.recepcion)) 'Editar',
+                    if (canWrite('supplier.manage', legacy: admin || widget.member.role == ClinicRole.recepcion)) 'Eliminar',
+                  ])
                     PopupMenuItem(value: x, child: Text(x)),
                 ],
                 onSelected: (x) async {
-                  final p = (s['phone'] as String).replaceAll(
+                  if (x == 'Editar') return supplierForm(s);
+                  if (x == 'Eliminar') return archiveSupplier(s);
+                  if (x == 'Correo') {
+                    await launchUrl(Uri(scheme: 'mailto', path: '${s['email']}'), mode: LaunchMode.externalApplication);
+                    return;
+                  }
+                  final p = '${x == 'WhatsApp' ? (s['whatsapp'] ?? s['phone']) : s['phone']}'.replaceAll(
                     RegExp(r'[^0-9+]'),
                     '',
                   );
                   if (p.isEmpty) return;
                   final uri = x == 'WhatsApp'
                       ? Uri.https('wa.me', p.replaceAll('+', ''))
-                      : Uri(scheme: x == 'Llamar' ? 'tel' : 'sms', path: p);
+                      : Uri(scheme: 'tel', path: p);
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
                 },
               ),
