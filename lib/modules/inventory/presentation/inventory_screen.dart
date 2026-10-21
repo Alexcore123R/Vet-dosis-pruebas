@@ -393,13 +393,21 @@ class _InventoryScreenState extends State<InventoryScreen> {
         }),
       );
       loading = 'servicios del catálogo';
-      final catalogServices = model.canManual
-          ? (await widget.repository.read('inv_catalog_services', {
-              'p_clinic': widget.member.clinicId,
-            }) as List)
-                .map((e) => Map<String, dynamic>.from(e as Map))
-                .toList()
-          : <Map<String, dynamic>>[];
+      var catalogServices = <Map<String, dynamic>>[];
+      var catalogUnavailable = false;
+      if (model.canManual) {
+        try {
+          catalogServices = (await widget.repository.read(
+            'inv_catalog_services',
+            {'p_clinic': widget.member.clinicId},
+          ) as List)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+        } on PostgrestException catch (e) {
+          if (e.code != 'PGRST202' && e.code != '42883') rethrow;
+          catalogUnavailable = true;
+        }
+      }
       loading = 'servicios pendientes de cobro';
       final operations = model.managementKnown
           ? {
@@ -429,6 +437,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             prescriptions: model.rows('prescription_items'),
             staff: model.rows('staff'),
             services: catalogServices,
+            catalogUnavailable: catalogUnavailable,
             canUpdateCatalog: widget.member.role == ClinicRole.admin,
             charges: (workflow['charges'] as List? ?? [])
                 .map((e) => Map<String, dynamic>.from(e))

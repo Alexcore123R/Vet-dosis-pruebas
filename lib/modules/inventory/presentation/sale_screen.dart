@@ -109,6 +109,7 @@ class SaleScreen extends StatefulWidget {
     required this.admin,
     this.canUpdateCatalog = false,
     this.services = const [],
+    this.catalogUnavailable = false,
     this.clinicName = 'Clínica veterinaria',
     this.charges = const [],
     this.deliveries = const [],
@@ -120,6 +121,7 @@ class SaleScreen extends StatefulWidget {
   final bool admin;
   final bool canUpdateCatalog;
   final List<Map<String, dynamic>> services;
+  final bool catalogUnavailable;
   final String clinicName;
   final List<Map<String, dynamic>> charges, deliveries, acts;
   @override
@@ -448,6 +450,13 @@ class _SaleScreenState extends State<SaleScreen> {
           const Text(
             'Venta interna en MXN. Los precios capturados son finales; no se genera factura fiscal. El servidor confirma lote, caducidad, stock, precio y permisos al registrar.',
           ),
+          if (widget.catalogUnavailable)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'El catálogo de servicios no está disponible en esta base de datos. Puedes registrar una venta manual; para elegir un servicio guardado, comprueba la función inv_catalog_services del SQL 14F.',
+              ),
+            ),
           OutlinedButton.icon(
             onPressed: busy ? null : scanProduct,
             icon: const Icon(Icons.qr_code_scanner),
