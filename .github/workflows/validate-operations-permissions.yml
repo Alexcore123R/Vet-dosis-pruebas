@@ -1,0 +1,28 @@
+# Validates proposed clinic operations permissions against disposable, offline PostgreSQL.
+# Does not use Supabase credentials or apply any remote migrations.
+name: Validar permisos de operaciones
+on:
+  pull_request:
+    paths:
+      - 'supabase/proposed/13B1_permission_clinic_operations.sql'
+      - 'supabase/proposed/13B2_restore_module_navigation.sql'
+      - 'supabase/proposed/13B3_service_categories.sql'
+      - 'supabase/proposed/13B4_service_subcategories.sql'
+      - 'supabase/tests/permission_clinic_operations.sql'
+      - 'supabase/tests/run_permission_clinic_operations.sh'
+      - '.github/workflows/validate-operations-permissions.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  operations-permissions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar permisos con migración de categorías
+        run: bash supabase/tests/run_permission_clinic_operations.sh
+      - name: Validar permisos sin migración previa de categorías
+        env:
+          SKIP_SERVICE_CATEGORIES: '1'
+        run: bash supabase/tests/run_permission_clinic_operations.sh
