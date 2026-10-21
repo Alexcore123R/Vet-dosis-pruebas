@@ -93,6 +93,7 @@ class SaleScreen extends StatefulWidget {
     required this.prescriptions,
     required this.staff,
     required this.admin,
+    this.clinicName = 'Clínica veterinaria',
     this.charges = const [],
     this.deliveries = const [],
     this.acts = const [],
@@ -101,6 +102,7 @@ class SaleScreen extends StatefulWidget {
   final String shift;
   final List<Map<String, dynamic>> products, prescriptions, staff;
   final bool admin;
+  final String clinicName;
   final List<Map<String, dynamic>> charges, deliveries, acts;
   @override
   State<SaleScreen> createState() => _SaleScreenState();
@@ -340,6 +342,7 @@ class _SaleScreenState extends State<SaleScreen> {
       pdf.addPage(pw.Page(build: (_) => pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
+          pw.Text(widget.clinicName, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
           pw.Text('Nota de venta', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
           pw.Text('Folio: $saleId'),
           pw.Text('Fecha: ${DateTime.now().toLocal()}'),

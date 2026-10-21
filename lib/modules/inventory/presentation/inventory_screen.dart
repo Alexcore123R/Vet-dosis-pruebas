@@ -408,6 +408,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         MaterialPageRoute(
           builder: (_) => SaleScreen(
             repository: widget.repository,
+            clinicName: widget.member.clinicName,
             shift: model.ownShift!['id'],
             products: model.dispensingKnown && !model.canDispense
                 ? model.products
