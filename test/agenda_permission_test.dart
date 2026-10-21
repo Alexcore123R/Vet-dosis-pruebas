@@ -147,7 +147,7 @@ void main() {
     },
   );
 
-  testWidgets('An explicit service grant enables catalog management', (
+  testWidgets('An admin with a service grant manages the catalog', (
     tester,
   ) async {
     final fake = PermissionAgendaFake()
@@ -173,7 +173,7 @@ void main() {
                 clinicId: 'c1',
                 clinicName: 'Synthetic',
                 userId: 'u1',
-                role: ClinicRole.estilista,
+                role: ClinicRole.admin,
               ),
             ),
           ),
