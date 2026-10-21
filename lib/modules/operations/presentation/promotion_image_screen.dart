@@ -118,7 +118,7 @@ class _PromotionImageScreenState extends State<PromotionImageScreen> {
                 style: TextStyle(color: colors.$3, fontSize: 11)),
             ]),
           )))),
-        )),
+        ),
         const SizedBox(height: 12),
         if (error != null) Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
         FilledButton.icon(onPressed: exporting ? null : shareImage,
