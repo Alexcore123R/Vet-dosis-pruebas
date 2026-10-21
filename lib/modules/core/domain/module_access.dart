@@ -90,6 +90,7 @@ bool moduleNavigationAllowed(
     'Servicios' ||
     'Proveedores' ||
     'Agenda telefónica' ||
+    'Promociones' ||
     'Agenda' ||
     'Equipo y avisos' ||
     'Pendientes del equipo' => access.module('agenda'),

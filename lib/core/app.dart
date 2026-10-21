@@ -28,6 +28,7 @@ import '../modules/subscriptions/presentation/subscription_screen.dart';
 import '../modules/operations/domain/operations_repository.dart';
 import '../modules/operations/presentation/operations_screen.dart';
 import '../modules/operations/presentation/contact_directory_screen.dart';
+import '../modules/operations/presentation/promotions_screen.dart';
 import '../modules/operations/presentation/commission_panel.dart';
 import '../modules/attendance/domain/attendance_repository.dart';
 import '../modules/attendance/presentation/attendance_screen.dart';
@@ -856,6 +857,10 @@ class CoreShell extends StatelessWidget {
                   operations != null && auth?.active != null && auth?.offline != true
                       ? ContactDirectoryScreen(repository: operations!, member: auth!.active!)
                       : const Text('El directorio de la clínica requiere cuenta y conexión.')
+                else if (model.screen == 'Promociones')
+                  operations != null && auth?.active != null && auth?.offline != true
+                      ? PromotionsScreen(repository: operations!, member: auth!.active!)
+                      : const Text('Las promociones requieren cuenta y conexión.')
                 else if (model.screen == 'Agenda' ||
                     model.screen == 'Equipo y avisos' ||
                     model.screen == 'Pendientes del equipo' ||
@@ -1374,6 +1379,7 @@ class _ModuleSearchState extends State<_ModuleSearch> {
     'Servicios',
     'Proveedores',
     'Agenda telefónica',
+    'Promociones',
     'Agenda',
     'Pacientes',
     'Hospitalización',

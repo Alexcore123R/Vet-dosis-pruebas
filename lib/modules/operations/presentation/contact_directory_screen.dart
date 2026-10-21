@@ -30,6 +30,13 @@ class _ContactDirectoryScreenState extends State<ContactDirectoryScreen> {
     setState(() { busy = true; error = null; });
     try {
       final next = await directory.contactDirectory(widget.member.clinicId);
+      try {
+        next['clients'] = await directory.clients(widget.member.clinicId);
+        next['clients_allowed'] = true;
+      } catch (_) {
+        next['clients'] = <Map<String, dynamic>>[];
+        next['clients_allowed'] = false;
+      }
       if (mounted) setState(() => data = next);
     } catch (_) {
       if (mounted) setState(() => error = 'No se pudo consultar el directorio. Revisa conexión, permisos y SQL 14I.');
@@ -54,6 +61,32 @@ class _ContactDirectoryScreenState extends State<ContactDirectoryScreen> {
           await directory.saveContact(widget.member.clinicId, kind, '${entry['id']}', values);
         } catch (_) {
           throw const FormatException('No se pudo guardar el contacto. Revisa formato y permisos.');
+        }
+      },
+    )));
+    if (saved == true && mounted) await load();
+  }
+
+  Future<void> marketingPreferences(Map<String, dynamic> entry) async {
+    final saved = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => RxEntryScreen(
+      title: 'Promociones: ${entry['name']}',
+      initial: {
+        'whatsapp': entry['whatsapp_allowed'] == true,
+        'email': entry['email_allowed'] == true,
+        'source': entry['consent_source'] ?? '',
+      },
+      fields: const [
+        RxField('whatsapp', 'Autorizó WhatsApp promocional', type: 'checkbox'),
+        RxField('email', 'Autorizó correo promocional', type: 'checkbox'),
+        RxField('source', 'Fuente y fecha de autorización; o motivo de retiro'),
+      ],
+      submit: (values, _) async {
+        try {
+          await directory.saveMarketingPreferences(widget.member.clinicId,
+            '${entry['id']}', values['whatsapp'] == true,
+            values['email'] == true, '${values['source'] ?? ''}');
+        } catch (_) {
+          throw const FormatException('No se pudo guardar. Revisa la fuente y el permiso patient.write.');
         }
       },
     )));
@@ -88,14 +121,14 @@ class _ContactDirectoryScreenState extends State<ContactDirectoryScreen> {
   @override
   Widget build(BuildContext context) {
     final source = (data?[kind] as List? ?? []).map((e) => Map<String, dynamic>.from(e as Map)).where((e) => '${e['name']} ${e['phone']} ${e['email']}'.toLowerCase().contains(search.toLowerCase())).toList();
-    final allowed = data?['${kind == 'staff' ? 'team' : 'suppliers'}_allowed'] == true;
-    final editable = data?['${kind == 'staff' ? 'team' : 'supplier'}_manage'] == true;
+    final allowed = data?['${kind == 'staff' ? 'team' : kind}_allowed'] == true;
+    final editable = kind != 'clients' && data?['${kind == 'staff' ? 'team' : 'supplier'}_manage'] == true;
     return Scaffold(
       appBar: AppBar(title: const Text('Agenda telefónica'), actions: [IconButton(onPressed: busy ? null : load, icon: const Icon(Icons.refresh), tooltip: 'Actualizar')]),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         const Text('Directorio de la clínica. Guardar en el teléfono requiere tu confirmación.'),
         const SizedBox(height: 12),
-        SegmentedButton<String>(segments: const [ButtonSegment(value: 'staff', label: Text('Personal')), ButtonSegment(value: 'suppliers', label: Text('Proveedores'))], selected: {kind}, onSelectionChanged: (value) => setState(() => kind = value.first)),
+        SegmentedButton<String>(segments: const [ButtonSegment(value: 'staff', label: Text('Personal')), ButtonSegment(value: 'suppliers', label: Text('Proveedores')), ButtonSegment(value: 'clients', label: Text('Clientes'))], selected: {kind}, onSelectionChanged: (value) => setState(() => kind = value.first)),
         const SizedBox(height: 12),
         TextField(decoration: const InputDecoration(prefixIcon: Icon(Icons.search), labelText: 'Buscar contacto'), onChanged: (value) => setState(() => search = value)),
         if (busy) const LinearProgressIndicator(),
@@ -103,7 +136,7 @@ class _ContactDirectoryScreenState extends State<ContactDirectoryScreen> {
         if (data != null && !allowed) const Padding(padding: EdgeInsets.all(16), child: Text('Necesitas permiso de equipo o proveedores para ver estos contactos.')),
         if (data != null && allowed && source.isEmpty) const Padding(padding: EdgeInsets.all(16), child: Text('Sin contactos registrados en esta categoría.')),
         if (allowed) for (final entry in source)
-          Card(child: ExpansionTile(title: Text('${entry['name']}'), subtitle: Text(kind == 'staff' ? 'Personal' : '${entry['kind'] ?? 'Proveedor'}'), childrenPadding: const EdgeInsets.all(12), children: [
+          Card(child: ExpansionTile(title: Text('${entry['name']}'), subtitle: Text(kind == 'staff' ? 'Personal' : kind == 'clients' ? 'Cliente' : '${entry['kind'] ?? 'Proveedor'}'), childrenPadding: const EdgeInsets.all(12), children: [
             if ('${entry['phone'] ?? ''}'.isNotEmpty) SelectableText('Teléfono: ${entry['phone']}'),
             if ('${entry['whatsapp'] ?? ''}'.isNotEmpty) SelectableText('WhatsApp: ${entry['whatsapp']}'),
             if ('${entry['email'] ?? ''}'.isNotEmpty) SelectableText('Correo: ${entry['email']}'),
@@ -114,6 +147,7 @@ class _ContactDirectoryScreenState extends State<ContactDirectoryScreen> {
               if ('${entry['email'] ?? ''}'.isNotEmpty) TextButton(onPressed: () => open(Uri(scheme: 'mailto', path: '${entry['email']}')), child: const Text('Correo')),
               if ('${entry['address'] ?? ''}'.isNotEmpty) TextButton(onPressed: () => open(Uri.https('www.google.com', '/maps/search/', {'api': '1', 'query': '${entry['address']}'})), child: const Text('Mapa')),
               if (editable) TextButton(onPressed: () => edit(entry), child: const Text('Editar ficha')),
+              if (kind == 'clients') TextButton(onPressed: () => marketingPreferences(entry), child: const Text('Permisos para promociones')),
               TextButton(onPressed: () => saveToPhone(entry), child: const Text('Guardar en teléfono')),
             ]),
           ])),

@@ -10,9 +10,32 @@ class SupabaseOperationsRepository
         AppointmentLinksRepository,
         AppointmentCareRepository,
         CommissionRepository,
-        ContactDirectoryRepository {
+        ContactDirectoryRepository,
+        MarketingRepository {
   SupabaseOperationsRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<List<Map<String, dynamic>>> clients(String clinic) async =>
+      (await client.rpc('ops_client_directory', params: {'p_clinic': clinic}) as List)
+          .map((e) => Map<String, dynamic>.from(e as Map)).toList();
+
+  @override
+  Future<void> saveMarketingPreferences(String clinic, String owner, bool whatsapp, bool email, String source) async {
+    await client.rpc('ops_marketing_preferences_save', params: {
+      'p_clinic': clinic, 'p_owner': owner, 'p_whatsapp': whatsapp,
+      'p_email': email, 'p_source': source,
+    });
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> promotions(String clinic) async =>
+      (await client.rpc('ops_promotions', params: {'p_clinic': clinic}) as List)
+          .map((e) => Map<String, dynamic>.from(e as Map)).toList();
+
+  @override
+  Future<void> savePromotion(String clinic, Map<String, dynamic> data) async {
+    await client.rpc('ops_promotion_save', params: {'p_clinic': clinic, 'p_data': data});
+  }
   @override
   Future<Map<String, dynamic>> contactDirectory(String clinic) async =>
       Map<String, dynamic>.from(await client.rpc('ops_contact_directory',
