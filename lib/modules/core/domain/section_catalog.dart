@@ -27,6 +27,7 @@ const sectionGroups = [
     'Servicios',
     'Proveedores',
     'Promociones',
+    'Productividad y semana',
   ]),
   SectionGroup('Equipo y comunicación', [
     'Agenda telefónica',

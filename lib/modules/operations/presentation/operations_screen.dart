@@ -1,4 +1,7 @@
 import '../domain/service_catalog.dart';
+import '../../ai/domain/ai_repository.dart';
+import '../../ai/presentation/request_ai_draft.dart';
+import '../../patients/domain/patient_contacts.dart';
 import 'appointment_links_panel.dart';
 import 'appointment_care_panel.dart';
 import '../domain/appointment_care.dart';
@@ -31,6 +34,7 @@ class OperationsScreen extends StatefulWidget {
     this.canOpenSales = false,
     this.initialSection = 'appointments',
     this.initialPatientId,
+    this.ai,
   });
   final Future<void> Function(String)? onOpenPatient;
   final String? initialPatientId;
@@ -39,6 +43,7 @@ class OperationsScreen extends StatefulWidget {
   final OperationsRepository repository;
   final String initialSection;
   final ClinicMembership member;
+  final AiRepository? ai;
   @override
   State<OperationsScreen> createState() => _OperationsScreenState();
 }
@@ -146,6 +151,26 @@ class _OperationsScreenState extends State<OperationsScreen>
     WidgetsBinding.instance.removeObserver(this);
     model.dispose();
     super.dispose();
+  }
+
+  Future<void> reminderWithAi(Map<String,dynamic> appointment) async {
+    if(widget.ai==null)return;
+    final draft=await requestAiDraft(context,repository:widget.ai!,member:widget.member,
+      title:'Recordatorio de cita',prompt:'Redacta un recordatorio amable y breve para una cita de ${appointmentKindLabel(appointment['kind'])}. '
+      'Horario local del dispositivo: ${DateTime.parse(appointment['starts_at'] as String).toLocal()}. '
+      'Solicita confirmar asistencia. Usa un saludo genérico, no inventes preparaciones, ayuno, costos ni instrucciones clínicas.');
+    if(!mounted||draft==null)return;
+    final reviewed=await reviewAiDraft(context,'Revisar recordatorio',draft);
+    if(!mounted||reviewed==null||reviewed.isEmpty)return;
+    final contact=model.links[appointment['id']]?['contact'];
+    final uri=contact is Map?contactWhatsapp('${contact['phone']??''}',reviewed):null;
+    if(uri!=null){
+      try{await launchUrl(uri,mode:LaunchMode.externalApplication);}catch(_){
+        if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('No se pudo abrir WhatsApp.')));
+      }
+    }else{
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('El texto está listo; no hay un contacto vinculado para abrir WhatsApp. Puedes copiarlo desde la revisión.')));
+    }
   }
 
   Future<void> form(
@@ -642,6 +667,7 @@ class _OperationsScreenState extends State<OperationsScreen>
                       Text(
                         'Responsable: ${a['professional_id'] is String ? person(a['professional_id'] as String) : 'Sin asignar'}',
                       ),
+                      if(widget.ai!=null) TextButton.icon(onPressed:()=>reminderWithAi(a),icon:const Icon(Icons.auto_awesome),label:const Text('Redactar recordatorio con IA')),
                       if (a['patient_id'] != null &&
                           widget.onOpenPatient != null &&
                           (!model.explicitPermissions ||
@@ -875,6 +901,9 @@ class _OperationsScreenState extends State<OperationsScreen>
             ),
           ),
         if (activeSection == 'tasks') ...[
+          if(widget.onNavigate!=null) OutlinedButton.icon(
+            onPressed:()=>widget.onNavigate!('Productividad y semana'),
+            icon:const Icon(Icons.calendar_view_week),label:const Text('Organizar tareas de la semana')),
           if (canWrite('team.manage', legacy: !widget.member.isPersonal))
             FilledButton(
               onPressed: () => form('Nuevo pendiente', 'task', [

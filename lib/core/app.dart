@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'widgets/app_version_label.dart';
 import '../modules/finance/presentation/financial_planning_panel.dart';
+import '../modules/operations/presentation/productivity_screen.dart';
 import '../modules/core/presentation/section_menu.dart';
 import '../modules/production/presentation/production_menu.dart';
 import '../modules/dashboard/presentation/home_pilot.dart';
@@ -814,6 +815,7 @@ class CoreShell extends StatelessWidget {
                                 'Los formatos y las firmas requieren conexión. No se guardan documentos sensibles offline.',
                               )
                             : FormsScreen(
+                                ai: ai,
                                 repository: forms!,
                                 clinical: clinical,
                                 prescribing: prescribing,
@@ -843,6 +845,7 @@ class CoreShell extends StatelessWidget {
                               )
                             : InventoryScreen(
                                 identity: identity,
+                                ai: ai,
                                 key: ValueKey('inventory:${model.screen}'),
                                 initialSection: model.screen == 'Caja'
                                     ? 'cash'
@@ -857,6 +860,10 @@ class CoreShell extends StatelessWidget {
                   operations != null && auth?.active != null && auth?.offline != true
                       ? ContactDirectoryScreen(repository: operations!, member: auth!.active!)
                       : const Text('El directorio de la clínica requiere cuenta y conexión.')
+                else if (model.screen == 'Productividad y semana')
+                  operations is ProductivityRepository && auth?.active != null && auth?.offline != true
+                      ? ProductivityScreen(repository: operations as ProductivityRepository, member: auth!.active!, ai: ai)
+                      : const Text('La planificación semanal requiere cuenta y conexión.')
                 else if (model.screen == 'Promociones')
                   operations != null && auth?.active != null && auth?.offline != true
                       ? PromotionsScreen(repository: operations!, member: auth!.active!, ai: ai)
@@ -870,6 +877,7 @@ class CoreShell extends StatelessWidget {
                           auth?.active != null &&
                           auth?.offline != true
                       ? OperationsScreen(
+                          ai: ai,
                           key: ValueKey(
                             'operations:${model.screen}:${auth?.active?.clinicId}:${auth?.active?.userId}:${model.activityPatientId}',
                           ),
@@ -1380,6 +1388,7 @@ class _ModuleSearchState extends State<_ModuleSearch> {
     'Proveedores',
     'Agenda telefónica',
     'Promociones',
+    'Productividad y semana',
     'Agenda',
     'Pacientes',
     'Hospitalización',

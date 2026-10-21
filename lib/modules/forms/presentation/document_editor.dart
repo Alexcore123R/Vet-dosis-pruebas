@@ -1,4 +1,6 @@
 import '../../core/presentation/unsaved_form_scope.dart';
+import '../../ai/domain/ai_repository.dart';
+import '../../ai/presentation/request_ai_draft.dart';
 import '../../prescribing/domain/prescribing_repository.dart';
 import 'dart:convert';
 import '../clinical/clinical_models.dart';
@@ -29,8 +31,10 @@ class DocumentEditor extends StatefulWidget {
     this.deferAuthorship = false,
     this.fieldChoices = const {},
     this.draftResponsibles = const [],
+    this.ai,
   });
   final bool draftOnly, deferAuthorship;
+  final AiRepository? ai;
   final Map<String, dynamic> fieldChoices;
   final List<Map<String, dynamic>> draftResponsibles;
   final FormRepository repository;
@@ -457,6 +461,22 @@ class _DocumentEditorState extends State<DocumentEditor> {
     }
   }
 
+  Future<void> assistText(String id,String label) async {
+    if(widget.ai==null)return;
+    final brief=await reviewAiDraft(context,'Notas para redactar $label','${values[id]??''}');
+    if(!mounted||brief==null||brief.isEmpty)return;
+    final draft=await requestAiDraft(context,repository:widget.ai!,member:widget.member,title:'Redactar $label',prompt:
+      'Ordena y mejora la redacción de estas notas escritas por el profesional para el campo "$label": $brief. '
+      'Conserva los hechos y las indicaciones originales. No agregues diagnósticos, tratamientos, dosis, resultados ni cláusulas de responsabilidad. '
+      'Si falta información, señálala sin completarla. Devuelve solo un borrador editable para revisión profesional.');
+    if(!mounted||draft==null)return;
+    final reviewed=await reviewAiDraft(context,'Revisión profesional de $label',draft);
+    if(!mounted||reviewed==null)return;
+    values[id]=reviewed;
+    professionalGeneration++;
+    changed();
+  }
+
   Widget field(Map f) {
     final id = f['id'] as String, type = f['type'];
     if (type == 'signature') return const SizedBox.shrink();
@@ -656,6 +676,9 @@ class _DocumentEditorState extends State<DocumentEditor> {
             : 12000,
         decoration: InputDecoration(
           labelText: label,
+          suffixIcon: type=='text'&&widget.ai!=null&&(document==null||document!.state=='draft')
+              ? IconButton(onPressed:busy?null:()=>assistText(id,label),tooltip:'Ayuda para redactar',icon:const Icon(Icons.auto_awesome))
+              : null,
           hintText: type == 'instant'
               ? 'AAAA-MM-DDTHH:MM:SSZ (UTC)'
               : type == 'date'

@@ -1,4 +1,5 @@
 import '../../prescribing/domain/prescribing_repository.dart';
+import '../../ai/domain/ai_repository.dart';
 import '../clinical/clinical_repository.dart';
 import '../clinical/clinical_screen.dart';
 import '../clinical/death_screen.dart';
@@ -22,10 +23,12 @@ class FormsScreen extends StatefulWidget {
     required this.member,
     this.clinical,
     this.prescribing,
+    this.ai,
   });
   final FormRepository repository;
   final ClinicalRepository? clinical;
   final PrescribingRepository? prescribing;
+  final AiRepository? ai;
   final PatientRepository patients;
   final ClinicMembership member;
   @override
@@ -113,6 +116,7 @@ class _FormsScreenState extends State<FormsScreen> {
         context,
         MaterialPageRoute<void>(
           builder: (_) => DocumentEditor(
+            ai: widget.ai,
             repository: widget.repository,
             member: widget.member,
             professionalAdmin: professionalAdmin,
@@ -163,6 +167,7 @@ class _FormsScreenState extends State<FormsScreen> {
                   context,
                   MaterialPageRoute<void>(
                     builder: (_) => DocumentEditor(
+                      ai: widget.ai,
                       repository: widget.repository,
                       member: widget.member,
                       document: current,
@@ -188,6 +193,7 @@ class _FormsScreenState extends State<FormsScreen> {
           context,
           MaterialPageRoute<void>(
             builder: (_) => DocumentEditor(
+              ai: widget.ai,
               repository: widget.repository,
               member: widget.member,
               professionalAdmin: professionalAdmin,

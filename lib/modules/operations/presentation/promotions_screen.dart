@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../auth/domain/clinic_membership.dart';
 import '../../ai/domain/ai_repository.dart';
-import '../../ai/presentation/ai_screen.dart';
+import '../../ai/presentation/request_ai_draft.dart';
 import '../../patients/domain/patient_contacts.dart';
 import '../../patients/presentation/patient_view_model.dart' show newOperationId;
 import '../../prescribing/presentation/rx_entry_screen.dart';
@@ -42,10 +42,10 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
     } finally { if (mounted) setState(() => busy = false); }
   }
 
-  Future<void> edit([Map<String, dynamic>? promotion]) async {
+  Future<void> edit([Map<String, dynamic>? promotion, String? draft]) async {
     final saved = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => RxEntryScreen(
       title: promotion == null ? 'Nueva oferta o promoción' : 'Editar oferta o promoción',
-      initial: promotion == null ? const {'kind': 'promocion'} : {
+      initial: promotion == null ? {'kind': 'promocion', if(draft!=null)'message':draft} : {
         'id': promotion['id'], 'kind': promotion['kind'], 'title': promotion['title'],
         'message': promotion['message'], 'discount_percent': promotion['discount_percent']?.toString() ?? '',
         'starts_on': promotion['starts_on'] ?? '', 'ends_on': promotion['ends_on'] ?? '',
@@ -82,12 +82,14 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
     catch (_) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudo archivar la promoción.'))); }
   }
 
-  void suggestWithAi() {
+  Future<void> suggestWithAi() async {
     if (widget.ai == null) return;
-    Navigator.push(context, MaterialPageRoute(builder: (_) => AiScreen(
+    final draft = await requestAiDraft(context,
       repository: widget.ai!, member: widget.member,
-      initialDraft: 'Sugiere tres borradores breves de oferta, promoción o recompensa de fidelidad para una clínica veterinaria. Incluye título, condiciones y vigencia sugerida. No inventes beneficios clínicos, precios ni descuentos concretos. No uses datos de pacientes. La clínica revisará y editará el texto antes de publicarlo.',
-    )));
+      title:'Borrador de promoción',
+      prompt: 'Sugiere un borrador breve de oferta, promoción o recompensa de fidelidad para una clínica veterinaria. Incluye título, condiciones y vigencia sugerida. No inventes beneficios clínicos, precios ni descuentos concretos. No uses datos de pacientes. La clínica revisará y editará el texto antes de publicarlo.',
+    );
+    if(mounted&&draft!=null)await edit(null,draft);
   }
 
   Future<void> openLoyalty(Map<String, dynamic> owner) async {

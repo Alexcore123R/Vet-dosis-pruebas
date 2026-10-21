@@ -1,4 +1,6 @@
 import '../../identity/domain/identity_repository.dart';
+import '../../ai/domain/ai_repository.dart';
+import '../../ai/presentation/request_ai_draft.dart';
 import '../../exports/domain/branded_export.dart';
 import '../../exports/presentation/branded_export_action.dart';
 import 'payments_screen.dart';
@@ -27,8 +29,10 @@ class InventoryScreen extends StatefulWidget {
     this.identity,
     this.initialSearch = '',
     this.initialSection = 'stock',
+    this.ai,
   });
   final InventoryRepository repository;
+  final AiRepository? ai;
   final ClinicMembership member;
   final IdentityRepository? identity;
   final String initialSearch;
@@ -72,6 +76,18 @@ class _InventoryScreenState extends State<InventoryScreen> {
     searchController.dispose();
     model.dispose();
     super.dispose();
+  }
+
+  Future<void> inventoryIdeas() async {
+    if(widget.ai==null)return;
+    final products=model.products.where((p)=>p['low_stock']==true||p['reorder']==true).take(30).map((p)=>{
+      'producto':p['nombre'],'disponible':p['available_stock']??p['stock'],'minimo':p['stock_minimo'],'punto_reorden':p['reorder_point'],
+    }).toList();
+    final draft=await requestAiDraft(context,repository:widget.ai!,member:widget.member,title:'Plan de inventario',prompt:
+      'Propón acciones operativas para revisar reposición y evitar faltantes a partir de estos productos autorizados: $products. '
+      'No se conocen la demanda ni los plazos de entrega. No inventes cantidades de compra, ventas, márgenes, caducidades ni beneficios clínicos. '
+      'Indica qué datos faltan, cómo revisar lotes y caducidades, y una lista priorizada para validar con proveedores. No modifiques pedidos ni precios.');
+    if(mounted&&draft!=null)await reviewAiDraft(context,'Revisar sugerencias de inventario',draft);
   }
 
   Future<void> entry(
@@ -848,6 +864,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 onPressed: model.busy ? null : model.load,
                 child: const Text('Actualizar'),
               ),
+              if(widget.ai!=null&&model.canPrepareOrder)TextButton.icon(onPressed:inventoryIdeas,icon:const Icon(Icons.auto_awesome),label:const Text('Sugerir plan de inventario')),
               if (model.canManage)
                 TextButton(
                   onPressed: model.busy

@@ -13,6 +13,11 @@ abstract class OperationsRepository {
   });
 }
 
+abstract interface class ProductivityRepository {
+  Future<Map<String, dynamic>> productivity(String clinic, String week);
+  Future<void> planWrite(String clinic, String action, Map<String, dynamic> data, String operation);
+}
+
 abstract interface class ContactDirectoryRepository {
   Future<Map<String, dynamic>> contactDirectory(String clinic);
   Future<void> saveContact(String clinic, String kind, String id, Map<String, dynamic> data);

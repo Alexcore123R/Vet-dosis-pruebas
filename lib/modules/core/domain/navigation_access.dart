@@ -29,7 +29,7 @@ bool navigationAllowed(
     'Respaldo' ||
     'Estadísticas y respaldo' when access == null => role == ClinicRole.admin,
     'Estadísticas' || 'Respaldo' || 'Estadísticas y respaldo' => true,
-    'Equipo y avisos' || 'Pendientes del equipo' => !member.isPersonal,
+    'Equipo y avisos' || 'Pendientes del equipo' || 'Productividad y semana' => !member.isPersonal,
     'Checado' => !member.isPersonal,
     _ => true,
   };

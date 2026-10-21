@@ -11,9 +11,17 @@ class SupabaseOperationsRepository
         AppointmentCareRepository,
         CommissionRepository,
         ContactDirectoryRepository,
+        ProductivityRepository,
         MarketingRepository {
   SupabaseOperationsRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<Map<String, dynamic>> productivity(String clinic, String week) async =>
+      Map<String, dynamic>.from(await client.rpc('ops_productivity_read', params: {'p_clinic': clinic, 'p_week': week}) as Map);
+  @override
+  Future<void> planWrite(String clinic, String action, Map<String, dynamic> data, String operation) async {
+    await client.rpc('ops_productivity_write', params: {'p_clinic': clinic, 'p_action': action, 'p_data': data, 'p_operation': operation});
+  }
   @override
   Future<List<Map<String, dynamic>>> clients(String clinic) async =>
       (await client.rpc('ops_client_directory', params: {'p_clinic': clinic}) as List)
