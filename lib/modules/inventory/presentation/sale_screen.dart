@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import '../../core/domain/plan_errors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -91,6 +92,9 @@ String inventoryError(Object error) {
         'El punto de reorden debe ser igual o mayor al stock mínimo.',
     'operation_content_changed':
         'La operación anterior tenía otros datos. Actualiza y vuelve a revisar.',
+    'invoice_reversed_sale': 'No se puede solicitar factura de una venta revertida.',
+    'invoice_fiscal_data_invalid': 'Revisa RFC, régimen, código postal, uso de CFDI y correo.',
+    'invoice_request_already_processed': 'Esta solicitud de factura ya fue procesada.',
   };
   for (final e in messages.entries) {
     if (text.contains(e.key)) return e.value;
@@ -403,8 +407,8 @@ class _SaleScreenState extends State<SaleScreen> {
         'p_operation': operation,
       });
       if (mounted) {
-        Navigator.pop(context, true);
-        await printReceipt('$saleId');
+        await receiptActions('$saleId');
+        if (mounted) Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) setState(() => error = inventoryError(e));
@@ -413,8 +417,62 @@ class _SaleScreenState extends State<SaleScreen> {
     }
   }
 
-  Future<void> printReceipt(String saleId) async {
+  Future<void> receiptActions(String saleId) async {
     try {
+      final bytes = await buildReceipt(saleId);
+      if (!mounted) return;
+      final action = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Venta registrada'),
+          content: Text('Folio: $saleId\nPuedes imprimir o compartir la nota en PDF por WhatsApp.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, 'close'), child: const Text('Terminar')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext, 'print'), child: const Text('Imprimir nota')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, 'share'), child: const Text('Compartir · WhatsApp')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext, 'invoice'), child: const Text('Solicitar factura')),
+          ],
+        ),
+      );
+      if (action == 'print') {
+        await Printing.layoutPdf(onLayout: (_) async => bytes);
+      } else if (action == 'share') {
+        await Printing.sharePdf(bytes: bytes, filename: 'nota-venta-$saleId.pdf');
+      } else if (action == 'invoice' && mounted) {
+        await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RxEntryScreen(
+              title: 'Solicitud de factura · $saleId',
+              fields: const [
+                RxField('fiscal_name', 'Nombre o razón social fiscal', required: true),
+                RxField('rfc', 'RFC', required: true),
+                RxField('fiscal_regime', 'Régimen fiscal (3 dígitos)', required: true),
+                RxField('postal_code', 'Código postal fiscal', required: true),
+                RxField('cfdi_use', 'Uso de CFDI (clave de 3 caracteres)', required: true),
+                RxField('email', 'Correo para enviar CFDI', required: true),
+              ],
+              submit: (data, _) async {
+                try {
+                  await widget.repository.write('inv_invoice_request', {
+                    'p_sale': saleId,
+                    'p_data': data,
+                  });
+                } catch (e) {
+                  throw FormatException(inventoryError(e));
+                }
+              },
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      // La venta ya fue registrada; un fallo al crear o compartir el PDF no la revierte.
+    }
+  }
+
+  Future<Uint8List> buildReceipt(String saleId) async {
       final font = pw.Font.ttf(await rootBundle.load('assets/fonts/DejaVuSans.ttf'));
       final pdf = pw.Document(theme: pw.ThemeData.withFont(base: font, bold: font));
       pdf.addPage(pw.Page(build: (_) => pw.Column(
@@ -433,10 +491,7 @@ class _SaleScreenState extends State<SaleScreen> {
           pw.Text('Nota interna de venta. No es factura fiscal.'),
         ],
       )));
-      await Printing.layoutPdf(onLayout: (_) => pdf.save());
-    } catch (_) {
-      // La venta ya fue registrada; un fallo de impresión no la revierte.
-    }
+      return pdf.save();
   }
 
   @override

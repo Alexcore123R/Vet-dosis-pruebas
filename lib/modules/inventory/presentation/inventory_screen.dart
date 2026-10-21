@@ -472,6 +472,47 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
+  Future<void> invoiceRequests() async {
+    try {
+      final requests = (await widget.repository.read('inv_invoice_requests', {
+        'p_clinic': widget.member.clinicId,
+      }) as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Solicitudes de factura'),
+          content: SizedBox(
+            width: 420,
+            height: 400,
+            child: requests.isEmpty
+                ? const Text('Aún no hay solicitudes de CFDI.')
+                : ListView.builder(
+                    itemCount: requests.length,
+                    itemBuilder: (_, index) {
+                      final request = requests[index];
+                      return ListTile(
+                        title: Text('${request['fiscal_name']} · ${request['status']}'),
+                        subtitle: Text('RFC ${request['rfc']} · ${request['email']}\nVenta ${request['sale_id']} · ${displayMoney(request['total'])}'),
+                        isThreeLine: true,
+                      );
+                    },
+                  ),
+          ),
+          actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cerrar'))],
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(inventoryError(e))),
+        );
+      }
+    }
+  }
+
   Future<void> openShift() => entry(
     'Abrir turno de caja',
     [const RxField('opening', 'Fondo inicial de efectivo MXN', required: true)],
@@ -1100,6 +1141,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       child: const Text('Contar y cerrar turno'),
                     ),
                   ],
+                ),
+              if (model.canReadFinance)
+                TextButton.icon(
+                  onPressed: invoiceRequests,
+                  icon: const Icon(Icons.receipt_long),
+                  label: const Text('Solicitudes de factura'),
                 ),
               if (model.canReadFinance &&
                   model.dashboard!['day_totals'] != null) ...[
