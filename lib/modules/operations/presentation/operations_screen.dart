@@ -970,6 +970,11 @@ class _OperationsScreenState extends State<OperationsScreen>
             ),
         ],
         if (activeSection == 'suppliers') ...[
+          OutlinedButton.icon(
+            onPressed: () => widget.onNavigate?.call('Agenda telefónica'),
+            icon: const Icon(Icons.contacts_outlined),
+            label: const Text('Agenda telefónica de personal y proveedores'),
+          ),
           const Text('Directorio y seguimiento de proveedores. Los adeudos se capturan manualmente y no modifican Caja.'),
           if (model.rows('suppliers').where((s) => s['active'] != false && supplierVisitDays(s) != null && supplierVisitDays(s)! <= 3).isNotEmpty)
             Card(

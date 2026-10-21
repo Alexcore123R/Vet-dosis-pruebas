@@ -28,6 +28,7 @@ const sectionGroups = [
     'Proveedores',
   ]),
   SectionGroup('Equipo y comunicación', [
+    'Agenda telefónica',
     'Equipo y avisos',
     'Pendientes del equipo',
     'Checado',

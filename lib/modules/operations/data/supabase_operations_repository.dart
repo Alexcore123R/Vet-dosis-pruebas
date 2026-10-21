@@ -9,9 +9,24 @@ class SupabaseOperationsRepository
         AppointmentPatientRepository,
         AppointmentLinksRepository,
         AppointmentCareRepository,
-        CommissionRepository {
+        CommissionRepository,
+        ContactDirectoryRepository {
   SupabaseOperationsRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<Map<String, dynamic>> contactDirectory(String clinic) async =>
+      Map<String, dynamic>.from(await client.rpc('ops_contact_directory',
+          params: {'p_clinic': clinic}) as Map);
+
+  @override
+  Future<void> saveContact(String clinic, String kind, String id, Map<String, dynamic> data) async {
+    await client.rpc('ops_contact_save', params: {
+      'p_clinic': clinic,
+      'p_kind': kind,
+      'p_id': id,
+      'p_data': data,
+    });
+  }
   @override
   Future<Map<String, dynamic>> commissionAccount(String clinic) async =>
       Map<String, dynamic>.from(await client.rpc('commission_account',

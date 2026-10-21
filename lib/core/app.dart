@@ -27,6 +27,7 @@ import '../modules/subscriptions/domain/subscription_repository.dart';
 import '../modules/subscriptions/presentation/subscription_screen.dart';
 import '../modules/operations/domain/operations_repository.dart';
 import '../modules/operations/presentation/operations_screen.dart';
+import '../modules/operations/presentation/contact_directory_screen.dart';
 import '../modules/operations/presentation/commission_panel.dart';
 import '../modules/attendance/domain/attendance_repository.dart';
 import '../modules/attendance/presentation/attendance_screen.dart';
@@ -851,6 +852,10 @@ class CoreShell extends StatelessWidget {
                       : const Text(
                           'Conecta tu cuenta y clínica para abrir inventario.',
                         )
+                else if (model.screen == 'Agenda telefónica')
+                  operations != null && auth?.active != null && auth?.offline != true
+                      ? ContactDirectoryScreen(repository: operations!, member: auth!.active!)
+                      : const Text('El directorio de la clínica requiere cuenta y conexión.')
                 else if (model.screen == 'Agenda' ||
                     model.screen == 'Equipo y avisos' ||
                     model.screen == 'Pendientes del equipo' ||
@@ -1368,6 +1373,7 @@ class _ModuleSearchState extends State<_ModuleSearch> {
     'Producción y grandes especies',
     'Servicios',
     'Proveedores',
+    'Agenda telefónica',
     'Agenda',
     'Pacientes',
     'Hospitalización',

@@ -16,6 +16,8 @@ class MainActivity : FlutterActivity() {
                         type = ContactsContract.RawContacts.CONTENT_TYPE
                         putExtra(ContactsContract.Intents.Insert.NAME, call.argument<String>("name"))
                         putExtra(ContactsContract.Intents.Insert.PHONE, call.argument<String>("phone"))
+                        putExtra(ContactsContract.Intents.Insert.EMAIL, call.argument<String>("email"))
+                        putExtra(ContactsContract.Intents.Insert.POSTAL, call.argument<String>("address"))
                     }
                     "openContacts" -> Intent(Intent.ACTION_VIEW, ContactsContract.Contacts.CONTENT_URI)
                     else -> null
