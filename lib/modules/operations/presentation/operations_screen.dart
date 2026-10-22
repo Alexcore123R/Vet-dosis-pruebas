@@ -1,7 +1,6 @@
 import '../domain/service_catalog.dart';
 import '../../ai/domain/ai_repository.dart';
-import '../../ai/presentation/request_ai_draft.dart';
-import '../../patients/domain/patient_contacts.dart';
+import 'appointment_message_screen.dart';
 import 'appointment_links_panel.dart';
 import 'appointment_care_panel.dart';
 import '../domain/appointment_care.dart';
@@ -19,7 +18,8 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../auth/domain/clinic_membership.dart';
 import '../../prescribing/presentation/rx_entry_screen.dart';
-import '../../patients/presentation/patient_view_model.dart' show newOperationId;
+import '../../patients/presentation/patient_view_model.dart'
+    show newOperationId;
 import '../domain/operations_repository.dart';
 import 'operations_view_model.dart';
 
@@ -56,7 +56,10 @@ class _OperationsScreenState extends State<OperationsScreen>
   );
   String section = 'appointments', filter = 'pendientes';
   DateTime? calendarDay;
-  DateTime commissionMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  DateTime commissionMonth = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+  );
   bool careDay = true;
   bool get careEnabled => widget.repository is AppointmentCareRepository;
   String? appointmentState;
@@ -87,10 +90,13 @@ class _OperationsScreenState extends State<OperationsScreen>
     final visit = DateTime.tryParse('${supplier['visit_on'] ?? ''}');
     if (visit == null) return null;
     final now = DateTime.now();
-    return DateTime(visit.year, visit.month, visit.day)
-        .difference(DateTime(now.year, now.month, now.day))
-        .inDays;
+    return DateTime(
+      visit.year,
+      visit.month,
+      visit.day,
+    ).difference(DateTime(now.year, now.month, now.day)).inDays;
   }
+
   bool canWrite(String permission, {required bool legacy}) =>
       model.explicitPermissions ? model.allowed(permission) : legacy;
   String sectionTitle(String value) => switch (value) {
@@ -153,24 +159,19 @@ class _OperationsScreenState extends State<OperationsScreen>
     super.dispose();
   }
 
-  Future<void> reminderWithAi(Map<String,dynamic> appointment) async {
-    if(widget.ai==null)return;
-    final draft=await requestAiDraft(context,repository:widget.ai!,member:widget.member,
-      title:'Recordatorio de cita',prompt:'Redacta un recordatorio amable y breve para una cita de ${appointmentKindLabel(appointment['kind'])}. '
-      'Horario local del dispositivo: ${DateTime.parse(appointment['starts_at'] as String).toLocal()}. '
-      'Solicita confirmar asistencia. Usa un saludo genérico, no inventes preparaciones, ayuno, costos ni instrucciones clínicas.');
-    if(!mounted||draft==null)return;
-    final reviewed=await reviewAiDraft(context,'Revisar recordatorio',draft);
-    if(!mounted||reviewed==null||reviewed.isEmpty)return;
-    final contact=model.links[appointment['id']]?['contact'];
-    final uri=contact is Map?contactWhatsapp('${contact['phone']??''}',reviewed):null;
-    if(uri!=null){
-      try{await launchUrl(uri,mode:LaunchMode.externalApplication);}catch(_){
-        if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('No se pudo abrir WhatsApp.')));
-      }
-    }else{
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('El texto está listo; no hay un contacto vinculado para abrir WhatsApp. Puedes copiarlo desde la revisión.')));
-    }
+  Future<void> reminderWithAi(Map<String, dynamic> appointment) async {
+    if (widget.repository is! ServiceContactRepository) return;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AppointmentMessageScreen(
+          repository: widget.repository as ServiceContactRepository,
+          member: widget.member,
+          appointment: appointment['id'] as String,
+          ai: widget.ai,
+        ),
+      ),
+    );
   }
 
   Future<void> form(
@@ -224,16 +225,22 @@ class _OperationsScreenState extends State<OperationsScreen>
     'supplier',
     const [
       RxField('name', 'Nombre del proveedor', required: true),
-      RxField('kind', 'Tipo de proveedor', type: 'select', required: true, options: {
-        'farmacia': 'Farmacia y medicamentos',
-        'alimentos': 'Alimentos',
-        'material': 'Material e insumos',
-        'laboratorio': 'Laboratorio',
-        'equipo': 'Equipo',
-        'estetica': 'Estética',
-        'servicios': 'Servicios',
-        'otro': 'Otro',
-      }),
+      RxField(
+        'kind',
+        'Tipo de proveedor',
+        type: 'select',
+        required: true,
+        options: {
+          'farmacia': 'Farmacia y medicamentos',
+          'alimentos': 'Alimentos',
+          'material': 'Material e insumos',
+          'laboratorio': 'Laboratorio',
+          'equipo': 'Equipo',
+          'estetica': 'Estética',
+          'servicios': 'Servicios',
+          'otro': 'Otro',
+        },
+      ),
       RxField('phone', 'Teléfono (opcional)'),
       RxField('whatsapp', 'WhatsApp (opcional)'),
       RxField('email', 'Correo (opcional)'),
@@ -241,17 +248,19 @@ class _OperationsScreenState extends State<OperationsScreen>
       RxField('visit_on', 'Próxima visita programada', type: 'local_date'),
       RxField('notes', 'Notas'),
     ],
-    initial: supplier == null ? const {'kind': 'otro', 'balance': '0'} : {
-      'id': supplier['id'],
-      'name': supplier['name'],
-      'kind': supplier['kind'] ?? 'otro',
-      'phone': supplier['phone'] ?? '',
-      'whatsapp': supplier['whatsapp'] ?? '',
-      'email': supplier['email'] ?? '',
-      'balance': '${supplier['balance'] ?? 0}',
-      'visit_on': supplier['visit_on'] ?? '',
-      'notes': supplier['notes'] ?? '',
-    },
+    initial: supplier == null
+        ? const {'kind': 'otro', 'balance': '0'}
+        : {
+            'id': supplier['id'],
+            'name': supplier['name'],
+            'kind': supplier['kind'] ?? 'otro',
+            'phone': supplier['phone'] ?? '',
+            'whatsapp': supplier['whatsapp'] ?? '',
+            'email': supplier['email'] ?? '',
+            'balance': '${supplier['balance'] ?? 0}',
+            'visit_on': supplier['visit_on'] ?? '',
+            'notes': supplier['notes'] ?? '',
+          },
   );
 
   Future<void> archiveSupplier(Map<String, dynamic> supplier) async {
@@ -259,21 +268,34 @@ class _OperationsScreenState extends State<OperationsScreen>
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Eliminar proveedor'),
-        content: Text('Se archivará ${supplier['name']} y dejará de aparecer en la lista. Sus referencias anteriores se conservarán.'),
+        content: Text(
+          'Se archivará ${supplier['name']} y dejará de aparecer en la lista. Sus referencias anteriores se conservarán.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Archivar')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Archivar'),
+          ),
         ],
       ),
     );
     if (confirmed != true || !mounted) return;
     try {
       await widget.repository.write(widget.member.clinicId, 'supplier', {
-        'id': supplier['id'], 'archive': true,
+        'id': supplier['id'],
+        'archive': true,
       }, newOperationId());
       if (mounted) await model.load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(operationError(e))));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(operationError(e))));
+      }
     }
   }
 
@@ -667,7 +689,14 @@ class _OperationsScreenState extends State<OperationsScreen>
                       Text(
                         'Responsable: ${a['professional_id'] is String ? person(a['professional_id'] as String) : 'Sin asignar'}',
                       ),
-                      if(widget.ai!=null) TextButton.icon(onPressed:()=>reminderWithAi(a),icon:const Icon(Icons.auto_awesome),label:const Text('Redactar recordatorio con IA')),
+                      if (widget.repository is ServiceContactRepository)
+                        TextButton.icon(
+                          onPressed: () => reminderWithAi(a),
+                          icon: const Icon(Icons.auto_awesome),
+                          label: const Text(
+                            'Recordatorio / seguimiento y autorización',
+                          ),
+                        ),
                       if (a['patient_id'] != null &&
                           widget.onOpenPatient != null &&
                           (!model.explicitPermissions ||
@@ -842,7 +871,8 @@ class _OperationsScreenState extends State<OperationsScreen>
                           subtitle: Text(
                             'Comisión: ${row['commission_kind']} ${row['commission_value']}',
                           ),
-                          trailing: admin && canWrite('service.manage', legacy: admin)
+                          trailing:
+                              admin && canWrite('service.manage', legacy: admin)
                               ? IconButton(
                                   tooltip: 'Editar servicio',
                                   icon: const Icon(Icons.edit),
@@ -901,9 +931,12 @@ class _OperationsScreenState extends State<OperationsScreen>
             ),
           ),
         if (activeSection == 'tasks') ...[
-          if(widget.onNavigate!=null) OutlinedButton.icon(
-            onPressed:()=>widget.onNavigate!('Productividad y semana'),
-            icon:const Icon(Icons.calendar_view_week),label:const Text('Organizar tareas de la semana')),
+          if (widget.onNavigate != null)
+            OutlinedButton.icon(
+              onPressed: () => widget.onNavigate!('Productividad y semana'),
+              icon: const Icon(Icons.calendar_view_week),
+              label: const Text('Organizar tareas de la semana'),
+            ),
           if (canWrite('team.manage', legacy: !widget.member.isPersonal))
             FilledButton(
               onPressed: () => form('Nuevo pendiente', 'task', [
@@ -1004,12 +1037,24 @@ class _OperationsScreenState extends State<OperationsScreen>
             icon: const Icon(Icons.contacts_outlined),
             label: const Text('Agenda telefónica de personal y proveedores'),
           ),
-          const Text('Directorio y seguimiento de proveedores. Los adeudos se capturan manualmente y no modifican Caja.'),
-          if (model.rows('suppliers').where((s) => s['active'] != false && supplierVisitDays(s) != null && supplierVisitDays(s)! <= 3).isNotEmpty)
+          const Text(
+            'Directorio y seguimiento de proveedores. Los adeudos se capturan manualmente y no modifican Caja.',
+          ),
+          if (model
+              .rows('suppliers')
+              .where(
+                (s) =>
+                    s['active'] != false &&
+                    supplierVisitDays(s) != null &&
+                    supplierVisitDays(s)! <= 3,
+              )
+              .isNotEmpty)
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(12),
-                child: Text('Visitas próximas o pendientes: ${model.rows('suppliers').where((s) => s['active'] != false && supplierVisitDays(s) != null && supplierVisitDays(s)! <= 3).length}. Revisa las fechas en la lista.'),
+                child: Text(
+                  'Visitas próximas o pendientes: ${model.rows('suppliers').where((s) => s['active'] != false && supplierVisitDays(s) != null && supplierVisitDays(s)! <= 3).length}. Revisa las fechas en la lista.',
+                ),
               ),
             ),
           if (canWrite(
@@ -1020,7 +1065,8 @@ class _OperationsScreenState extends State<OperationsScreen>
               onPressed: supplierForm,
               child: const Text('Agregar proveedor'),
             ),
-          for (final s in model.rows('suppliers').where((s) => s['active'] != false))
+          for (final s
+              in model.rows('suppliers').where((s) => s['active'] != false))
             ListTile(
               title: Text('${s['name']} · ${s['kind'] ?? 'otro'}'),
               subtitle: Text(
@@ -1029,15 +1075,14 @@ class _OperationsScreenState extends State<OperationsScreen>
                     'Tel. ${s['phone']}'.trim(),
                   if ('${s['whatsapp'] ?? ''}'.trim().isNotEmpty)
                     'WhatsApp ${s['whatsapp']}',
-                  if ('${s['email'] ?? ''}'.trim().isNotEmpty)
-                    '${s['email']}',
+                  if ('${s['email'] ?? ''}'.trim().isNotEmpty) '${s['email']}',
                   'Adeudo: ${displayMoney(s['balance'] ?? 0)}',
                   if (supplierVisitDays(s) != null)
                     supplierVisitDays(s)! < 0
                         ? 'Visita pendiente: ${s['visit_on']}'
                         : supplierVisitDays(s) == 0
-                            ? 'Visita hoy'
-                            : 'Próxima visita: ${s['visit_on']}',
+                        ? 'Visita hoy'
+                        : 'Próxima visita: ${s['visit_on']}',
                   if ('${s['notes'] ?? ''}'.trim().isNotEmpty)
                     '${s['notes']}'.trim(),
                 ].join('\n'),
@@ -1046,11 +1091,24 @@ class _OperationsScreenState extends State<OperationsScreen>
               trailing: PopupMenuButton<String>(
                 itemBuilder: (_) => [
                   for (final x in [
-                    if ('${s['whatsapp'] ?? s['phone'] ?? ''}'.trim().isNotEmpty) 'WhatsApp',
+                    if ('${s['whatsapp'] ?? s['phone'] ?? ''}'
+                        .trim()
+                        .isNotEmpty)
+                      'WhatsApp',
                     if ('${s['phone'] ?? ''}'.trim().isNotEmpty) 'Llamar',
                     if ('${s['email'] ?? ''}'.trim().isNotEmpty) 'Correo',
-                    if (canWrite('supplier.manage', legacy: admin || widget.member.role == ClinicRole.recepcion)) 'Editar',
-                    if (canWrite('supplier.manage', legacy: admin || widget.member.role == ClinicRole.recepcion)) 'Eliminar',
+                    if (canWrite(
+                      'supplier.manage',
+                      legacy:
+                          admin || widget.member.role == ClinicRole.recepcion,
+                    ))
+                      'Editar',
+                    if (canWrite(
+                      'supplier.manage',
+                      legacy:
+                          admin || widget.member.role == ClinicRole.recepcion,
+                    ))
+                      'Eliminar',
                   ])
                     PopupMenuItem(value: x, child: Text(x)),
                 ],
@@ -1058,13 +1116,15 @@ class _OperationsScreenState extends State<OperationsScreen>
                   if (x == 'Editar') return supplierForm(s);
                   if (x == 'Eliminar') return archiveSupplier(s);
                   if (x == 'Correo') {
-                    await launchUrl(Uri(scheme: 'mailto', path: '${s['email']}'), mode: LaunchMode.externalApplication);
+                    await launchUrl(
+                      Uri(scheme: 'mailto', path: '${s['email']}'),
+                      mode: LaunchMode.externalApplication,
+                    );
                     return;
                   }
-                  final p = '${x == 'WhatsApp' ? (s['whatsapp'] ?? s['phone']) : s['phone']}'.replaceAll(
-                    RegExp(r'[^0-9+]'),
-                    '',
-                  );
+                  final p =
+                      '${x == 'WhatsApp' ? (s['whatsapp'] ?? s['phone']) : s['phone']}'
+                          .replaceAll(RegExp(r'[^0-9+]'), '');
                   if (p.isEmpty) return;
                   final uri = x == 'WhatsApp'
                       ? Uri.https('wa.me', p.replaceAll('+', ''))
@@ -1084,8 +1144,12 @@ class _OperationsScreenState extends State<OperationsScreen>
             children: [
               IconButton(
                 tooltip: 'Mes anterior',
-                onPressed: () => setState(() => commissionMonth =
-                    DateTime(commissionMonth.year, commissionMonth.month - 1)),
+                onPressed: () => setState(
+                  () => commissionMonth = DateTime(
+                    commissionMonth.year,
+                    commissionMonth.month - 1,
+                  ),
+                ),
                 icon: const Icon(Icons.chevron_left),
               ),
               Expanded(
@@ -1096,8 +1160,12 @@ class _OperationsScreenState extends State<OperationsScreen>
               ),
               IconButton(
                 tooltip: 'Mes siguiente',
-                onPressed: () => setState(() => commissionMonth =
-                    DateTime(commissionMonth.year, commissionMonth.month + 1)),
+                onPressed: () => setState(
+                  () => commissionMonth = DateTime(
+                    commissionMonth.year,
+                    commissionMonth.month + 1,
+                  ),
+                ),
                 icon: const Icon(Icons.chevron_right),
               ),
             ],

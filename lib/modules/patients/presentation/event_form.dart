@@ -1,4 +1,7 @@
 import '../../core/presentation/unsaved_form_scope.dart';
+import '../../ai/domain/ai_repository.dart';
+import '../../auth/domain/clinic_membership.dart';
+import '../../forms/presentation/clinical_draft_screen.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../domain/patient_models.dart';
@@ -16,12 +19,16 @@ class EventForm extends StatefulWidget {
     required this.save,
     this.voice,
     this.history = false,
+    this.ai,
+    this.member,
   });
   final EventKind kind;
   final VetPatient patient;
   final Future<String?> Function(Map<String, dynamic>, String) save;
   final VoiceDictation? voice;
   final bool history;
+  final AiRepository? ai;
+  final ClinicMembership? member;
   @override
   State<EventForm> createState() => _EventFormState();
 }
@@ -157,6 +164,43 @@ class _EventFormState extends State<EventForm> {
         }
       });
     }
+  }
+
+  Future<void> prepareWithAi() async {
+    if (widget.ai == null || widget.member == null || listening) return;
+    final labels = <String, String>{
+      if (widget.history) ...historyFields,
+      if (!widget.history) 'subjective': 'S · Subjetivo',
+      'objective': 'O · Objetivo',
+      'assessment': 'A · Valoración',
+      'plan': 'P · Plan',
+    };
+    final result = await Navigator.push<Map<String, String>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ClinicalDraftScreen(
+          ai: widget.ai!,
+          member: widget.member!,
+          fields: labels,
+          currentValues: {
+            for (final key in labels.keys) key: fields[key]!.text,
+          },
+          documentTitle: widget.history
+              ? 'Historia clínica'
+              : 'Nota de evolución',
+        ),
+      ),
+    );
+    if (!mounted || result == null) return;
+    setState(() {
+      for (final item in result.entries) {
+        fields[item.key]?.text = item.value;
+      }
+      reviewed = false;
+      accepted = false;
+      signature = [];
+      signatureRevision++;
+    });
   }
 
   Future<void> save() async {
@@ -327,6 +371,14 @@ class _EventFormState extends State<EventForm> {
                   listening ? 'Detener dictado' : 'Dictar en español',
                 ),
               ),
+              if (widget.ai != null && widget.member != null)
+                OutlinedButton.icon(
+                  onPressed: busy || listening ? null : prepareWithAi,
+                  icon: const Icon(Icons.auto_awesome),
+                  label: const Text(
+                    'Ordenar notas o preparar indicaciones con IA',
+                  ),
+                ),
               CheckboxListTile(
                 title: const Text(
                   'Revisé el paciente y el contenido de esta nota.',

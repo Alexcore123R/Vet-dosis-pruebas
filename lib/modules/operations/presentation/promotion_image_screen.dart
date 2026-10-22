@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../domain/promotion_text.dart';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -59,7 +60,7 @@ class _PromotionImageScreenState extends State<PromotionImageScreen> {
       await SharePlus.instance.share(ShareParams(
         files: [XFile(file.path, mimeType: 'image/png')],
         title: title.text.trim(),
-        text: 'Promoción de ${widget.clinicName}. Revisa las condiciones completas antes de compartir.',
+        text: promotionMessage(widget.promotion),
       ));
     } catch (_) {
       if (mounted) setState(() => error = 'No se pudo crear o compartir la imagen. Inténtalo de nuevo.');

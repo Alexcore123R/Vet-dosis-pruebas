@@ -13,6 +13,7 @@ class SupabaseInventoryRepository
   final SupabaseClient client;
   static const reads = {
     'inv_dashboard',
+    'inv_ai_insights',
     'ops_dashboard',
     'pay_dashboard',
     'inv_shift_snapshot',

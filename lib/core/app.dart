@@ -684,6 +684,7 @@ class CoreShell extends StatelessWidget {
                                 'Los expedientes requieren conexión por ahora. Reconecta para consultar o guardar datos.',
                               )
                             : PatientsScreen(
+                                ai: ai,
                                 key: ValueKey(
                                   '${auth!.active!.userId}:${auth!.active!.clinicId}:${auth!.active!.role.name}',
                                 ),
@@ -857,17 +858,43 @@ class CoreShell extends StatelessWidget {
                           'Conecta tu cuenta y clínica para abrir inventario.',
                         )
                 else if (model.screen == 'Agenda telefónica')
-                  operations != null && auth?.active != null && auth?.offline != true
-                      ? ContactDirectoryScreen(embedded:true,repository: operations!, member: auth!.active!)
-                      : const Text('El directorio de la clínica requiere cuenta y conexión.')
+                  operations != null &&
+                          auth?.active != null &&
+                          auth?.offline != true
+                      ? ContactDirectoryScreen(
+                          embedded: true,
+                          repository: operations!,
+                          member: auth!.active!,
+                        )
+                      : const Text(
+                          'El directorio de la clínica requiere cuenta y conexión.',
+                        )
                 else if (model.screen == 'Productividad y semana')
-                  operations is ProductivityRepository && auth?.active != null && auth?.offline != true
-                      ? ProductivityScreen(embedded:true,repository: operations as ProductivityRepository, member: auth!.active!, ai: ai)
-                      : const Text('La planificación semanal requiere cuenta y conexión.')
+                  operations is ProductivityRepository &&
+                          auth?.active != null &&
+                          auth?.offline != true
+                      ? ProductivityScreen(
+                          embedded: true,
+                          repository: operations as ProductivityRepository,
+                          member: auth!.active!,
+                          ai: ai,
+                        )
+                      : const Text(
+                          'La planificación semanal requiere cuenta y conexión.',
+                        )
                 else if (model.screen == 'Promociones')
-                  operations != null && auth?.active != null && auth?.offline != true
-                      ? PromotionsScreen(embedded:true,repository: operations!, member: auth!.active!, ai: ai)
-                      : const Text('Las promociones requieren cuenta y conexión.')
+                  operations != null &&
+                          auth?.active != null &&
+                          auth?.offline != true
+                      ? PromotionsScreen(
+                          embedded: true,
+                          repository: operations!,
+                          member: auth!.active!,
+                          ai: ai,
+                        )
+                      : const Text(
+                          'Las promociones requieren cuenta y conexión.',
+                        )
                 else if (model.screen == 'Agenda' ||
                     model.screen == 'Equipo y avisos' ||
                     model.screen == 'Pendientes del equipo' ||
@@ -917,6 +944,7 @@ class CoreShell extends StatelessWidget {
                                           body: SingleChildScrollView(
                                             padding: const EdgeInsets.all(20),
                                             child: PatientsScreen(
+                                              ai: ai,
                                               repository: patients!,
                                               member: member,
                                               initialPatientId: id,
@@ -1172,7 +1200,9 @@ class CoreShell extends StatelessWidget {
           MaterialPageRoute<void>(builder: (_) => AuthScreen(model: auth)),
         ),
       ),
-    if (operations is CommissionRepository && auth?.active != null && auth?.offline != true)
+    if (operations is CommissionRepository &&
+        auth?.active != null &&
+        auth?.offline != true)
       ListTile(
         leading: const Icon(Icons.payments_outlined),
         title: const Text('Mis comisiones'),

@@ -1,4 +1,5 @@
 import '../domain/patient_contacts.dart';
+import '../../ai/domain/ai_repository.dart';
 import '../domain/patient_timeline.dart';
 import 'patient_contact_panel.dart';
 import 'contact_actions.dart';
@@ -32,8 +33,10 @@ class PatientsScreen extends StatefulWidget {
     this.initialPatientId,
     this.onOpenActivity,
     this.canOpenActivity,
+    this.ai,
   });
   final String? initialPatientId;
+  final AiRepository? ai;
   final bool Function(String)? canOpenActivity;
   final Future<void> Function(String destination, String patientId)?
   onOpenActivity;
@@ -167,6 +170,8 @@ class _PatientsScreenState extends State<PatientsScreen>
         builder: (_) => Theme(
           data: theme,
           child: EventForm(
+            ai: widget.ai,
+            member: widget.member,
             kind: kind,
             history: history,
             patient: patient,

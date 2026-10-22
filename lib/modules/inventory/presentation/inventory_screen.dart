@@ -1,6 +1,6 @@
 import '../../identity/domain/identity_repository.dart';
 import '../../ai/domain/ai_repository.dart';
-import '../../ai/presentation/request_ai_draft.dart';
+import 'inventory_insights_screen.dart';
 import '../../exports/domain/branded_export.dart';
 import '../../exports/presentation/branded_export_action.dart';
 import 'payments_screen.dart';
@@ -79,15 +79,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Future<void> inventoryIdeas() async {
-    if(widget.ai==null)return;
-    final products=model.products.where((p)=>p['low_stock']==true||p['reorder']==true).take(30).map((p)=>{
-      'producto':p['nombre'],'disponible':p['available_stock']??p['stock'],'minimo':p['stock_minimo'],'punto_reorden':p['reorder_point'],
-    }).toList();
-    final draft=await requestAiDraft(context,repository:widget.ai!,member:widget.member,title:'Plan de inventario',prompt:
-      'Propón acciones operativas para revisar reposición y evitar faltantes a partir de estos productos autorizados: $products. '
-      'No se conocen la demanda ni los plazos de entrega. No inventes cantidades de compra, ventas, márgenes, caducidades ni beneficios clínicos. '
-      'Indica qué datos faltan, cómo revisar lotes y caducidades, y una lista priorizada para validar con proveedores. No modifiques pedidos ni precios.');
-    if(mounted&&draft!=null)await reviewAiDraft(context,'Revisar sugerencias de inventario',draft);
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => InventoryInsightsScreen(
+          repository: widget.repository,
+          member: widget.member,
+          ai: widget.ai,
+        ),
+      ),
+    );
   }
 
   Future<void> entry(
@@ -413,12 +414,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
       var catalogUnavailable = false;
       if (model.canManual) {
         try {
-          catalogServices = (await widget.repository.read(
-            'inv_catalog_services',
-            {'p_clinic': widget.member.clinicId},
-          ) as List)
-              .map((e) => Map<String, dynamic>.from(e as Map))
-              .toList();
+          catalogServices =
+              (await widget.repository.read('inv_catalog_services', {
+                        'p_clinic': widget.member.clinicId,
+                      })
+                      as List)
+                  .map((e) => Map<String, dynamic>.from(e as Map))
+                  .toList();
         } on PostgrestException catch (e) {
           if (e.code != 'PGRST202' && e.code != '42883') rethrow;
           catalogUnavailable = true;
@@ -478,23 +480,27 @@ class _InventoryScreenState extends State<InventoryScreen> {
           TypeError() => ' (respuesta inesperada)',
           _ => '',
         };
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(
-          content: Text('Error al cargar $loading$detail. ${inventoryError(e)}'),
-          duration: const Duration(seconds: 10),
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error al cargar $loading$detail. ${inventoryError(e)}',
+            ),
+            duration: const Duration(seconds: 10),
+          ),
+        );
       }
     }
   }
 
   Future<void> invoiceRequests() async {
     try {
-      final requests = (await widget.repository.read('inv_invoice_requests', {
-        'p_clinic': widget.member.clinicId,
-      }) as List)
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
+      final requests =
+          (await widget.repository.read('inv_invoice_requests', {
+                    'p_clinic': widget.member.clinicId,
+                  })
+                  as List)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
       if (!mounted) return;
       await showDialog<void>(
         context: context,
@@ -510,21 +516,30 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     itemBuilder: (_, index) {
                       final request = requests[index];
                       return ListTile(
-                        title: Text('${request['fiscal_name']} · ${request['status']}'),
-                        subtitle: Text('RFC ${request['rfc']} · ${request['email']}\nVenta ${request['sale_id']} · ${displayMoney(request['total'])}'),
+                        title: Text(
+                          '${request['fiscal_name']} · ${request['status']}',
+                        ),
+                        subtitle: Text(
+                          'RFC ${request['rfc']} · ${request['email']}\nVenta ${request['sale_id']} · ${displayMoney(request['total'])}',
+                        ),
                         isThreeLine: true,
                       );
                     },
                   ),
           ),
-          actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cerrar'))],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cerrar'),
+            ),
+          ],
         ),
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(inventoryError(e))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(inventoryError(e))));
       }
     }
   }
@@ -864,7 +879,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 onPressed: model.busy ? null : model.load,
                 child: const Text('Actualizar'),
               ),
-              if(widget.ai!=null&&model.canPrepareOrder)TextButton.icon(onPressed:inventoryIdeas,icon:const Icon(Icons.auto_awesome),label:const Text('Sugerir plan de inventario')),
+              if (model.canPrepareOrder || model.canReadFinance)
+                TextButton.icon(
+                  onPressed: inventoryIdeas,
+                  icon: const Icon(Icons.auto_awesome),
+                  label: const Text(
+                    'Analizar existencias, caducidades y ventas',
+                  ),
+                ),
               if (model.canManage)
                 TextButton(
                   onPressed: model.busy

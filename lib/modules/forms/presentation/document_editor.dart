@@ -1,6 +1,8 @@
 import '../../core/presentation/unsaved_form_scope.dart';
 import '../../ai/domain/ai_repository.dart';
 import '../../ai/presentation/request_ai_draft.dart';
+import '../../ai/presentation/dictation_field.dart';
+import 'clinical_draft_screen.dart';
 import '../../prescribing/domain/prescribing_repository.dart';
 import 'dart:convert';
 import '../clinical/clinical_models.dart';
@@ -461,18 +463,81 @@ class _DocumentEditorState extends State<DocumentEditor> {
     }
   }
 
-  Future<void> assistText(String id,String label) async {
-    if(widget.ai==null)return;
-    final brief=await reviewAiDraft(context,'Notas para redactar $label','${values[id]??''}');
-    if(!mounted||brief==null||brief.isEmpty)return;
-    final draft=await requestAiDraft(context,repository:widget.ai!,member:widget.member,title:'Redactar $label',prompt:
-      'Ordena y mejora la redacción de estas notas escritas por el profesional para el campo "$label": $brief. '
-      'Conserva los hechos y las indicaciones originales. No agregues diagnósticos, tratamientos, dosis, resultados ni cláusulas de responsabilidad. '
-      'Si falta información, señálala sin completarla. Devuelve solo un borrador editable para revisión profesional.');
-    if(!mounted||draft==null)return;
-    final reviewed=await reviewAiDraft(context,'Revisión profesional de $label',draft);
-    if(!mounted||reviewed==null)return;
-    values[id]=reviewed;
+  bool aiTextAllowed(Map field) {
+    final id = '${field['id']}';
+    return field['type'] == 'text' &&
+        !protectedFieldIds.contains(id) &&
+        !RegExp(
+          r'owner|tutor|signer|mvz|phone|email|address|identification|license|cedula|domicilio|telefono',
+          caseSensitive: false,
+        ).hasMatch(id);
+  }
+
+  Future<void> dictateField(String id, String label) async {
+    final text = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            VoiceNoteScreen(label: label, initial: '${values[id] ?? ''}'),
+      ),
+    );
+    if (!mounted || text == null) return;
+    values[id] = text;
+    professionalGeneration++;
+    changed();
+  }
+
+  Future<void> prepareClinicalDocument() async {
+    if (widget.ai == null) return;
+    final fields = {
+      for (final raw in schema['fields'] as List)
+        if (aiTextAllowed(raw as Map)) '${raw['id']}': '${raw['label']}',
+    };
+    if (fields.isEmpty) return;
+    final result = await Navigator.push<Map<String, String>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ClinicalDraftScreen(
+          ai: widget.ai!,
+          member: widget.member,
+          fields: fields,
+          currentValues: values,
+          documentTitle: '${schema['title']}',
+        ),
+      ),
+    );
+    if (!mounted || result == null) return;
+    values.addAll(result);
+    professionalGeneration++;
+    changed();
+  }
+
+  Future<void> assistText(String id, String label) async {
+    if (widget.ai == null) return;
+    final brief = await reviewAiDraft(
+      context,
+      'Notas para redactar $label',
+      '${values[id] ?? ''}',
+    );
+    if (!mounted || brief == null || brief.isEmpty) return;
+    final draft = await requestAiDraft(
+      context,
+      repository: widget.ai!,
+      member: widget.member,
+      title: 'Redactar $label',
+      prompt:
+          'Ordena y mejora la redacción de estas notas escritas por el profesional para el campo "$label": $brief. '
+          'Conserva los hechos y las indicaciones originales. No agregues diagnósticos, tratamientos, dosis, resultados ni cláusulas de responsabilidad. '
+          'Si falta información, señálala sin completarla. Devuelve solo un borrador editable para revisión profesional.',
+    );
+    if (!mounted || draft == null) return;
+    final reviewed = await reviewAiDraft(
+      context,
+      'Revisión profesional de $label',
+      draft,
+    );
+    if (!mounted || reviewed == null) return;
+    values[id] = reviewed;
     professionalGeneration++;
     changed();
   }
@@ -676,8 +741,24 @@ class _DocumentEditorState extends State<DocumentEditor> {
             : 12000,
         decoration: InputDecoration(
           labelText: label,
-          suffixIcon: type=='text'&&widget.ai!=null&&(document==null||document!.state=='draft')
-              ? IconButton(onPressed:busy?null:()=>assistText(id,label),tooltip:'Ayuda para redactar',icon:const Icon(Icons.auto_awesome))
+          suffixIcon:
+              type == 'text' && (document == null || document!.state == 'draft')
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      onPressed: busy ? null : () => dictateField(id, label),
+                      tooltip: 'Dictar texto',
+                      icon: const Icon(Icons.mic),
+                    ),
+                    if (widget.ai != null && aiTextAllowed(f))
+                      IconButton(
+                        onPressed: busy ? null : () => assistText(id, label),
+                        tooltip: 'Ayuda para redactar',
+                        icon: const Icon(Icons.auto_awesome),
+                      ),
+                  ],
+                )
               : null,
           hintText: type == 'instant'
               ? 'AAAA-MM-DDTHH:MM:SSZ (UTC)'
@@ -864,6 +945,13 @@ class _DocumentEditorState extends State<DocumentEditor> {
             const Text(
               'El tutor completa o confirma sus datos personales; el equipo registra la información clínica y del procedimiento. Los datos vinculados del expediente se muestran como referencia.',
             ),
+            if (widget.ai != null &&
+                (document == null || document!.state == 'draft'))
+              OutlinedButton.icon(
+                onPressed: busy ? null : prepareClinicalDocument,
+                icon: const Icon(Icons.auto_awesome),
+                label: const Text('Preparar notas, indicaciones o alta con IA'),
+              ),
             for (final f in (schema['fields'] as List).cast<Map>())
               if (!(widget.draftOnly &&
                   ['mvz_name', 'mvz_license'].contains(f['id'])))

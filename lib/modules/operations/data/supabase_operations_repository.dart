@@ -12,84 +12,196 @@ class SupabaseOperationsRepository
         CommissionRepository,
         ContactDirectoryRepository,
         ProductivityRepository,
+        ServiceContactRepository,
         MarketingRepository {
   SupabaseOperationsRepository(this.client);
   final SupabaseClient client;
   @override
-  Future<Map<String, dynamic>> productivity(String clinic, String week) async =>
-      Map<String, dynamic>.from(await client.rpc('ops_productivity_read', params: {'p_clinic': clinic, 'p_week': week}) as Map);
+  Future<Map<String, dynamic>> appointmentContact(
+    String clinic,
+    String appointment,
+  ) async => Map<String, dynamic>.from(
+    await client.rpc(
+          'ops_appointment_contact',
+          params: {'p_clinic': clinic, 'p_appointment': appointment},
+        )
+        as Map,
+  );
   @override
-  Future<void> planWrite(String clinic, String action, Map<String, dynamic> data, String operation) async {
-    await client.rpc('ops_productivity_write', params: {'p_clinic': clinic, 'p_action': action, 'p_data': data, 'p_operation': operation});
+  Future<void> saveServiceContact(
+    String clinic,
+    String owner,
+    String purpose,
+    bool whatsapp,
+    bool email,
+    String source,
+  ) async {
+    await client.rpc(
+      'ops_service_contact_save',
+      params: {
+        'p_clinic': clinic,
+        'p_owner': owner,
+        'p_purpose': purpose,
+        'p_whatsapp': whatsapp,
+        'p_email': email,
+        'p_source': source,
+      },
+    );
   }
-  @override
-  Future<List<Map<String, dynamic>>> clients(String clinic) async =>
-      (await client.rpc('ops_client_directory', params: {'p_clinic': clinic}) as List)
-          .map((e) => Map<String, dynamic>.from(e as Map)).toList();
 
   @override
-  Future<void> saveMarketingPreferences(String clinic, String owner, bool whatsapp, bool email, String source) async {
-    await client.rpc('ops_marketing_preferences_save', params: {
-      'p_clinic': clinic, 'p_owner': owner, 'p_whatsapp': whatsapp,
-      'p_email': email, 'p_source': source,
-    });
+  Future<Map<String, dynamic>> productivity(String clinic, String week) async =>
+      Map<String, dynamic>.from(
+        await client.rpc(
+              'ops_productivity_read',
+              params: {'p_clinic': clinic, 'p_week': week},
+            )
+            as Map,
+      );
+  @override
+  Future<void> planWrite(
+    String clinic,
+    String action,
+    Map<String, dynamic> data,
+    String operation,
+  ) async {
+    await client.rpc(
+      'ops_productivity_write',
+      params: {
+        'p_clinic': clinic,
+        'p_action': action,
+        'p_data': data,
+        'p_operation': operation,
+      },
+    );
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> clients(String clinic) async =>
+      (await client.rpc('ops_client_directory', params: {'p_clinic': clinic})
+              as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+
+  @override
+  Future<void> saveMarketingPreferences(
+    String clinic,
+    String owner,
+    bool whatsapp,
+    bool email,
+    String source,
+  ) async {
+    await client.rpc(
+      'ops_marketing_preferences_save',
+      params: {
+        'p_clinic': clinic,
+        'p_owner': owner,
+        'p_whatsapp': whatsapp,
+        'p_email': email,
+        'p_source': source,
+      },
+    );
   }
 
   @override
   Future<List<Map<String, dynamic>>> promotions(String clinic) async =>
       (await client.rpc('ops_promotions', params: {'p_clinic': clinic}) as List)
-          .map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
 
   @override
   Future<void> savePromotion(String clinic, Map<String, dynamic> data) async {
-    await client.rpc('ops_promotion_save', params: {'p_clinic': clinic, 'p_data': data});
+    await client.rpc(
+      'ops_promotion_save',
+      params: {'p_clinic': clinic, 'p_data': data},
+    );
   }
-  @override
-  Future<Map<String, dynamic>> loyaltyAccount(String clinic, String owner) async =>
-      Map<String, dynamic>.from(await client.rpc('ops_loyalty_account',
-          params: {'p_clinic': clinic, 'p_owner': owner}) as Map);
 
   @override
-  Future<void> recordLoyalty(String clinic, String owner, String promotion,
-      String action, int units, String note, String operation) async {
-    await client.rpc('ops_loyalty_record', params: {
-      'p_clinic': clinic, 'p_owner': owner, 'p_promotion': promotion,
-      'p_action': action, 'p_units': units, 'p_note': note,
-      'p_operation': operation,
-    });
+  Future<Map<String, dynamic>> loyaltyAccount(
+    String clinic,
+    String owner,
+  ) async => Map<String, dynamic>.from(
+    await client.rpc(
+          'ops_loyalty_account',
+          params: {'p_clinic': clinic, 'p_owner': owner},
+        )
+        as Map,
+  );
+
+  @override
+  Future<void> recordLoyalty(
+    String clinic,
+    String owner,
+    String promotion,
+    String action,
+    int units,
+    String note,
+    String operation,
+  ) async {
+    await client.rpc(
+      'ops_loyalty_record',
+      params: {
+        'p_clinic': clinic,
+        'p_owner': owner,
+        'p_promotion': promotion,
+        'p_action': action,
+        'p_units': units,
+        'p_note': note,
+        'p_operation': operation,
+      },
+    );
   }
+
   @override
   Future<Map<String, dynamic>> contactDirectory(String clinic) async =>
-      Map<String, dynamic>.from(await client.rpc('ops_contact_directory',
-          params: {'p_clinic': clinic}) as Map);
+      Map<String, dynamic>.from(
+        await client.rpc('ops_contact_directory', params: {'p_clinic': clinic})
+            as Map,
+      );
 
   @override
-  Future<void> saveContact(String clinic, String kind, String id, Map<String, dynamic> data) async {
-    await client.rpc('ops_contact_save', params: {
-      'p_clinic': clinic,
-      'p_kind': kind,
-      'p_id': id,
-      'p_data': data,
-    });
+  Future<void> saveContact(
+    String clinic,
+    String kind,
+    String id,
+    Map<String, dynamic> data,
+  ) async {
+    await client.rpc(
+      'ops_contact_save',
+      params: {'p_clinic': clinic, 'p_kind': kind, 'p_id': id, 'p_data': data},
+    );
   }
+
   @override
   Future<Map<String, dynamic>> commissionAccount(String clinic) async =>
-      Map<String, dynamic>.from(await client.rpc('commission_account',
-          params: {'p_clinic': clinic}) as Map);
+      Map<String, dynamic>.from(
+        await client.rpc('commission_account', params: {'p_clinic': clinic})
+            as Map,
+      );
 
   @override
-  Future<void> saveCommissionSchedule(String clinic, String cadence, DateTime payOn) async {
-    await client.rpc('commission_schedule_save', params: {
-      'p_clinic': clinic,
-      'p_cadence': cadence,
-      'p_next_pay_on': '${payOn.year.toString().padLeft(4, '0')}-${payOn.month.toString().padLeft(2, '0')}-${payOn.day.toString().padLeft(2, '0')}',
-    });
+  Future<void> saveCommissionSchedule(
+    String clinic,
+    String cadence,
+    DateTime payOn,
+  ) async {
+    await client.rpc(
+      'commission_schedule_save',
+      params: {
+        'p_clinic': clinic,
+        'p_cadence': cadence,
+        'p_next_pay_on':
+            '${payOn.year.toString().padLeft(4, '0')}-${payOn.month.toString().padLeft(2, '0')}-${payOn.day.toString().padLeft(2, '0')}',
+      },
+    );
   }
 
   @override
   Future<void> payCommissionPeriod(String clinic) async {
     await client.rpc('commission_period_pay', params: {'p_clinic': clinic});
   }
+
   @override
   Future<Map<String, dynamic>> careSnapshot(
     String clinic,
