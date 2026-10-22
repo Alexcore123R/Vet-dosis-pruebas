@@ -338,6 +338,13 @@ class _AuthScreenState extends State<AuthScreen> {
                       color: Theme.of(context).colorScheme.error,
                     ),
                   ),
+                if (_registrationReviewBusy)
+                  const LinearProgressIndicator(),
+                if (_registrationError != null)
+                  Text(
+                    _registrationError!,
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
                 if (model?.message != null) Text(model!.message!),
               ],
             ),
