@@ -23,3 +23,13 @@ La puerta CI usa documentos **sintéticos** y verifica que el API sea de solo le
 ## Pendientes fuera de alcance
 - Asociar un recibo autenticado específico al alta de la cuenta, **antes** de la inscripción beta (si se exige esa separación, implementar un RPC de confirmación posterior a email y bloqueo de acceso correspondiente).
 - Evitar que futuras altas mediante Google OAuth o enlaces de invitación omitan la presentación previa; aplicar el control cuando se habiliten esas vías.
+
+
+## Correcciones de revisión — 22 de octubre de 2026
+
+- Se corrigieron los delimitadores SQL mal formados de los cuerpos PL/pgSQL en `12D_registration_legal_preview.sql` y su prueba `registration_legal_preview.sql`; se usan etiquetas de dólar con nombre para evitar ambigüedades.
+- La prueba de ruta REST registra ahora `enforcement_enabled=true` **solo dentro de una transacción que se revierte con ROLLBACK**: antes el test esperaba una denegación aunque el candado global estuviera apagado y no se podía demostrar el aislamiento real. Se comprueba la excepción puntual de lectura del aviso y el rechazo de otras rutas.
+- `RegistrationLegalDocument.fromJson` verifica también que `SHA-256(UTF-8 del contenido)` corresponde exactamente al hash publicado. Las pruebas agregan un par válido y el rechazo de contenido alterado aunque tenga un hash con formato correcto.
+- Revisión de código y tests preparados, **no ejecutados** tras estas correcciones: la cuenta agotó los minutos de GitHub Actions y este entorno no cuenta con Flutter/Docker/PostgreSQL. Se necesita ejecutar `flutter analyze`, `flutter test test/auth_registration_legal_test.dart test/beta_boundary_test.dart` y `bash supabase/tests/run_terms_acceptances.sh` en un entorno con dependencias antes de fusionar o desplegar.
+- Sigue faltando confirmar los textos finales y la publicación versionada. **No hay aceptación legal autenticada durante la creación de Auth**: el recibo permanece en la inscripción a la beta después de la verificación de correo; no presentar la ventana previa como recibo final. OAuth/Google exige un flujo equivalente si se habilita.
+- No se cambió el Supabase remoto, no se publicaron términos/avisos y no se modificaron permisos ni datos clínicos.
