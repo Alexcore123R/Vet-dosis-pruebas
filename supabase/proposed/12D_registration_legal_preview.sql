@@ -29,13 +29,13 @@ $$;
 -- Narrow pre-request exception: only this exact, read-only published-text RPC.
 -- Every other request still uses the installed beta gate unchanged.
 create or replace function public.beta_request_guard()
-returns void language plpgsql stable security definer set search_path='' as $
+returns void language plpgsql stable security definer set search_path='' as $legal_guard$
 begin
   if current_setting('request.path',true)='/rpc/beta_registration_legal' then
     return;
   end if;
   perform private.beta_request_guard();
-end$;
+end$legal_guard$;
 revoke all on function public.beta_registration_legal() from public;
 grant execute on function public.beta_registration_legal() to anon,authenticated;
 commit;
