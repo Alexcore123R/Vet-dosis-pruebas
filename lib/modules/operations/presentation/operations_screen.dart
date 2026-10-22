@@ -104,6 +104,8 @@ class _OperationsScreenState extends State<OperationsScreen>
     'services' => 'Servicios',
     'tasks' => 'Pendientes del equipo',
     'messages' => 'Mensajes del equipo',
+    'notices' => 'Anuncios y avisos',
+    'private_messages' => 'Mensajes privados',
     'suppliers' => 'Proveedores',
     'acts' => 'Servicios realizados',
     _ => 'Operación de clínica',
@@ -115,7 +117,7 @@ class _OperationsScreenState extends State<OperationsScreen>
     return switch (value) {
       'appointments' => 'appointment.read o appointment.manage',
       'services' => 'service.read o service.manage',
-      'tasks' || 'messages' => 'team.read o team.manage',
+      'tasks' || 'messages' || 'notices' || 'private_messages' => 'team.read o team.manage',
       'suppliers' => 'supplier.read o supplier.manage',
       'acts' => 'service.act.read o service.act.record',
       _ => 'permiso de operación',
@@ -524,8 +526,9 @@ class _OperationsScreenState extends State<OperationsScreen>
               'appointments': 'Agenda y citas',
               'services': 'Servicios',
               if (!widget.member.isPersonal) 'tasks': 'Pendientes',
-              if (!widget.member.isPersonal) 'messages': 'Mensajes',
-              'suppliers': 'Distribuidores',
+              if (!widget.member.isPersonal) 'notices': 'Avisos',
+              if (!widget.member.isPersonal) 'messages': 'Grupo',
+              if (!widget.member.isPersonal) 'private_messages': 'Privados',
               'acts': 'Desempeño',
             }.entries)
               if (!model.explicitPermissions || model.sectionAllowed(e.key))
@@ -999,36 +1002,52 @@ class _OperationsScreenState extends State<OperationsScreen>
                   : const Icon(Icons.done_all),
             ),
         ],
-        if (activeSection == 'messages') ...[
+        if (activeSection == 'messages' || activeSection == 'notices') ...[
           if (canWrite('team.manage', legacy: !widget.member.isPersonal))
             FilledButton(
-              onPressed: () => form('Mensaje al equipo', 'message', const [
+              onPressed: () => form(activeSection == 'notices' ? 'Publicar aviso' : 'Mensaje al grupo', 'message', [
                 RxField(
                   'category',
                   'Categoría',
                   type: 'select',
-                  options: {
+                  options: activeSection == 'notices' ? const {'aviso': 'Aviso'} : const {
                     'general': 'General',
                     'urgente': 'Urgente',
-                    'aviso': 'Aviso',
                     'turno': 'Turno',
                   },
                   required: true,
                 ),
-                RxField(
+                const RxField(
                   'body',
                   'Mensaje (sin datos sensibles de pacientes o personal)',
                   required: true,
                 ),
               ]),
-              child: const Text('Escribir mensaje'),
+              child: Text(activeSection == 'notices' ? 'Publicar aviso' : 'Escribir al grupo'),
             ),
-          for (final m in model.rows('messages'))
+          for (final m in model.rows('messages').where((m) => (m['category'] == 'aviso') == (activeSection == 'notices')))
             ListTile(
               title: Text('${m['category']} · ${m['body']}'),
               subtitle: Text(
                 '${person(m['author_id'] as String)} · ${m['created_at']}',
               ),
+            ),
+        ],
+        if (activeSection == 'private_messages') ...[
+          FilledButton(
+            onPressed: () => form('Mensaje privado', 'private_message', [
+              RxField('recipient_id', 'Destinatario', type: 'select', required: true,
+                options: {for (final e in people.entries) if (e.key != widget.member.userId) e.key: e.value}),
+              const RxField('body', 'Mensaje privado', required: true),
+            ]),
+            child: const Text('Escribir mensaje privado'),
+          ),
+          for (final m in model.rows('private_messages'))
+            ListTile(
+              title: Text('${m['body']}'),
+              subtitle: Text(m['author_id'] == widget.member.userId
+                  ? 'Para ${person(m['recipient_id'] as String)} · ${m['created_at']}'
+                  : 'De ${person(m['author_id'] as String)} · ${m['created_at']}'),
             ),
         ],
         if (activeSection == 'suppliers') ...[
@@ -1242,7 +1261,11 @@ class _OperationsScreenState extends State<OperationsScreen>
             model.error == null &&
             activeSection != 'appointments' &&
             activeSection != 'blocked' &&
-            model.rows(section).isEmpty)
+            (section == 'notices'
+                ? model.rows('messages').where((m) => m['category'] == 'aviso').isEmpty
+                : section == 'messages'
+                    ? model.rows('messages').where((m) => m['category'] != 'aviso').isEmpty
+                    : model.rows(section).isEmpty))
           const Padding(
             padding: EdgeInsets.all(16),
             child: Text('Sin registros visibles en esta sección.'),

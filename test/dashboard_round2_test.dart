@@ -32,7 +32,8 @@ void main() {
           'transfer': '0.00',
         },
       };
-      model.agenda = {'appointments': [], 'tasks': [], 'messages': []};
+      model.agenda = {'appointments': [], 'tasks': [], 'messages': [],
+        'sections': {'tasks': true, 'messages': true}};
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -46,7 +47,8 @@ void main() {
       expect(find.text('Valor a costo'), findsNothing);
       expect(find.text('Ventas de hoy'), findsNothing);
       expect(find.text('Abrir caja'), findsOneWidget);
-      expect(find.text('Equipo y avisos'), findsOneWidget);
+      expect(find.text('Tareas de hoy'), findsOneWidget);
+      expect(find.text('Anuncios y avisos'), findsOneWidget);
       expect(find.text('Abrir conversación y herramientas'), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

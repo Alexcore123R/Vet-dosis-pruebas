@@ -719,18 +719,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
               ]),
-            if (m.member?.isPersonal == false)
-              panel('Equipo y avisos', 'Equipo y avisos', [
+            if (m.member != null && m.commissions != null)
+              panel('Mis comisiones', 'Servicios', [
+                Text('Saldo de servicios cobrados pendiente de liquidar: ${money(m.ownCommission?['amount'] ?? '0')}'),
+                if (m.commissions?['schedule'] is Map)
+                  Text('Próximo pago: ${(m.commissions!['schedule'] as Map)['next_pay_on']}'),
+                const Text('El porcentaje se configura por servicio. Solo cuentan ventas vigentes.'),
+              ]),
+            if (m.member?.isPersonal == false &&
+                (m.agenda?['sections'] as Map?)?['tasks'] == true)
+              panel('Tareas de hoy', 'Pendientes del equipo', [
                 unavailable(
                   'Agenda',
                   m.agenda != null,
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text('Pendientes del equipo'),
-                      if (m.pendingTasks.isEmpty)
-                        const Text('No hay pendientes visibles.'),
-                      for (final t in m.pendingTasks.take(4))
+                      if (m.todayTasks.isEmpty)
+                        const Text('No hay tareas programadas para hoy.'),
+                      for (final t in m.todayTasks.take(4))
                         ListTile(
                           title: Text('${t['title']} · ${t['priority']}'),
                           subtitle: Text(
@@ -749,10 +756,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             widget.onNavigate('Pendientes del equipo'),
                         child: const Text('Crear o revisar pendientes'),
                       ),
-                      const Text('Avisos recientes'),
-                      if (m.messages.isEmpty)
-                        const Text('No hay mensajes del equipo.'),
-                      for (final msg in m.messages)
+                    ],
+                  ),
+                ),
+              ]),
+            if (m.member?.isPersonal == false &&
+                (m.agenda?['sections'] as Map?)?['messages'] == true)
+              panel('Anuncios y avisos', 'Anuncios y avisos', [
+                unavailable('Agenda', m.agenda != null, Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                      if (m.notices.isEmpty)
+                        const Text('No hay avisos recientes.'),
+                      for (final msg in m.notices)
                         ListTile(
                           title: Text('${msg['category']} · ${msg['body']}'),
                           subtitle: Text(
@@ -760,12 +776,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
                       TextButton(
-                        onPressed: () => widget.onNavigate('Equipo y avisos'),
-                        child: const Text('Escribir aviso al equipo'),
+                        onPressed: () => widget.onNavigate('Anuncios y avisos'),
+                        child: const Text('Ver avisos'),
                       ),
                     ],
-                  ),
-                ),
+                  )),
               ]),
           ],
           const SizedBox(height: 16),

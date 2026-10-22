@@ -41,14 +41,14 @@ class DashboardViewModel extends ChangeNotifier {
   bool canSummarize(String name) =>
       moduleAccess == null || moduleAccess!.summary(name);
   final Map<String, String> errors = {};
-  Map<String, dynamic>? agenda, stock, statistics;
+  Map<String, dynamic>? agenda, stock, statistics, commissions;
   HospitalSnapshot? ward;
   int? patientCount;
   bool busy = false, _disposed = false;
   DateTime? updated;
   Future<void> load({bool offline = false}) async {
     if (busy) return;
-    agenda = stock = statistics = null;
+    agenda = stock = statistics = commissions = null;
     ward = null;
     patientCount = null;
     updated = null;
@@ -69,9 +69,15 @@ class DashboardViewModel extends ChangeNotifier {
 
     final m = member!;
     await Future.wait([
-      if (operations != null && canSummarize('agenda'))
+      if (operations != null &&
+          (canSummarize('agenda') || moduleAccess?.module('agenda') == true))
         section('Agenda', () async {
           agenda = await operations!.dashboard(m.clinicId);
+        }),
+      if (operations is CommissionRepository &&
+          (moduleAccess == null || moduleAccess!.module('agenda')))
+        section('Comisiones', () async {
+          commissions = await (operations as CommissionRepository).commissionAccount(m.clinicId);
         }),
       if (inventory != null && canSummarize('inventory'))
         section('Inventario', () async {
@@ -235,8 +241,17 @@ class DashboardViewModel extends ChangeNotifier {
   ).where((s) => s['closed_at'] != null).take(3).toList();
   List<Map<String, dynamic>> get pendingTasks =>
       rows(agenda, 'tasks').where((t) => t['completed_at'] == null).toList();
+  List<Map<String, dynamic>> get todayTasks {
+    final day = localTime(now());
+    final date = '${day.year.toString().padLeft(4, '0')}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+    return pendingTasks.where((t) => t['scheduled_on'] == date).toList();
+  }
+  List<Map<String, dynamic>> get notices => rows(agenda, 'messages')
+      .where((m) => m['category'] == 'aviso').toList().reversed.take(4).toList();
   List<Map<String, dynamic>> get messages =>
       rows(agenda, 'messages').reversed.take(4).toList();
+  Map<String, dynamic>? get ownCommission => rows(commissions, 'accrued')
+      .where((r) => r['professional_id'] == member?.userId).firstOrNull;
 
   DateTime effectiveTime(HospitalTask task) =>
       task.snoozedUntil != null && task.snoozedUntil!.isAfter(task.dueAt)

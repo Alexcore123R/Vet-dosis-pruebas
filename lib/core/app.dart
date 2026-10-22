@@ -897,6 +897,7 @@ class CoreShell extends StatelessWidget {
                         )
                 else if (model.screen == 'Agenda' ||
                     model.screen == 'Equipo y avisos' ||
+                    model.screen == 'Anuncios y avisos' ||
                     model.screen == 'Pendientes del equipo' ||
                     model.screen == 'Servicios' ||
                     model.screen == 'Proveedores')
@@ -914,6 +915,8 @@ class CoreShell extends StatelessWidget {
                               ? 'suppliers'
                               : model.screen == 'Equipo y avisos'
                               ? 'messages'
+                              : model.screen == 'Anuncios y avisos'
+                              ? 'notices'
                               : model.screen == 'Pendientes del equipo'
                               ? 'tasks'
                               : 'appointments',
@@ -1433,6 +1436,7 @@ class _ModuleSearchState extends State<_ModuleSearch> {
     'Estadísticas',
     'Escanear producto',
     'Equipo y avisos',
+    'Anuncios y avisos',
     'Pendientes del equipo',
     'Asistente IA',
     'Ayuda y soporte',

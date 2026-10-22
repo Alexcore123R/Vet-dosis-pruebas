@@ -32,6 +32,7 @@ const sectionGroups = [
   SectionGroup('Equipo y comunicación', [
     'Agenda telefónica',
     'Equipo y avisos',
+    'Anuncios y avisos',
     'Pendientes del equipo',
     'Checado',
   ]),
