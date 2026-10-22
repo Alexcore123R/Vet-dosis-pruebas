@@ -11,6 +11,17 @@ select pg_temp.assert_true(
  not has_table_privilege('anon','private.beta_privacy_notices','SELECT'),
  'private privacy table exposed'
 );
+create function pg_temp.expect_error(stmt text,expected text) returns void
+language plpgsql as $
+begin
+  begin execute stmt;
+  exception when others then
+    if position(expected in sqlerrm)>0 then return; end if;
+    raise;
+  end;
+  raise exception 'Expected denial: %',expected;
+end$;
+select set_config('request.path','/rpc/beta_registration_legal',false);
 set role anon;
 select pg_temp.assert_true(
  (public.beta_registration_legal()->'terms'->>'version')='terms-with-privacy'
@@ -18,6 +29,9 @@ select pg_temp.assert_true(
  and (public.beta_registration_legal()->'privacy'->>'content')='Synthetic privacy',
  'published pair not available for signup'
 );
+select public.beta_request_guard();
+select set_config('request.path','/rest/v1/forbidden',false);
+select pg_temp.expect_error('select public.beta_request_guard()','beta_access_denied');
 reset role;
 
 begin;
