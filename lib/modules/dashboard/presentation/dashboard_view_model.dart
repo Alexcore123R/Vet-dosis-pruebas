@@ -69,7 +69,8 @@ class DashboardViewModel extends ChangeNotifier {
 
     final m = member!;
     await Future.wait([
-      if (operations != null)
+      if (operations != null &&
+          (canSummarize('agenda') || moduleAccess?.module('agenda') == true))
         section('Agenda', () async {
           agenda = await operations!.dashboard(m.clinicId);
         }),
