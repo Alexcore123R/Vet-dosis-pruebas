@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vetdosis_pro/modules/auth/domain/auth_repository.dart';
@@ -64,6 +66,36 @@ class FakePublishedLegalAuth implements AuthRepository, RegistrationLegalReposit
 }
 
 void main() {
+  test('Acepta documentos publicados solo si hash corresponde a bytes exactos', () {
+    const termsText = 'Términos clínicos de prueba';
+    const privacyText = 'Aviso de privacidad de prueba';
+    final parsed = RegistrationLegal.fromJson({
+      'terms': {
+        'version': 'terms-test',
+        'hash': sha256.convert(utf8.encode(termsText)).toString(),
+        'content': termsText,
+      },
+      'privacy': {
+        'version': 'notice-test',
+        'hash': sha256.convert(utf8.encode(privacyText)).toString(),
+        'content': privacyText,
+      },
+    });
+    expect(parsed.terms.content, termsText);
+    expect(parsed.privacy.content, privacyText);
+  });
+
+  test('Bloquea texto manipulado aunque hash tenga formato SHA-256', () {
+    expect(
+      () => RegistrationLegalDocument.fromJson({
+        'version': '1',
+        'content': 'Contenido modificado',
+        'hash': sha256.convert(utf8.encode('Contenido original')).toString(),
+      }),
+      throwsFormatException,
+    );
+  });
+
   test('No se admite documento publicado sin hash y texto completo', () {
     expect(
       () => RegistrationLegal.fromJson({
