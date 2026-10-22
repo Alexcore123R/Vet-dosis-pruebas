@@ -94,6 +94,7 @@ bool moduleNavigationAllowed(
     'Productividad y semana' ||
     'Agenda' ||
     'Equipo y avisos' ||
+    'Anuncios y avisos' ||
     'Pendientes del equipo' => access.module('agenda'),
     'Hospitalización' => access.module('hospital'),
     'Inventario' || 'Escanear producto' => access.module('inventory'),
