@@ -86,3 +86,11 @@ Proyecto Supabase **de pruebas** está fijado por `scripts/supabase/identity_sch
 «Revisa la rama actual `feature/historia-carnet-20261020` y las PR #13, #11, #12. Comienza por el P0: diagnostica con solo lectura la diferencia de `app_module_workspace`, comprueba los permisos mediante pruebas sintéticas, recupera evidencias de Actions, y prepara una corrección mínima si encuentras un defecto verificable. No despliegues ni abras la beta. Reporta archivos/commits tocados, tests realmente ejecutados y siguientes bloqueos.»
 
 **Fuentes de verdad:** código y definiciones efectivas actuales, resultados actuales de CI y catálogo remoto; este resumen es un mapa de acceso, no una certificación de estabilidad.
+
+## Acceso al cambiar de modelo y coste de compilación
+
+En Codex: seleccionar el nuevo modelo, abrir el entorno ya vinculado a GitHub y elegir este repositorio privado. Si no aparece, autorizarlo con la cuenta GitHub propietaria desde la conexión de GitHub de Codex. Trabajar desde `feature/historia-carnet-20261020`, en rama derivada; no empezar desde `main`. No hacen falta contraseñas ni claves pegadas en el chat: el acceso se concede mediante la aplicación conectada.
+
+La referencia al proyecto Supabase de pruebas está en `scripts/supabase/identity_schema.py`; el procedimiento de construcción APK está en `docs/apk-pruebas.md`. El acceso GitHub del agente no habilita por sí mismo el despliegue del servidor. Mantener secretos en el servicio correspondiente, nunca en el código ni en los mensajes.
+
+Para compilar gratuitamente: comprobar primero el consumo en GitHub Settings → Billing and licensing → Usage. Los repositorios públicos usan minutos gratuitos de runners estándar, pero publicar uno revela código e historial de Actions. Auditar antes de cambiar visibilidad; una copia pública preparada para compilación también haría visible el código incluido. El límite de uso del modelo Codex es independiente del coste de GitHub Actions.
