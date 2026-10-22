@@ -94,3 +94,25 @@ En Codex: seleccionar el nuevo modelo, abrir el entorno ya vinculado a GitHub y 
 La referencia al proyecto Supabase de pruebas está en `scripts/supabase/identity_schema.py`; el procedimiento de construcción APK está en `docs/apk-pruebas.md`. El acceso GitHub del agente no habilita por sí mismo el despliegue del servidor. Mantener secretos en el servicio correspondiente, nunca en el código ni en los mensajes.
 
 Para compilar gratuitamente: comprobar primero el consumo en GitHub Settings → Billing and licensing → Usage. Los repositorios públicos usan minutos gratuitos de runners estándar, pero publicar uno revela código e historial de Actions. Auditar antes de cambiar visibilidad; una copia pública preparada para compilación también haría visible el código incluido. El límite de uso del modelo Codex es independiente del coste de GitHub Actions.
+
+## 9. Acceso a Supabase para Codex — configuración comprobada, sin claves en Git
+
+**Destino exclusivo:** proyecto Supabase de pruebas `wtrelwtztkddfktrfdpb`. Dashboard: `https://supabase.com/dashboard/project/wtrelwtztkddfktrfdpb`. API cliente: `https://wtrelwtztkddfktrfdpb.supabase.co`. El identificador y la URL no son secretos; NO incluir accesos administrativos, contraseñas o tokens en archivos o chat.
+
+**Configuración recomendada para la auditoría P0:** añadir el MCP oficial de Supabase, limitado al proyecto y solo lectura (no permitir modificaciones):
+
+```sh
+codex mcp add supabase-vetdosis-auditoria --url 'https://mcp.supabase.com/mcp?project_ref=wtrelwtztkddfktrfdpb&read_only=true&features=database,docs'
+codex mcp login supabase-vetdosis-auditoria
+codex mcp list
+```
+
+Los comandos anteriores son para Codex CLI o extensión con MCP soportado. En interfaces con configuración visual MCP, agregar como servidor HTTP la misma URL y realizar la autenticación OAuth desde la pantalla. La autenticación la completa la propietaria en el navegador o interfaz; **no compartir un PAT ni una contraseña**. Las herramientas no aparecen en todos los entornos web/cloud: comprobar desde el Codex que realmente se conectó.
+
+**Si un cambio requiere SQL remoto o Edge Functions:** Codex SÍ implementa, corrige, crea SQL propuesto, y ensaya en PostgreSQL aislado; este MCP de auditoría no puede aplicar cambios. Para la fase de despliegue aprobada crear una conexión de escritura independiente, también limitada al mismo proyecto, con aprobación de cada operación y respaldo verificado. Nunca habilitar permisos de escritura en el MCP de auditoría ni conectar un proyecto de producción por comodidad.
+
+**GitHub Actions:** el secreto `SUPABASE_ACCESS_TOKEN` existente se usa solo en Actions para los scripts administrativos. No se puede asumir que Codex tenga automáticamente acceso a ese secreto por tener el repositorio. El APK usa solamente la clave publicable definida en el flujo de compilación, no `service_role`.
+
+**Guía oficial:** https://supabase.com/docs/guides/ai-tools/mcp y https://learn.chatgpt.com/docs/extend/mcp. Supabase recomienda precaución al conectar asistentes a bases con datos sensibles. Usar solamente datos ficticios durante la auditoría; no consultar ni exportar expedientes reales.
+
+**Sobre el problema de compilación:** la propietaria confirmó que los minutos de GitHub Actions de su cuenta se agotaron. No hacer más suposiciones sobre el origen de los runs sin runner. Para compilar gratuitamente, examinar primero si es viable hacerlo localmente con Flutter o publicar una réplica saneada para ejecutores estándar. Hacer público un repo original expone su historial, código y parte de los registros de Actions; no cambiar su visibilidad automáticamente.
