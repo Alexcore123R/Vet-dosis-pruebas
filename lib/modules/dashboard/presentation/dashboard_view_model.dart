@@ -246,6 +246,8 @@ class DashboardViewModel extends ChangeNotifier {
   }
   List<Map<String, dynamic>> get notices => rows(agenda, 'messages')
       .where((m) => m['category'] == 'aviso').toList().reversed.take(4).toList();
+  List<Map<String, dynamic>> get messages =>
+      rows(agenda, 'messages').reversed.take(4).toList();
   Map<String, dynamic>? get ownCommission => rows(commissions, 'accrued')
       .where((r) => r['professional_id'] == member?.userId).firstOrNull;
 
