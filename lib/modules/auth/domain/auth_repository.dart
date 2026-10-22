@@ -1,6 +1,8 @@
-import 'clinic_membership.dart';
 import 'dart:convert';
+
 import 'package:crypto/crypto.dart';
+
+import 'clinic_membership.dart';
 
 abstract interface class AuthRepository {
   String? get userId;
