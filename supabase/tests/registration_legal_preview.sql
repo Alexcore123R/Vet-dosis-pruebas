@@ -12,7 +12,7 @@ select pg_temp.assert_true(
  'private privacy table exposed'
 );
 create function pg_temp.expect_error(stmt text,expected text) returns void
-language plpgsql as $
+language plpgsql as $expect_error$
 begin
   begin execute stmt;
   exception when others then
@@ -20,7 +20,7 @@ begin
     raise;
   end;
   raise exception 'Expected denial: %',expected;
-end$;
+end$expect_error$;
 begin;
 -- Temporarily activate enforcement to prove the exact allowlist still rejects other paths.
 -- Rollback below guarantees the synthetic beta policy is not changed.
