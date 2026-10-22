@@ -1,4 +1,6 @@
 import 'clinic_membership.dart';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 
 abstract interface class AuthRepository {
   String? get userId;
@@ -57,9 +59,48 @@ class RegistrationLegalDocument {
     if (version is! String ||
         version.trim().isEmpty ||
         hash is! String ||
-        !RegExp(r'^[0-9a-f]{64}$').hasMatch(hash) ||
+        !RegExp(r'^[0-9a-f]{64}
+      throw const FormatException('Documento legal publicado inválido.');
+    }
+    return RegistrationLegalDocument(
+      version: version,
+      hash: hash,
+      content: content,
+    );
+  }
+}
+
+class RegistrationLegal {
+  const RegistrationLegal({required this.terms, required this.privacy});
+  final RegistrationLegalDocument terms;
+  final RegistrationLegalDocument privacy;
+
+  factory RegistrationLegal.fromJson(Object? value) {
+    if (value is! Map) {
+      throw const FormatException('No hay documentos legales publicados.');
+    }
+    final map = Map<String, dynamic>.from(value);
+    return RegistrationLegal(
+      terms: RegistrationLegalDocument.fromJson(map['terms']),
+      privacy: RegistrationLegalDocument.fromJson(map['privacy']),
+    );
+  }
+
+  bool sameVersions(RegistrationLegal other) =>
+      terms.version == other.terms.version &&
+      terms.hash == other.terms.hash &&
+      privacy.version == other.privacy.version &&
+      privacy.hash == other.privacy.hash;
+}
+
+/// Lectura anónima exclusiva de versiones vigentes; nunca devuelve borradores.
+abstract interface class RegistrationLegalRepository {
+  Future<RegistrationLegal?> registrationLegal();
+}
+).hasMatch(hash) ||
         content is! String ||
-        content.trim().isEmpty) {
+        content.trim().isEmpty ||
+        sha256.convert(utf8.encode(content)).toString() != hash) {
       throw const FormatException('Documento legal publicado inválido.');
     }
     return RegistrationLegalDocument(
