@@ -22,6 +22,7 @@ class PersonalDoseScreen extends StatefulWidget {
 }
 
 class _PersonalDoseScreenState extends State<PersonalDoseScreen> {
+  final labelDraft = TextEditingController();
   final fields = {
     for (final k in [
       'farmaco',
@@ -52,6 +53,7 @@ class _PersonalDoseScreenState extends State<PersonalDoseScreen> {
 
   @override
   void dispose() {
+    labelDraft.dispose();
     for (final c in fields.values) {
       c.dispose();
     }
@@ -107,10 +109,13 @@ class _PersonalDoseScreenState extends State<PersonalDoseScreen> {
     ));
     if (apply != true || !mounted) return;
     final lines = recognized.split('\n').map((line) => line.trim()).where((line) => line.isNotEmpty);
-    final concentration = RegExp(r'(\d+(?:[.,]\d+)?)\s*mg\s*/\s*m[lL]', caseSensitive: false).firstMatch(recognized);
-    final dose = RegExp(r'(\d+(?:[.,]\d+)?)\s*mg\s*/\s*kg', caseSensitive: false).firstMatch(recognized);
+    final concentration = RegExp(r'(\d+(?:[.,]\d+)?)\s*mg\s*(?:/|per)\s*m[lL]\b', caseSensitive: false).firstMatch(recognized);
+    final dose = RegExp(r'(\d+(?:[.,]\d+)?)\s*mg\s*(?:/|per)\s*kg\b', caseSensitive: false).firstMatch(recognized);
+    final ingredient = RegExp(r'(?:active ingredient|ingrediente activo|principio activo)\s*[:：]\s*([^\n\r]+)', caseSensitive: false).firstMatch(recognized);
     setState(() {
+      labelDraft.text = recognized;
       if (fields['nombre_comercial']!.text.isEmpty && lines.isNotEmpty) fields['nombre_comercial']!.text = lines.first;
+      if (fields['farmaco']!.text.isEmpty && ingredient != null) fields['farmaco']!.text = ingredient.group(1)!.trim();
       if (concentration != null) fields['concentracion']!.text = concentration.group(1)!.replaceAll(',', '.');
       if (dose != null) {
         fields['min']!.text = dose.group(1)!.replaceAll(',', '.');
@@ -176,6 +181,7 @@ class _PersonalDoseScreenState extends State<PersonalDoseScreen> {
     if (mounted) {
       setState(() {
         entries = result;
+        labelDraft.clear();
         for (final c in fields.values) {
           c.clear();
         }
@@ -200,6 +206,17 @@ class _PersonalDoseScreenState extends State<PersonalDoseScreen> {
           label: const Text('Escanear etiqueta y crear borrador'),
         ),
         const Text('El texto escaneado puede contener errores. Revisa producto, concentración, dosis y fuente antes de guardar; la foto no se sube automáticamente.'),
+        TextField(
+          controller: labelDraft,
+          enabled: !busy,
+          maxLines: 5,
+          decoration: const InputDecoration(
+            labelText: 'Texto de etiqueta (español o inglés; borrador local editable)',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Text('Puedes capturar todos los datos manualmente. Conserva las indicaciones originales en inglés y comprueba su interpretación antes de usarlas.'),
         for (final pair in <(String, String)>[
           ('farmaco', 'Fármaco'),
           ('especie', 'Especie (igual que en el catálogo)'),
