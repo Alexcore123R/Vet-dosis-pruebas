@@ -13,15 +13,18 @@ language sql stable security definer set search_path='' as $$
       'version',n.version,'hash',n.content_hash,'content',n.content
     )
   )
-  from private.beta_terms t
+  from (
+    select version,content_hash,content,privacy_version
+    from private.beta_terms
+    where published
+    order by published_at desc,version desc
+    limit 1
+  ) t
   join private.beta_privacy_notices n
     on n.version=t.privacy_version
    and n.published
    and n.content_hash=encode(sha256(convert_to(n.content,'UTF8')),'hex')
-  where t.published
-    and t.content_hash=encode(sha256(convert_to(t.content,'UTF8')),'hex')
-  order by t.published_at desc,t.version desc
-  limit 1;
+  where t.content_hash=encode(sha256(convert_to(t.content,'UTF8')),'hex');
 $$;
 revoke all on function public.beta_registration_legal() from public;
 grant execute on function public.beta_registration_legal() to anon,authenticated;
