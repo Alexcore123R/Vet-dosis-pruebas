@@ -16,11 +16,13 @@ class DoseScreen extends StatefulWidget {
     this.userId,
     this.admin = false,
     this.offline = false,
+    this.initialDrug,
   });
   final CatalogRepository? repository;
   final PersonalDoseRepository? personalRepository;
   final String? clinicId, userId;
   final bool admin, offline;
+  final DrugDose? initialDrug;
   @override
   State<DoseScreen> createState() => _DoseScreenState();
 }
@@ -126,7 +128,9 @@ class _DoseScreenState extends State<DoseScreen> {
   void initState() {
     super.initState();
     model = DoseViewModel(widget.repository ?? AssetCatalogRepository());
-    model.load();
+    model.load().then((_) {
+      if (mounted && widget.initialDrug != null) model.select(widget.initialDrug!);
+    });
     refreshPersonal();
   }
 

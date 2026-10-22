@@ -38,7 +38,8 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     widget.member.clinicId,
   );
   bool get canManageWorkspace =>
-      widget.canManageWorkspace || model.data['can_manage'] == true;
+      widget.member.role == ClinicRole.admin &&
+      (widget.canManageWorkspace || model.data['can_manage'] == true);
   Timer? timer;
   String? token;
   int remaining = 0;
@@ -104,7 +105,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
   }
 
   Future<void> renew() async {
-    if (qrBusy || !visible) return;
+    if (qrBusy || !visible || !canManageWorkspace) return;
     qrBusy = true;
     try {
       final r = await widget.repository.qr(widget.member.clinicId);
@@ -211,6 +212,36 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     );
     if (mounted) await model.load();
   }
+  Future<void> configureSchedule() async {
+    if (widget.repository is! AttendanceScheduleRepository) return;
+    final current = model.data['schedule'] as Map?;
+    final saved = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => RxEntryScreen(
+      title: 'Horario para puntualidad',
+      initial: {
+        'start': current?['start_local'] ?? '09:00',
+        'weekdays': (current?['weekdays'] as List? ?? [1,2,3,4,5]).join(','),
+        'grace': '${current?['grace_minutes'] ?? 10}',
+      },
+      fields: const [
+        RxField('start', 'Hora de entrada HH:MM (zona de la clínica)', required: true),
+        RxField('weekdays', 'Días 1=lunes a 7=domingo, separados por coma', required: true),
+        RxField('grace', 'Minutos de tolerancia (0–120)', required: true),
+      ],
+      submit: (data, _) async {
+        final start = '${data['start']}'.trim();
+        final days = '${data['weekdays']}'.split(',').map((x) => int.tryParse(x.trim())).toList();
+        final grace = int.tryParse('${data['grace']}');
+        if (!RegExp(r'^([01]\d|2[0-3]):[0-5]\d$').hasMatch(start) ||
+            days.isEmpty || days.any((d) => d == null || d < 1 || d > 7) ||
+            days.toSet().length != days.length || grace == null || grace < 0 || grace > 120) {
+          throw const FormatException('Revisa hora, días y tolerancia del horario.');
+        }
+        await (widget.repository as AttendanceScheduleRepository).saveSchedule(
+          widget.member.clinicId, start, days.cast<int>()..sort(), grace);
+      },
+    )));
+    if (saved == true && mounted) await model.load();
+  }
 
   List<Map<String, dynamic>> get events => (model.data['events'] as List? ?? [])
       .map((e) => Map<String, dynamic>.from(e as Map))
@@ -290,6 +321,9 @@ class _AttendanceScreenState extends State<AttendanceScreen>
                 onPressed: working ? null : renew,
                 child: const Text('Mostrar QR dinámico'),
               ),
+              if (widget.repository is AttendanceScheduleRepository)
+                OutlinedButton(onPressed: working ? null : configureSchedule,
+                  child: const Text('Horario de puntualidad')),
             ],
           ),
         if (token != null) ...[
@@ -328,6 +362,12 @@ class _AttendanceScreenState extends State<AttendanceScreen>
             label: const Text('Escanear entrada / salida'),
           ),
         ],
+        if (model.data['week_summary'] is Map)
+          Card(child: Padding(padding: const EdgeInsets.all(12), child: Text(
+            model.data['week_summary']['configured'] == true
+                ? 'Esta semana: ${model.data['week_summary']['attended']} asistencias · ${model.data['week_summary']['on_time']} a tiempo · ${model.data['week_summary']['late']} retrasos.'
+                : 'Configura un horario para medir puntualidad. Asistencias registradas esta semana: ${model.data['week_summary']['attended']}.'
+          ))),
         Wrap(
           children: [
             TextButton(

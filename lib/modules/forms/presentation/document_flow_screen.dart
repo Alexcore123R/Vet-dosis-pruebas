@@ -260,6 +260,7 @@ class _DocumentFlowScreenState extends State<DocumentFlowScreen> {
           builder: (_) => FormPdfScreen(
             pdf: pdf,
             title: 'Revisión final del PDF',
+            signed: document.state == 'signed',
             actionLabel: 'Emitir y conservar este PDF',
             confirmLabel:
                 'Revisé este PDF completo y confirmo su emisión. Las firmas y la autorización corresponden a las personas indicadas.',

@@ -726,6 +726,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Text('Próximo pago: ${(m.commissions!['schedule'] as Map)['next_pay_on']}'),
                 const Text('El porcentaje se configura por servicio. Solo cuentan ventas vigentes.'),
               ]),
+            if (m.member?.isPersonal == false && m.attendanceWeek != null)
+              panel('Puntualidad y asistencia', 'Checado', [
+                if (m.attendanceWeek!['week_summary'] is Map) ...[
+                  Text('Semana desde ${(m.attendanceWeek!['week_summary'] as Map)['week_start']}'),
+                  Text('Asistencias registradas: ${(m.attendanceWeek!['week_summary'] as Map)['attended']}'),
+                  if ((m.attendanceWeek!['week_summary'] as Map)['configured'] == true)
+                    Text('A tiempo: ${(m.attendanceWeek!['week_summary'] as Map)['on_time']} · Retrasos: ${(m.attendanceWeek!['week_summary'] as Map)['late']}')
+                  else
+                    const Text('La clínica aún no configuró un horario para medir retrasos.'),
+                  const Text('Administración ve el total del equipo; cada integrante ve sus propios registros.'),
+                ],
+              ]),
             if (m.member?.isPersonal == false &&
                 (m.agenda?['sections'] as Map?)?['tasks'] == true)
               panel('Tareas de hoy', 'Pendientes del equipo', [

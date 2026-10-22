@@ -51,6 +51,8 @@ import '../modules/patients/domain/patient_repository.dart';
 import '../modules/patients/presentation/patients_screen.dart';
 import 'package:flutter/material.dart';
 import '../modules/doses/presentation/dose_screen.dart';
+import '../modules/doses/presentation/vademecum_screen.dart';
+import '../modules/doses/data/catalog_repository.dart';
 import '../modules/doses/presentation/dose_math_tools.dart';
 import '../modules/doses/data/personal_dose_repository.dart';
 import '../modules/auth/domain/clinic_membership.dart';
@@ -343,6 +345,7 @@ class CoreShell extends StatelessWidget {
     ];
     final page = switch (model.screen) {
       'Cálculo rápido' ||
+      'Vademécum' ||
       'Operaciones de dosis' ||
       'Cálculos clínicos' => 'Cálculos',
       'Producción y grandes especies' => 'Inicio',
@@ -648,6 +651,18 @@ class CoreShell extends StatelessWidget {
                       : const Text(
                           'El cálculo clínico requiere acceso de MVZ o administrador.',
                         )
+                else if (model.screen == 'Vademécum')
+                  VademecumScreen(
+                    key: ValueKey('vademecum:${auth?.active?.userId}:${auth?.active?.clinicId}'),
+                    catalog: AssetCatalogRepository(),
+                    personal: personalDoses,
+                    clinicId: auth?.active?.clinicId,
+                    userId: auth?.active?.userId,
+                    admin: auth?.active?.role == ClinicRole.admin,
+                    canCalculate: auth?.active == null ||
+                        [ClinicRole.admin, ClinicRole.mvz].contains(auth?.active?.role),
+                    offline: auth?.offline ?? false,
+                  )
                 else if (model.screen == 'Operaciones de dosis')
                   auth == null ||
                           [
@@ -1111,6 +1126,7 @@ class CoreShell extends StatelessWidget {
         hospital: hospital,
         patients: patients,
         backup: backup,
+        attendance: attendance,
         moduleAccess: moduleAccess,
       ),
       offline: auth?.offline ?? false,
@@ -1431,6 +1447,7 @@ class _ModuleSearchState extends State<_ModuleSearch> {
     'Receta',
     'Formatos',
     'Cálculo rápido',
+    'Vademécum',
     'Operaciones de dosis',
     'Cálculos clínicos',
     'Estadísticas',

@@ -72,6 +72,18 @@ class _FormPdfScreenState extends State<FormPdfScreen> {
             pdfFileName: 'VetDosis-documento.pdf',
           ),
         ),
+        if (widget.signed)
+          SafeArea(top: false, child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: OutlinedButton.icon(
+              onPressed: busy ? null : () => Printing.sharePdf(
+                bytes: widget.pdf.bytes,
+                filename: 'VetDosis-documento.pdf',
+              ),
+              icon: const Icon(Icons.share_outlined),
+              label: const Text('Enviar PDF por correo o WhatsApp'),
+            ),
+          )),
         if (widget.confirm != null) ...[
           CheckboxListTile(
             value: accepted,

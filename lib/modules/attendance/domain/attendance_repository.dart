@@ -19,3 +19,7 @@ abstract class AttendanceRepository {
     String operation,
   );
 }
+
+abstract interface class AttendanceScheduleRepository {
+  Future<void> saveSchedule(String clinic, String start, List<int> weekdays, int grace);
+}

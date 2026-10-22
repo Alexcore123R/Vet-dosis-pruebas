@@ -40,6 +40,7 @@ IconData sectionIcon(String page) => switch (page) {
   'Inicio' => Icons.dashboard_outlined,
   'Cálculos' ||
   'Cálculo rápido' ||
+  'Vademécum' ||
   'Operaciones de dosis' => Icons.calculate_outlined,
   'Cálculos clínicos' => Icons.science_outlined,
   'Escanear producto' => Icons.qr_code_scanner,

@@ -12,6 +12,7 @@ import '../../hospital/domain/hospital_models.dart';
 import '../../patients/domain/patient_repository.dart';
 import '../../backup/domain/backup_repository.dart';
 import '../../core/domain/module_access.dart';
+import '../../attendance/domain/attendance_repository.dart';
 
 class DashboardViewModel extends ChangeNotifier {
   DashboardViewModel({
@@ -22,6 +23,7 @@ class DashboardViewModel extends ChangeNotifier {
     this.patients,
     this.backup,
     this.moduleAccess,
+    this.attendance,
     DateTime Function()? now,
   }) : now = now ?? DateTime.now;
   final ClinicMembership? member;
@@ -31,6 +33,7 @@ class DashboardViewModel extends ChangeNotifier {
   final PatientRepository? patients;
   final BackupRepository? backup;
   final ModuleAccess? moduleAccess;
+  final AttendanceRepository? attendance;
   final DateTime Function() now;
   bool get canSeeClinicSales => moduleAccess == null
       ? member?.role == ClinicRole.admin
@@ -41,14 +44,14 @@ class DashboardViewModel extends ChangeNotifier {
   bool canSummarize(String name) =>
       moduleAccess == null || moduleAccess!.summary(name);
   final Map<String, String> errors = {};
-  Map<String, dynamic>? agenda, stock, statistics, commissions;
+  Map<String, dynamic>? agenda, stock, statistics, commissions, attendanceWeek;
   HospitalSnapshot? ward;
   int? patientCount;
   bool busy = false, _disposed = false;
   DateTime? updated;
   Future<void> load({bool offline = false}) async {
     if (busy) return;
-    agenda = stock = statistics = commissions = null;
+    agenda = stock = statistics = commissions = attendanceWeek = null;
     ward = null;
     patientCount = null;
     updated = null;
@@ -78,6 +81,11 @@ class DashboardViewModel extends ChangeNotifier {
           (moduleAccess == null || moduleAccess!.module('agenda')))
         section('Comisiones', () async {
           commissions = await (operations as CommissionRepository).commissionAccount(m.clinicId);
+        }),
+      if (attendance != null && !m.isPersonal &&
+          (moduleAccess == null || moduleAccess!.module('agenda')))
+        section('Checado', () async {
+          attendanceWeek = await attendance!.dashboard(m.clinicId);
         }),
       if (inventory != null && canSummarize('inventory'))
         section('Inventario', () async {

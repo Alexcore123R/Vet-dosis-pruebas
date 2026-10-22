@@ -111,6 +111,12 @@ class CalculationMenu extends StatelessWidget {
         Text('Calculadoras', style: Theme.of(context).textTheme.headlineSmall),
         const Text('Elige la operación que necesitas.'),
         const SizedBox(height: 12),
+        _CalculationChoice(
+          icon: Icons.menu_book_outlined,
+          title: 'Vademécum',
+          description: 'Consulta fichas de la app, compartidas con la clínica y personales.',
+          onTap: () => onNavigate('Vademécum'),
+        ),
         if (canDose)
           _CalculationChoice(
             icon: Icons.medication_outlined,
