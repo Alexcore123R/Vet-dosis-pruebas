@@ -6,6 +6,7 @@ import '../../auth/domain/clinic_membership.dart';
 import '../../patients/presentation/patient_view_model.dart' show newOperationId;
 import '../../prescribing/presentation/rx_entry_screen.dart';
 import '../domain/operations_repository.dart';
+import 'weekly_plan_tasks_screen.dart';
 
 const _days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 String _date(DateTime d) => '${d.year.toString().padLeft(4,'0')}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}';
@@ -129,6 +130,16 @@ class _ProductivityScreenState extends State<ProductivityScreen> {
     if(!mounted)return;
     await entry('Revisar plan semanal','plan',const [RxField('body','Plan y objetivos de la semana',required:true)],{'week':_date(week),'body':body});
   }
+  Future<void> planTasks() async {
+    final repository = widget.repository;
+    if (repository is! WeeklyTaskPlanRepository) return;
+    final saved = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => WeeklyPlanTasksScreen(
+      repository: repository as WeeklyTaskPlanRepository, member: widget.member, week: week,
+      initialPlan: '${data['plan'] ?? ''}', people: people, profile: profile,
+      existing: rows('tasks'), ai: widget.ai,
+    )));
+    if (saved == true && mounted) await load();
+  }
   @override
   Widget build(BuildContext context) {
     final tasks=rows('tasks');
@@ -150,6 +161,7 @@ class _ProductivityScreenState extends State<ProductivityScreen> {
             ]),
             Wrap(spacing:8,children:[
               TextButton(onPressed:()=>plan(),child:const Text('Editar plan semanal')),
+              if(widget.repository is WeeklyTaskPlanRepository)TextButton.icon(onPressed:planTasks,icon:const Icon(Icons.playlist_add),label:const Text('Crear tareas desde el plan')),
               if(widget.ai!=null)TextButton.icon(onPressed:()=>plan(useAi:true),icon:const Icon(Icons.auto_awesome),label:const Text('Sugerir plan con IA')),
             ]),
             if('${data['plan']??''}'.isNotEmpty)ExpansionTile(title:const Text('Plan de la semana'),children:[Padding(padding:const EdgeInsets.all(12),child:SelectableText('${data['plan']}'))]),

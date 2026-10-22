@@ -23,6 +23,17 @@ abstract interface class ProductivityRepository {
   );
 }
 
+abstract interface class WeeklyTaskPlanRepository {
+  Future<void> commitWeekPlan(
+    String clinic,
+    String week,
+    String expectedBody,
+    String body,
+    List<Map<String, dynamic>> tasks,
+    String operation,
+  );
+}
+
 abstract interface class ServiceContactRepository {
   Future<Map<String, dynamic>> appointmentContact(
     String clinic,

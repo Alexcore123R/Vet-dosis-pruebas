@@ -12,10 +12,55 @@ class SupabaseOperationsRepository
         CommissionRepository,
         ContactDirectoryRepository,
         ProductivityRepository,
+        WeeklyTaskPlanRepository,
         ServiceContactRepository,
         MarketingRepository {
   SupabaseOperationsRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<void> commitWeekPlan(
+    String clinic,
+    String week,
+    String expectedBody,
+    String body,
+    List<Map<String, dynamic>> tasks,
+    String operation,
+  ) async {
+    try {
+      await client.rpc(
+        'ops_week_plan_commit',
+        params: {
+          'p_clinic': clinic,
+          'p_week': week,
+          'p_expected_body': expectedBody,
+          'p_body': body,
+          'p_tasks': tasks,
+          'p_operation': operation,
+        },
+      );
+    } on PostgrestException catch (e) {
+      final message = switch (e.message) {
+        'week_plan_changed_refresh' =>
+          'El plan cambió en otra sesión. Vuelve a abrir la semana para revisar la versión actual.',
+        'assignee_wrong_clinic' =>
+          'Cambió el equipo de la clínica. Actualiza la semana y revisa los responsables.',
+        'assignee_unavailable' =>
+          'Un responsable ya no está disponible ese día. Actualiza la disponibilidad antes de guardar.',
+        'daily_task_capacity_exceeded' =>
+          'La carga diaria supera el tiempo disponible. Actualiza la semana y ajusta las tareas.',
+        'task_already_scheduled' =>
+          'Una tarea ya está programada. Actualiza la semana para evitar duplicarla.',
+        'team_manage_required' =>
+          'Se requiere permiso vigente para gestionar el equipo y un plan de clínica compatible.',
+        _ =>
+          e.code == 'PGRST202'
+              ? 'Falta aplicar SQL 14N en Supabase para guardar el plan y sus tareas.'
+              : 'No se pudieron guardar las tareas. Actualiza la semana y revisa la conexión antes de reintentar.',
+      };
+      throw FormatException(message);
+    }
+  }
+
   @override
   Future<Map<String, dynamic>> appointmentContact(
     String clinic,
