@@ -85,17 +85,17 @@ class TabletBreakdown {
 
   String get descriptiveQuantity {
     if (!exactlyDivisible) {
-      return '\${exactAmount.display(places: 9)} tabletas';
+      return '${exactAmount.display(places: 9)} tabletas';
     }
     final whole = wholeTablets == BigInt.zero
         ? ''
-        : '\$wholeTablets \${wholeTablets == BigInt.one ? 'tableta' : 'tabletas'}';
+        : '$wholeTablets ${wholeTablets == BigInt.one ? 'tableta' : 'tabletas'}';
     final fractional = fractionNumerator == 0
         ? ''
-        : '\$fractionNumerator/\$fractionDenominator de tableta';
+        : '$fractionNumerator/$fractionDenominator de tableta';
     if (whole.isEmpty) return fractional;
     if (fractional.isEmpty) return whole;
-    return '\$whole + \$fractional';
+    return '$whole + $fractional';
   }
 
   String? get fractionWarning => exactlyDivisible
@@ -165,5 +165,5 @@ class CommercialPackageResult {
       tablets?.exactlyDivisible ?? true;
 
   String get quantityText => tablets?.descriptiveQuantity ??
-      '\${amount.display(places: 9)} \${unit.label}';
+      '${amount.display(places: 9)} ${unit.label}';
 }
