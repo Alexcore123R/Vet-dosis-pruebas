@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../data/catalog_repository.dart';
 import '../domain/catalog.dart';
 import 'dose_view_model.dart';
+import 'commercial_package_dose_screen.dart';
 
 class DoseScreen extends StatefulWidget {
   const DoseScreen({
@@ -177,6 +178,21 @@ class _DoseScreenState extends State<DoseScreen> {
             style: Theme.of(context).textTheme.headlineMedium,
           ),
           const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const CommercialPackageDoseScreen(),
+              ),
+            ),
+            icon: const Icon(Icons.medication_liquid_outlined),
+            label: const Text('Vademécum comercial · dosis del empaque'),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Vademécum farmacológico: dosis por principio activo, '
+            'presentación y validación clínica independiente.',
+          ),
+          const SizedBox(height: 8),
           const Text(
             'Selecciona un fármaco con dosis documentada, elige su presentación e ingresa el peso. La app no propone dosis faltantes ni interpreta rangos.',
           ),
