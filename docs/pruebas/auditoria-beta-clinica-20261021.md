@@ -14,7 +14,7 @@
 
 - [Rama de trabajo y PR #7](https://github.com/Alexcore123R/Vet-dosis-pruebas/pull/7): 61 commits por delante de `main`, con cambios en 213 archivos. PR borrador y pila de PR #2→#3→#4→#7 aún no fusionada.
 - [GitHub Actions de historia/carnet, run 39699054513](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39699054513): 463 pruebas Flutter, análisis, SQL seleccionado y compilación Android debug aprobados.
-- [APK firmado de la misma rama, run 39699046850](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39699046850): build release y firma verificados en CI. **No acredita instalación**: la usuaria reportó error de paquete y no hay captura/diagnóstico ADB aún.
+- [APK firmado de la misma rama, run 39699046850](https://github.com/Alexcore123R/Vet-dosis-pruebas/actions/runs/39699046850): build release y firma verificados en CI. **Actualización de la usuaria:** la compilación antigua no se instalaba, pero las actualizaciones nuevas **sí se instalan**. Falta anotar la versión efectivamente instalada y verificar funcionamiento real.
 - Los scripts de esta PR ejecutan **ocho suites PostgreSQL 17 sin red**, cada una con sus fixtures y concurrencia donde aplica. Se añade regresión Flutter de 13 archivos. Esto amplía la cobertura agrupada, pero no prueba el encadenamiento end-to-end entre seis módulos.
 
 ## Matriz de revisión
@@ -56,7 +56,9 @@ Usar identificadores de prueba sin coincidencia con personas/animales reales, po
 
 ## Bloqueos ya documentados (sin ocultarlos)
 
-**P0 — instalabilidad y compatibilidad remota:** el APK no se instaló en el teléfono reportado; no hay prueba autenticada de cadena completa en Supabase. Verificar origen ZIP/APK, ABI, huella de firma, versión, permiso de instalador y mensaje Android sin borrar datos locales. Antes de desplegar cualquier SQL: comparar inventario real, respaldo cifrado verificable, deps y permisos; beta cerrada.
+**P0 — instalación corregida, compatibilidad remota pendiente:** la usuaria confirmó que las actualizaciones nuevas sí se instalan; no confundir el error de una versión anterior con un bloqueo persistente. Anotar build en Ajustes y validar apertura, actualización y persistencia en su teléfono. Sigue sin haber un ensayo autenticado de cadena completa en Supabase. Antes de desplegar SQL: revisar inventario, respaldo verificable, dependencias y permisos; mantener beta cerrada.
+
+**Inspección remota de solo lectura del 21 de octubre (run 39710969017):** todas las dependencias básicas comprobadas aparecen presentes (`missing: []`), incluidas tablas de pacientes, citas, recetas, hospitalización, formularios, inventario y términos. Sin embargo, `private.beta_policy` registra `admissions_enabled=false` y `enforcement_enabled=false`; `private.permission_policy` registra `enforcement_enabled=false`, `migration_reviewed=false`. La función `app_module_workspace` difiere de la definición candidata, por lo que **no se debe sobrescribir ni asumir compatibilidad sin comparar el origen**. `restore_stage` figura ausente en la inspección de presencia seleccionada. La herramienta indicó `deploy_ready=false`, no un permiso para desplegar. La inspección de presencia y hashes no acredita por sí sola reglas RLS efectivas, sesiones Auth, Edge, firma real o conservación de datos.
 
 **P1 — brechas funcionales:** abonos/anticipos en **un solo acto** aún no implementados, cierre clínico de cita no emite receta, recorrido equivalente **sin cita** aún pendiente, adjuntos/carnet y restauración completa de tablas nuevas no terminados. No presentar saldo 'abonado' de varios servicios como abono parcial de una factura.
 
@@ -66,8 +68,9 @@ Usar identificadores de prueba sin coincidencia con personas/animales reales, po
 
 ## Puerta de salida para entregar a Johana
 
-- [ ] Se instala y actualiza APK beta firmado, sin cambiar datos de prueba ni desinstalar a ciegas.
-- [ ] Se acredita Supabase de **pruebas** con respaldo reciente, contratos/versiones y Auth en dos cuentas/clínicas.
+- [x] La usuaria informa que las versiones nuevas sí se instalan (falta documentar el build).
+- [ ] Se comprueba la actualización, inicio de sesión, persistencia y apertura de módulos en el dispositivo real.
+- [ ] Se acredita Supabase de **pruebas** con respaldo reciente, definiciones compatibles, permisos efectivos y Auth en dos cuentas/clínicas; la inspección remota P0 detectó un corte de permisos todavía desactivado.
 - [ ] CI de esta auditoría aprueba suites SQL de Pacientes, Agenda, Consulta, Recetas/PDF, Formatos/PDF, Hospital y Caja; y regresiones Flutter.
 - [ ] Se completan los 8 pasos del recorrido E2E con datos ficticios y resultado/evidencia por paso.
 - [ ] El personal no autorizado no puede ver datos privados, emitir recetas, registrar medicación o cobros.
@@ -77,3 +80,8 @@ Usar identificadores de prueba sin coincidencia con personas/animales reales, po
 ### Alcance y límites de la auditoría
 
 Esta PR **no** modifica datos, usuarios, permisos, Edge Functions, despliegues ni APK. Las suites son independientes: **no verifican** una operación real que atraviese los seis módulos en la misma base o sesión. El checklist manual es necesario incluso si todas las pruebas salen verdes. Las credenciales de un entorno clínico jamás deben adjuntarse al informe.
+
+## Registro legal y siguiente auditoría
+La [PR #12](https://github.com/Alexcore123R/Vet-dosis-pruebas/pull/12) propone la presentación **previa al registro** de los términos/privacidad publicados, con dos casillas y revisión de versión. No confundir esta confirmación con el recibo servidor, que actualmente se genera al inscribirse a la beta. Los textos aún son borradores y la función 12D no está aplicada.
+
+Tras cerrar P0 y el recorrido funcional, revisar **Recetas** y **Equipo** según el listado de pendientes que comunique la usuaria, antes de habilitar la beta a la clínica colaboradora. No inventar requisitos no especificados.
