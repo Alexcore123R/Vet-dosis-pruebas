@@ -74,7 +74,8 @@ class DashboardViewModel extends ChangeNotifier {
         section('Agenda', () async {
           agenda = await operations!.dashboard(m.clinicId);
         }),
-      if (operations is CommissionRepository)
+      if (operations is CommissionRepository &&
+          (moduleAccess == null || moduleAccess!.module('agenda')))
         section('Comisiones', () async {
           commissions = await (operations as CommissionRepository).commissionAccount(m.clinicId);
         }),
