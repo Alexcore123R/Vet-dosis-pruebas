@@ -21,6 +21,10 @@ begin
   end;
   raise exception 'Expected denial: %',expected;
 end$;
+begin;
+-- Temporarily activate enforcement to prove the exact allowlist still rejects other paths.
+-- Rollback below guarantees the synthetic beta policy is not changed.
+update private.beta_policy set enforcement_enabled=true;
 select set_config('request.path','/rpc/beta_registration_legal',false);
 set role anon;
 select pg_temp.assert_true(
@@ -33,6 +37,7 @@ select public.beta_request_guard();
 select set_config('request.path','/rest/v1/forbidden',false);
 select pg_temp.expect_error('select public.beta_request_guard()','beta_access_denied');
 reset role;
+rollback;
 
 begin;
 insert into private.beta_terms(version,content,content_hash,published,published_at)
