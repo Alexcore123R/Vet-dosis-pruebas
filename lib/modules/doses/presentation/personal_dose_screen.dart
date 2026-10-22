@@ -4,6 +4,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import '../data/personal_dose_repository.dart';
 import '../domain/catalog.dart';
 import '../domain/dose_engine.dart';
+import 'dose_math_tools.dart';
 
 class PersonalDoseScreen extends StatefulWidget {
   const PersonalDoseScreen({
@@ -217,6 +218,22 @@ class _PersonalDoseScreenState extends State<PersonalDoseScreen> {
         ),
         const SizedBox(height: 12),
         const Text('Puedes capturar todos los datos manualmente. Conserva las indicaciones originales en inglés y comprueba su interpretación antes de usarlas.'),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.push<void>(
+            context,
+            MaterialPageRoute(
+              builder: (_) => Scaffold(
+                appBar: AppBar(title: const Text('Fórmula general y cálculos manuales')),
+                body: const SingleChildScrollView(
+                  padding: EdgeInsets.all(24),
+                  child: DoseMathTools(),
+                ),
+              ),
+            ),
+          ),
+          icon: const Icon(Icons.calculate_outlined),
+          label: const Text('Abrir fórmula general y cálculos manuales'),
+        ),
         for (final pair in <(String, String)>[
           ('farmaco', 'Fármaco'),
           ('especie', 'Especie (igual que en el catálogo)'),
