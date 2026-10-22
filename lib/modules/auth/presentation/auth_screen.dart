@@ -23,6 +23,55 @@ class _AuthScreenState extends State<AuthScreen> {
   final _form = GlobalKey<FormState>();
   bool _register = false;
   bool _reset = false;
+  bool _registrationReviewBusy = false;
+  String? _registrationError;
+
+  Future<void> _registerAfterLegalReview(AuthViewModel model) async {
+    if (_registrationReviewBusy || model.busy) return;
+    final repository = model.repository;
+    if (repository is! RegistrationLegalRepository) {
+      setState(() => _registrationError =
+          'Esta versión aún no permite revisar los textos legales publicados.');
+      return;
+    }
+    setState(() {
+      _registrationReviewBusy = true;
+      _registrationError = null;
+    });
+    try {
+      final legal = await repository.registrationLegal();
+      if (!mounted) return;
+      if (legal == null) {
+        setState(() => _registrationError =
+            'Todavía no hay términos y aviso de privacidad publicados. '
+            'No se puede crear una cuenta desde borradores.');
+        return;
+      }
+      final consented = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => _RegistrationLegalDialog(legal: legal),
+      );
+      if (!mounted || consented != true) return;
+      // Never register with a stale document when a publisher changes versions.
+      final current = await repository.registrationLegal();
+      if (!mounted) return;
+      if (current == null || !legal.sameVersions(current)) {
+        setState(() => _registrationError =
+            'El aviso o los términos cambiaron. Ábrelos y confirma la versión nueva.');
+        return;
+      }
+      await model.register(_email.text, _password.text);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _registrationError =
+            'No se pudieron consultar los textos vigentes. Revisa la conexión '
+            'y la función de lectura legal de Supabase.');
+      }
+    } finally {
+      if (mounted) setState(() => _registrationReviewBusy = false);
+    }
+  }
   @override
   void dispose() {
     for (final field in [_email, _password, _clinic, _code]) {
@@ -163,14 +212,14 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                   const SizedBox(height: 24),
                   FilledButton(
-                    onPressed: model.busy
+                    onPressed: model.busy || _registrationReviewBusy
                         ? null
                         : () {
                             if (!_form.currentState!.validate()) return;
                             if (_reset) {
                               model.requestPasswordRecovery(_email.text);
                             } else if (_register) {
-                              model.register(_email.text, _password.text);
+                              _registerAfterLegalReview(model);
                             } else {
                               model.signIn(_email.text, _password.text);
                             }
@@ -289,12 +338,114 @@ class _AuthScreenState extends State<AuthScreen> {
                       color: Theme.of(context).colorScheme.error,
                     ),
                   ),
+                if (_registrationReviewBusy)
+                  const LinearProgressIndicator(),
+                if (_registrationError != null)
+                  Text(
+                    _registrationError!,
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
                 if (model?.message != null) Text(model!.message!),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _RegistrationLegalDialog extends StatefulWidget {
+  const _RegistrationLegalDialog({required this.legal});
+  final RegistrationLegal legal;
+
+  @override
+  State<_RegistrationLegalDialog> createState() => _RegistrationLegalDialogState();
+}
+
+class _RegistrationLegalDialogState extends State<_RegistrationLegalDialog> {
+  bool termsAccepted = false;
+  bool privacyRead = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final terms = widget.legal.terms;
+    final privacy = widget.legal.privacy;
+    return AlertDialog(
+      title: const Text('Antes de crear tu cuenta'),
+      content: SizedBox(
+        width: 520,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Consulta los textos publicados. La confirmación queda '
+                'registrada en el servidor al inscribirte a la beta, '
+                'después de verificar tu correo; aquí solo autoriza '
+                'continuar con la creación de la cuenta.',
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Aviso de privacidad · versión ${privacy.version}',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 160,
+                child: SingleChildScrollView(
+                  child: SelectableText(privacy.content),
+                ),
+              ),
+              CheckboxListTile(
+                key: const Key('signup-privacy-checkbox'),
+                contentPadding: EdgeInsets.zero,
+                value: privacyRead,
+                onChanged: (value) =>
+                    setState(() => privacyRead = value ?? false),
+                title: Text(
+                  'Confirmo que leí el aviso de privacidad versión ${privacy.version}',
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Términos de uso · versión ${terms.version}',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 160,
+                child: SingleChildScrollView(
+                  child: SelectableText(terms.content),
+                ),
+              ),
+              CheckboxListTile(
+                key: const Key('signup-terms-checkbox'),
+                contentPadding: EdgeInsets.zero,
+                value: termsAccepted,
+                onChanged: (value) =>
+                    setState(() => termsAccepted = value ?? false),
+                title: Text(
+                  'Leí y acepto los términos de uso versión ${terms.version}',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: termsAccepted && privacyRead
+              ? () => Navigator.pop(context, true)
+              : null,
+          child: const Text('Aceptar y crear cuenta'),
+        ),
+      ],
     );
   }
 }

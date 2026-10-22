@@ -50,5 +50,8 @@ do $$begin
  if exists(select 1 from public.terms_acceptances where terms_version='1') then raise exception 'draft_implicitly_accepted';end if;
 end$$;
 SQL
+for sql_file in supabase/proposed/12D_registration_legal_preview.sql supabase/tests/registration_legal_preview.sql;do
+ docker exec -i "$container_name" psql -U postgres -v ON_ERROR_STOP=1 < "$sql_file" > "$work_dir/registration-legal.log" 2>&1 || { echo "FAILED: $sql_file";cat "$work_dir/registration-legal.log";exit 1; }
+done
 echo 'Privacy passed: exact binding, legacy bypass rejected, historical rows preserved, own-user receipts, atomic enrollment and expired read/export.'
 echo 'Terms passed: displayed version/hash bound to immutable acceptance, own-user history, stale text rejected, consent renewal without trial renewal, expired read/export preserved and guard reinstall safe.'

@@ -14,6 +14,7 @@ class SupabaseAuthRepository
         PersonalWorkspaceRepository,
         PasswordRecoveryRepository,
         TeamRepository,
+        RegistrationLegalRepository,
         PermissionRepository {
   SupabaseAuthRepository(this.client, {this.existingSchema = false});
   final bool existingSchema;
@@ -54,6 +55,13 @@ class SupabaseAuthRepository
       email: email.trim(),
       password: password,
     );
+  }
+
+  @override
+  Future<RegistrationLegal?> registrationLegal() async {
+    final data = await client.rpc('beta_registration_legal');
+    if (data == null) return null;
+    return RegistrationLegal.fromJson(data);
   }
 
   @override

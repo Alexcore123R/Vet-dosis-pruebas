@@ -1,0 +1,34 @@
+name: Validar alta legal publicada
+on:
+  pull_request:
+    paths:
+      - 'lib/modules/auth/**'
+      - 'supabase/proposed/12D_registration_legal_preview.sql'
+      - 'supabase/tests/registration_legal_preview.sql'
+      - 'supabase/tests/run_terms_acceptances.sh'
+      - 'test/auth_registration_legal_test.dart'
+      - '.github/workflows/test-signup-legal.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  registration-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test test/auth_registration_legal_test.dart test/beta_boundary_test.dart --timeout 5m
+  legal-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar lectura pública sin revelar borradores
+        run: bash supabase/tests/run_terms_acceptances.sh
