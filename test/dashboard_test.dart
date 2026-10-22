@@ -197,6 +197,8 @@ void main() {
       await tester.tap(find.widgetWithText(NavigationDestination, 'Cálculos'));
       await tester.pumpAndSettle();
       expect(find.text('Cálculos clínicos').last, findsOneWidget);
+      await tester.ensureVisible(find.text('Cálculos clínicos').last);
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Cálculos clínicos').last);
       await tester.pumpAndSettle();
       expect(model.screen, 'Cálculos clínicos');
