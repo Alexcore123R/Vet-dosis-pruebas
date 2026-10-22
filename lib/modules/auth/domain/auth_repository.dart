@@ -33,7 +33,7 @@ abstract interface class TeamRepository {
   Future<void> revokeInvitation(String invitationId);
 }
 
-\n/// Documento público, ya publicado, mostrado antes de solicitar una cuenta.
+/// Documento público, ya publicado, mostrado antes de solicitar una cuenta.
 /// No representa por sí solo un recibo de aceptación autenticado.
 class RegistrationLegalDocument {
   const RegistrationLegalDocument({
