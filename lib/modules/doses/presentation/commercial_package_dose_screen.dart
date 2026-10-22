@@ -149,21 +149,15 @@ class _CommercialPackageDoseScreenState
           field(frequency, 'Intervalo o frecuencia indicada'),
           const SizedBox(height: 6),
           field(animalWeight, 'Peso del animal (kg)', numeric: true),
-          Row(children: [
-            Expanded(
-              child: field(
-                labelAmount, 'Cantidad del producto',
-                numeric: true,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: field(
-                perKg, 'Por cada kg', numeric: true,
-                helper: 'Ejemplo: 10',
-              ),
-            ),
-          ]),
+          field(
+            labelAmount, 'Cantidad indicada en el empaque',
+            numeric: true,
+          ),
+          field(
+            perKg, 'Por cada cuántos kg',
+            numeric: true,
+            helper: 'Ejemplo: 10',
+          ),
           DropdownButtonFormField<CommercialPackageUnit>(
             initialValue: unit,
             isExpanded: true,
