@@ -271,11 +271,11 @@ class _CommercialPackageDoseScreenState
                     result!.quantityText,
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
-                  if (result!.tablets?.fractionWarning case final warning?)
+                  if (result!.tablets?.fractionWarning != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
-                        warning,
+                        result!.tablets!.fractionWarning!,
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.error,
                         ),
