@@ -1,3 +1,15 @@
+import '../domain/patient_contacts.dart';
+import '../../ai/domain/ai_repository.dart';
+import '../domain/patient_timeline.dart';
+import 'patient_contact_panel.dart';
+import 'contact_actions.dart';
+import 'dart:async';
+import '../domain/patient_activity.dart';
+import '../application/patient_activity_model.dart';
+import '../domain/clinical_record_fields.dart';
+import 'preventive_booklet.dart';
+import 'preventive_screen.dart';
+import '../domain/preventive_repository.dart';
 import '../../../core/widgets/workspace_panel.dart';
 import 'patient_catalog.dart';
 import 'package:flutter/material.dart';
@@ -19,8 +31,15 @@ class PatientsScreen extends StatefulWidget {
     required this.member,
     this.onOpenClinical,
     this.initialPatientId,
+    this.onOpenActivity,
+    this.canOpenActivity,
+    this.ai,
   });
   final String? initialPatientId;
+  final AiRepository? ai;
+  final bool Function(String)? canOpenActivity;
+  final Future<void> Function(String destination, String patientId)?
+  onOpenActivity;
   final PatientRepository repository;
   final ClinicMembership member;
   final Future<void> Function(VetPatient)? onOpenClinical;
@@ -28,15 +47,36 @@ class PatientsScreen extends StatefulWidget {
   State<PatientsScreen> createState() => _PatientsScreenState();
 }
 
-class _PatientsScreenState extends State<PatientsScreen> {
+class _PatientsScreenState extends State<PatientsScreen>
+    with WidgetsBindingObserver {
   late final PatientViewModel model;
   final search = TextEditingController();
+  final historySearch = TextEditingController();
   String query = '';
   String? species;
+  String historyQuery = '';
+  EventKind? historyKind;
+  bool historyOldestFirst = false, historyByReason = false;
+  PatientActivityModel? activity;
+  PatientActivityKind? activityFilter;
+  Timer? activityTimer;
+  bool foreground = true;
+
   @override
   void initState() {
     super.initState();
     model = PatientViewModel(widget.repository, widget.member);
+    WidgetsBinding.instance.addObserver(this);
+    if (widget.repository is PatientActivityRepository) {
+      activity = PatientActivityModel(
+        widget.repository as PatientActivityRepository,
+        widget.member.clinicId,
+      );
+      activity!.load();
+      activityTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+        if (foreground) activity?.load();
+      });
+    }
     openInitialPatient();
   }
 
@@ -62,9 +102,23 @@ class _PatientsScreenState extends State<PatientsScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    foreground = state == AppLifecycleState.resumed;
+    if (foreground) {
+      activity?.load();
+    } else {
+      activity?.clear();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    activityTimer?.cancel();
+    activity?.dispose();
     model.dispose();
     search.dispose();
+    historySearch.dispose();
     super.dispose();
   }
 
@@ -106,7 +160,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
     if (mounted && saved == true) await model.load();
   }
 
-  Future<void> add(EventKind kind) async {
+  Future<void> add(EventKind kind, {bool history = false}) async {
     final patient = model.selected;
     if (patient == null) return;
     final theme = Theme.of(context);
@@ -116,7 +170,10 @@ class _PatientsScreenState extends State<PatientsScreen> {
         builder: (_) => Theme(
           data: theme,
           child: EventForm(
+            ai: widget.ai,
+            member: widget.member,
             kind: kind,
+            history: history,
             patient: patient,
             save: (data, id) async => (await model.add(kind, data, id))
                 ? null
@@ -141,7 +198,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
     }
     final due = event.data['next_date'];
     final message =
-        'Hola ${owner.name}. Recordatorio de ${model.member.clinicName}: ${model.selected!.name} tiene ${event.data['type']} programada para $due. Contáctanos para confirmar su cita.';
+        'Hola ${owner.name}. Recordatorio de ${model.member.clinicName}: ${model.selected!.name} tiene una fecha de ${event.data['type']} registrada para $due. Contáctanos para revisar la indicación y agendar, si corresponde.';
     final uri = Uri.https('wa.me', '/$phone', {'text': message});
     try {
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
@@ -161,9 +218,16 @@ class _PatientsScreenState extends State<PatientsScreen> {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: model,
+    listenable: Listenable.merge([model, ?activity]),
     builder: (context, _) {
       final patient = model.selected;
+      final snapshot = activity?.snapshot;
+      final selectedActivity =
+          snapshot != null &&
+              activityFilter != null &&
+              snapshot.allowed(activityFilter!)
+          ? activityFilter
+          : null;
       final speciesNames = <String, String>{
         for (final p in model.patients)
           if (p.species.trim().isNotEmpty)
@@ -176,6 +240,10 @@ class _PatientsScreenState extends State<PatientsScreen> {
       final matches = model.patients
           .where(
             (p) =>
+                (selectedActivity == null ||
+                    snapshot!
+                        .forPatient(p.id)
+                        .any((a) => a.kind == selectedActivity)) &&
                 (selectedSpecies == null ||
                     patientSearchText(p.species) == selectedSpecies) &&
                 patientSearchText('${p.name} ${p.species}').contains(query),
@@ -209,7 +277,12 @@ class _PatientsScreenState extends State<PatientsScreen> {
                   label: const Text('Nuevo paciente'),
                 ),
               OutlinedButton.icon(
-                onPressed: model.busy ? null : model.load,
+                onPressed: model.busy
+                    ? null
+                    : () async {
+                        await model.load();
+                        await activity?.load();
+                      },
                 icon: const Icon(Icons.refresh),
                 label: const Text('Actualizar'),
               ),
@@ -224,6 +297,50 @@ class _PatientsScreenState extends State<PatientsScreen> {
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
+          if (activity != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              snapshot == null
+                  ? 'Actividad de pacientes'
+                  : 'Actividad · ${snapshot.day} · ${snapshot.timezone}',
+            ),
+            if (activity!.busy) const LinearProgressIndicator(),
+            if (activity!.error != null) Text(activity!.error!),
+            if (snapshot != null) ...[
+              const Text(
+                'Incluye hospitalización activa y atenciones pendientes de días anteriores. Contadores de pacientes cargados, sin duplicados.',
+              ),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    ChoiceChip(
+                      label: Text('Todos (${model.patients.length})'),
+                      selected: selectedActivity == null,
+                      onSelected: (_) => setState(() => activityFilter = null),
+                    ),
+                    for (final kind in PatientActivityKind.values)
+                      if (snapshot.allowed(kind))
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: ChoiceChip(
+                            label: Text(
+                              '${kind.label} (${snapshot.count(kind, model.patients.map((p) => p.id).toSet())})',
+                            ),
+                            selected: selectedActivity == kind,
+                            onSelected: (_) =>
+                                setState(() => activityFilter = kind),
+                          ),
+                        ),
+                  ],
+                ),
+              ),
+              if (!snapshot.hospitalAllowed || !snapshot.appointmentsAllowed)
+                const Text(
+                  'Solo se muestra actividad de las áreas autorizadas.',
+                ),
+            ],
+          ],
           const SizedBox(height: 16),
           TextField(
             controller: search,
@@ -281,41 +398,156 @@ class _PatientsScreenState extends State<PatientsScreen> {
                   search.clear();
                   query = '';
                   species = null;
+                  activityFilter = null;
                 }),
                 child: const Text('Limpiar búsqueda y filtros'),
               ),
             ],
           ],
-          for (final p in matches)
+          for (final p in matches) ...[
             PatientCatalogTile(
               patient: p,
               selected: patient?.id == p.id,
-              onTap: model.busy ? null : () => model.select(p),
+              onTap: model.busy
+                  ? null
+                  : () {
+                      setState(() {
+                        historyQuery = '';
+                        historySearch.clear();
+                        historyKind = null;
+                      });
+                      model.select(p);
+                    },
             ),
+            if (snapshot != null)
+              for (final item in snapshot.forPatient(p.id))
+                ListTile(
+                  dense: true,
+                  title: Text('${item.kind.label} · ${item.detail}'),
+                  subtitle: Text(
+                    '${item.kind == PatientActivityKind.hospitalized ? 'Ingreso' : 'Cita'}: ${item.localTime} · ${snapshot.timezone}${item.responsible.isEmpty ? '' : ' · Responsable: ${item.responsible}'}',
+                  ),
+                  trailing:
+                      (widget.onOpenActivity == null ||
+                          widget.canOpenActivity?.call(item.destination) ==
+                              false)
+                      ? null
+                      : const Icon(Icons.open_in_new),
+                  onTap:
+                      (widget.onOpenActivity == null ||
+                          widget.canOpenActivity?.call(item.destination) ==
+                              false)
+                      ? null
+                      : () async {
+                          await widget.onOpenActivity!(item.destination, p.id);
+                          if (mounted) await activity?.load();
+                        },
+                ),
+          ],
           if (patient != null) ...[
             const Divider(height: 32),
             PatientIdentity(patient: patient),
+            if (model.access.clinical && !model.busy && model.error == null)
+              for (final allergy in model.events.where(
+                (e) => e.kind == EventKind.allergy,
+              ))
+                Text(
+                  'Alergia registrada: ${allergy.data['substance']} · ${allergy.data['reaction']}',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
             if (model.access.owners)
               WorkspacePanel(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: owner == null
                       ? const Text('Tutor pendiente de capturar.')
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Tutor: ${owner.name}'),
-                            if (owner.phone.isNotEmpty)
-                              Text('Teléfono: ${owner.phone}'),
-                            if (owner.email.isNotEmpty)
-                              Text('Correo: ${owner.email}'),
-                            if (owner.address.isNotEmpty)
-                              Text('Dirección: ${owner.address}'),
-                          ],
+                      : widget.repository is PatientContactRepository
+                      ? PatientContactPanel(
+                          key: ValueKey(
+                            'contact:${widget.member.userId}:${widget.member.clinicId}:${patient.id}:${owner.id}',
+                          ),
+                          repository:
+                              widget.repository as PatientContactRepository,
+                          clinic: widget.member.clinicId,
+                          patient: patient.id,
+                          patientName: patient.name,
+                          onSaved: () async {
+                            await model.load();
+                            if (mounted) await model.select(patient);
+                          },
+                        )
+                      : ContactActions(
+                          owner: {
+                            'id': owner.id,
+                            'name': owner.name,
+                            'phone': owner.phone,
+                            'email': owner.email,
+                            'address': owner.address,
+                          },
+                          patientName: patient.name,
                         ),
                 ),
               ),
             if (model.access.clinical) ...[
+              if (model.access.canAdd(EventKind.soap))
+                OutlinedButton.icon(
+                  onPressed: model.busy
+                      ? null
+                      : () => add(EventKind.soap, history: true),
+                  icon: const Icon(Icons.history_edu),
+                  label: const Text('Registrar historia clínica'),
+                ),
+              for (final e in patientTimeline(model.events).where(
+                (e) =>
+                    e.kind == EventKind.soap &&
+                    e.data['record_type'] == 'clinical_history',
+              ))
+                ExpansionTile(
+                  title: Text('Historia clínica · ${e.data['date']}'),
+                  subtitle: Text(
+                    'Registro: ${patientEventTimestamp(context, e.createdAt)} · ${e.createdBy}',
+                  ),
+                  children: [
+                    for (final field in historyFields.entries)
+                      if ('${e.data[field.key] ?? ''}'.isNotEmpty)
+                        ListTile(
+                          title: Text(field.value),
+                          subtitle: Text('${e.data[field.key]}'),
+                        ),
+                  ],
+                ),
+              PreventiveBooklet(events: model.events),
+              if (widget.repository is PreventiveRepository)
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.menu_book),
+                  label: const Text(
+                    'Abrir carnet · comprobantes y próximas citas',
+                  ),
+                  onPressed: model.busy
+                      ? null
+                      : () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PreventiveScreen(
+                                key: ValueKey(
+                                  'booklet-${widget.member.userId}-${widget.member.clinicId}-${patient.id}',
+                                ),
+                                repository:
+                                    widget.repository as PreventiveRepository,
+                                clinic: widget.member.clinicId,
+                                patient: patient.id,
+                                clinicName: widget.member.clinicName,
+                              ),
+                            ),
+                          );
+                          if (mounted) await model.select(patient);
+                        },
+                ),
+
               if (widget.onOpenClinical != null)
                 OutlinedButton(
                   onPressed: model.busy
@@ -345,11 +577,72 @@ class _PatientsScreenState extends State<PatientsScreen> {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 12),
+              TextField(
+                key: ValueKey('history-search:${patient.id}'),
+                controller: historySearch,
+                decoration: const InputDecoration(
+                  labelText: 'Buscar por motivo de consulta',
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onChanged: (value) => setState(() => historyQuery = value),
+              ),
+              DropdownButtonFormField<EventKind?>(
+                key: ValueKey(
+                  'history-kind:${patient.id}:${historyKind?.name}',
+                ),
+                initialValue: historyKind,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Tipo de entrada'),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Todas las entradas'),
+                  ),
+                  for (final kind in EventKind.values)
+                    DropdownMenuItem(value: kind, child: Text(kind.label)),
+                ],
+                onChanged: (value) => setState(() => historyKind = value),
+              ),
+              Wrap(
+                spacing: 8,
+                children: [
+                  FilterChip(
+                    label: const Text('Más antiguas primero'),
+                    selected: historyOldestFirst,
+                    onSelected: (value) =>
+                        setState(() => historyOldestFirst = value),
+                  ),
+                  FilterChip(
+                    label: const Text('Agrupar por motivo'),
+                    selected: historyByReason,
+                    onSelected: (value) =>
+                        setState(() => historyByReason = value),
+                  ),
+                ],
+              ),
+              const Text(
+                'Orden por fecha clínica. Fechas preventivas desconocidas: se usa la fecha de registro. El motivo agrupa consultas, sin unir ni modificar documentos.',
+              ),
               WeightChart(events: model.events),
               const Divider(height: 32),
               if (model.events.isEmpty && !model.busy)
                 const Text('Sin entradas clínicas registradas.'),
-              for (final event in model.events.reversed)
+              if (model.events.isNotEmpty &&
+                  patientTimeline(
+                    model.events,
+                    query: historyQuery,
+                    kind: historyKind,
+                  ).isEmpty)
+                const Text(
+                  'Sin coincidencias para estos filtros; el expediente original se conserva.',
+                ),
+              for (final event in patientTimeline(
+                model.events,
+                query: historyQuery,
+                kind: historyKind,
+                oldestFirst: historyOldestFirst,
+                byReason: historyByReason,
+              ))
                 WorkspacePanel(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -357,7 +650,13 @@ class _PatientsScreenState extends State<PatientsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${event.kind.label} · ${event.data['date']}',
+                          event.kind == EventKind.preventive
+                              ? '${event.kind.label} · ${preventiveDateLabel(event.data)}'
+                              : '${event.data['record_type'] == 'clinical_history'
+                                    ? 'Historia clínica'
+                                    : event.data['record_type'] == 'care_discharge'
+                                    ? 'Cierre de consulta e indicaciones'
+                                    : event.kind.label} · ${event.data['date']}',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         if (event.formDocumentId != null ||
@@ -389,6 +688,11 @@ class _PatientsScreenState extends State<PatientsScreen> {
                             Text(event.data['notes'] as String? ?? ''),
                           ],
                           EventKind.preventive => [
+                            Text(preventiveOriginLabel(event.data)),
+                            if ('${event.data['coverage'] ?? ''}'.isNotEmpty)
+                              Text(
+                                'Coberturas / tipo: ${event.data['coverage']}',
+                              ),
                             Text(
                               '${event.data['type']} · ${event.data['product']}',
                             ),

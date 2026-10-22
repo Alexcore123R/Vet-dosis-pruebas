@@ -26,6 +26,15 @@ begin
   execute format('select coalesce(jsonb_agg(to_jsonb(x)),''[]''::jsonb) from public.%I x where clinic_id=$1',t) into rows using p_clinic;
   result=result||jsonb_build_object(t,rows);
  end loop;
+ -- Preventive booklet v2 is applied as a later additive adaptation in some
+ -- installations. Include its records whenever the tables exist so an export
+ -- taken after that cutover preserves evidence, plans, retirements and links.
+ foreach t in array array['preventive_evidence','preventive_plans','preventive_plan_retirements','preventive_appointment_links'] loop
+  if to_regclass(format('public.%I',t)) is not null then
+   execute format('select coalesce(jsonb_agg(to_jsonb(x)),''[]''::jsonb) from public.%I x where clinic_id=$1',t) into rows using p_clinic;
+   result=result||jsonb_build_object(t,rows);
+  end if;
+ end loop;
  result=result||jsonb_build_object(
   'clinics',(select jsonb_agg(to_jsonb(c)) from public.clinics c where id=p_clinic),
   'professional_delegation_revocations',(select coalesce(jsonb_agg(to_jsonb(x)),'[]') from public.professional_delegation_revocations x join public.professional_delegations p on p.id=x.delegation_id where p.clinic_id=p_clinic),

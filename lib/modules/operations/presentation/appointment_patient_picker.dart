@@ -62,12 +62,14 @@ class _AppointmentPatientPickerState extends State<AppointmentPatientPicker> {
       padding: const EdgeInsets.all(20),
       children: [
         const Text(
-          'Busca un paciente de esta clínica. Se consulta su nombre y especie, sin notas clínicas ni datos del propietario.',
+          'Busca un paciente por nombre, especie, tutor, teléfono o una nota clínica autorizada. Solo se muestran coincidencias permitidas por tus permisos.',
         ),
         TextField(
           controller: query,
           maxLength: 120,
-          decoration: const InputDecoration(labelText: 'Nombre del paciente'),
+          decoration: const InputDecoration(
+            labelText: 'Paciente, tutor, teléfono o nota clínica',
+          ),
           onChanged: (_) => setState(() {
             revision++;
             results = [];
@@ -92,7 +94,15 @@ class _AppointmentPatientPickerState extends State<AppointmentPatientPicker> {
         for (final patient in results)
           ListTile(
             title: Text(patient['name']),
-            subtitle: Text('${patient['species']} · ${patient['id']}'),
+            subtitle: Text(
+              [
+                patient['species'],
+                if ((patient['owner_name'] as String? ?? '').isNotEmpty)
+                  'Tutor: ${patient['owner_name']}',
+                if ((patient['owner_phone'] as String? ?? '').isNotEmpty)
+                  patient['owner_phone'],
+              ].join(' · '),
+            ),
             onTap: () => Navigator.pop(context, patient),
           ),
         const Divider(),

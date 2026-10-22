@@ -16,6 +16,7 @@ const sectionGroups = [
   ]),
   SectionGroup('Medicamentos y herramientas', [
     'Cálculo rápido',
+    'Operaciones de dosis',
     'Cálculos clínicos',
     'Inventario',
     'Escanear producto',
@@ -25,8 +26,11 @@ const sectionGroups = [
     'Planeación financiera',
     'Servicios',
     'Proveedores',
+    'Promociones',
+    'Productividad y semana',
   ]),
   SectionGroup('Equipo y comunicación', [
+    'Agenda telefónica',
     'Equipo y avisos',
     'Pendientes del equipo',
     'Checado',

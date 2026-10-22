@@ -89,6 +89,9 @@ bool moduleNavigationAllowed(
     'Pacientes' => access.module('patients'),
     'Servicios' ||
     'Proveedores' ||
+    'Agenda telefónica' ||
+    'Promociones' ||
+    'Productividad y semana' ||
     'Agenda' ||
     'Equipo y avisos' ||
     'Pendientes del equipo' => access.module('agenda'),

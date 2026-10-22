@@ -1,5 +1,7 @@
 import 'dart:math' as math;
+import 'widgets/app_version_label.dart';
 import '../modules/finance/presentation/financial_planning_panel.dart';
+import '../modules/operations/presentation/productivity_screen.dart';
 import '../modules/core/presentation/section_menu.dart';
 import '../modules/production/presentation/production_menu.dart';
 import '../modules/dashboard/presentation/home_pilot.dart';
@@ -26,6 +28,9 @@ import '../modules/subscriptions/domain/subscription_repository.dart';
 import '../modules/subscriptions/presentation/subscription_screen.dart';
 import '../modules/operations/domain/operations_repository.dart';
 import '../modules/operations/presentation/operations_screen.dart';
+import '../modules/operations/presentation/contact_directory_screen.dart';
+import '../modules/operations/presentation/promotions_screen.dart';
+import '../modules/operations/presentation/commission_panel.dart';
 import '../modules/attendance/domain/attendance_repository.dart';
 import '../modules/attendance/presentation/attendance_screen.dart';
 import '../modules/backup/domain/backup_repository.dart';
@@ -46,6 +51,7 @@ import '../modules/patients/domain/patient_repository.dart';
 import '../modules/patients/presentation/patients_screen.dart';
 import 'package:flutter/material.dart';
 import '../modules/doses/presentation/dose_screen.dart';
+import '../modules/doses/presentation/dose_math_tools.dart';
 import '../modules/doses/data/personal_dose_repository.dart';
 import '../modules/auth/domain/clinic_membership.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -336,7 +342,9 @@ class CoreShell extends StatelessWidget {
       ('Más', Icons.grid_view_outlined),
     ];
     final page = switch (model.screen) {
-      'Cálculo rápido' || 'Cálculos clínicos' => 'Cálculos',
+      'Cálculo rápido' ||
+      'Operaciones de dosis' ||
+      'Cálculos clínicos' => 'Cálculos',
       'Producción y grandes especies' => 'Inicio',
       _ => model.screen,
     };
@@ -640,6 +648,16 @@ class CoreShell extends StatelessWidget {
                       : const Text(
                           'El cálculo clínico requiere acceso de MVZ o administrador.',
                         )
+                else if (model.screen == 'Operaciones de dosis')
+                  auth == null ||
+                          [
+                            ClinicRole.admin,
+                            ClinicRole.mvz,
+                          ].contains(auth!.active?.role)
+                      ? const DoseMathTools()
+                      : const Text(
+                          'El cálculo clínico requiere acceso de MVZ o administrador.',
+                        )
                 else if (model.screen == 'Cálculos clínicos')
                   auth == null ||
                           [
@@ -666,11 +684,21 @@ class CoreShell extends StatelessWidget {
                                 'Los expedientes requieren conexión por ahora. Reconecta para consultar o guardar datos.',
                               )
                             : PatientsScreen(
+                                ai: ai,
                                 key: ValueKey(
                                   '${auth!.active!.userId}:${auth!.active!.clinicId}:${auth!.active!.role.name}',
                                 ),
                                 repository: patients!,
                                 member: auth!.active!,
+                                canOpenActivity: allowed,
+                                onOpenActivity: (destination, patientId) async {
+                                  if (allowed(destination)) {
+                                    model.navigate(
+                                      destination,
+                                      patientId: patientId,
+                                    );
+                                  }
+                                },
                                 onOpenClinical:
                                     clinical != null && forms != null
                                     ? (patient) async {
@@ -713,6 +741,7 @@ class CoreShell extends StatelessWidget {
                                 key: ValueKey(
                                   '${auth!.active!.userId}:${auth!.active!.clinicId}:${auth!.active!.role.name}',
                                 ),
+                                initialPatientId: model.activityPatientId,
                                 repository: hospital!,
                                 patients: patients!,
                                 member: auth!.active!,
@@ -787,6 +816,7 @@ class CoreShell extends StatelessWidget {
                                 'Los formatos y las firmas requieren conexión. No se guardan documentos sensibles offline.',
                               )
                             : FormsScreen(
+                                ai: ai,
                                 repository: forms!,
                                 clinical: clinical,
                                 prescribing: prescribing,
@@ -816,6 +846,7 @@ class CoreShell extends StatelessWidget {
                               )
                             : InventoryScreen(
                                 identity: identity,
+                                ai: ai,
                                 key: ValueKey('inventory:${model.screen}'),
                                 initialSection: model.screen == 'Caja'
                                     ? 'cash'
@@ -826,6 +857,44 @@ class CoreShell extends StatelessWidget {
                       : const Text(
                           'Conecta tu cuenta y clínica para abrir inventario.',
                         )
+                else if (model.screen == 'Agenda telefónica')
+                  operations != null &&
+                          auth?.active != null &&
+                          auth?.offline != true
+                      ? ContactDirectoryScreen(
+                          embedded: true,
+                          repository: operations!,
+                          member: auth!.active!,
+                        )
+                      : const Text(
+                          'El directorio de la clínica requiere cuenta y conexión.',
+                        )
+                else if (model.screen == 'Productividad y semana')
+                  operations is ProductivityRepository &&
+                          auth?.active != null &&
+                          auth?.offline != true
+                      ? ProductivityScreen(
+                          embedded: true,
+                          repository: operations as ProductivityRepository,
+                          member: auth!.active!,
+                          ai: ai,
+                        )
+                      : const Text(
+                          'La planificación semanal requiere cuenta y conexión.',
+                        )
+                else if (model.screen == 'Promociones')
+                  operations != null &&
+                          auth?.active != null &&
+                          auth?.offline != true
+                      ? PromotionsScreen(
+                          embedded: true,
+                          repository: operations!,
+                          member: auth!.active!,
+                          ai: ai,
+                        )
+                      : const Text(
+                          'Las promociones requieren cuenta y conexión.',
+                        )
                 else if (model.screen == 'Agenda' ||
                     model.screen == 'Equipo y avisos' ||
                     model.screen == 'Pendientes del equipo' ||
@@ -835,7 +904,10 @@ class CoreShell extends StatelessWidget {
                           auth?.active != null &&
                           auth?.offline != true
                       ? OperationsScreen(
-                          key: ValueKey('operations:${model.screen}'),
+                          ai: ai,
+                          key: ValueKey(
+                            'operations:${model.screen}:${auth?.active?.clinicId}:${auth?.active?.userId}:${model.activityPatientId}',
+                          ),
                           initialSection: model.screen == 'Servicios'
                               ? 'services'
                               : model.screen == 'Proveedores'
@@ -845,6 +917,10 @@ class CoreShell extends StatelessWidget {
                               : model.screen == 'Pendientes del equipo'
                               ? 'tasks'
                               : 'appointments',
+                          initialPatientId: model.activityPatientId,
+                          onNavigate: model.navigate,
+                          canOpenInventory: allowed('Inventario'),
+                          canOpenSales: allowed('Caja'),
                           repository: operations!,
                           member: auth!.active!,
                           onOpenPatient:
@@ -868,6 +944,7 @@ class CoreShell extends StatelessWidget {
                                           body: SingleChildScrollView(
                                             padding: const EdgeInsets.all(20),
                                             child: PatientsScreen(
+                                              ai: ai,
                                               repository: patients!,
                                               member: member,
                                               initialPatientId: id,
@@ -1123,6 +1200,29 @@ class CoreShell extends StatelessWidget {
           MaterialPageRoute<void>(builder: (_) => AuthScreen(model: auth)),
         ),
       ),
+    if (operations is CommissionRepository &&
+        auth?.active != null &&
+        auth?.offline != true)
+      ListTile(
+        leading: const Icon(Icons.payments_outlined),
+        title: const Text('Mis comisiones'),
+        subtitle: const Text('Saldo, próximo pago e historial'),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => Scaffold(
+              appBar: AppBar(title: const Text('Mis comisiones')),
+              body: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: CommissionPanel(
+                  repository: operations as CommissionRepository,
+                  member: auth!.active!,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     Text(
       'Configura tus herramientas',
       style: Theme.of(context).textTheme.titleLarge,
@@ -1219,7 +1319,7 @@ class CoreShell extends StatelessWidget {
       ),
       AlertPreferencesPanel(alerts: hospitalAlerts),
     ],
-    const Text('VetDosis Pro · Versión de pruebas · 0.1.0'),
+    const AppVersionLabel(),
   ];
 
   List<Widget> pending(BuildContext context) => [
@@ -1316,6 +1416,9 @@ class _ModuleSearchState extends State<_ModuleSearch> {
     'Producción y grandes especies',
     'Servicios',
     'Proveedores',
+    'Agenda telefónica',
+    'Promociones',
+    'Productividad y semana',
     'Agenda',
     'Pacientes',
     'Hospitalización',
@@ -1325,6 +1428,7 @@ class _ModuleSearchState extends State<_ModuleSearch> {
     'Receta',
     'Formatos',
     'Cálculo rápido',
+    'Operaciones de dosis',
     'Cálculos clínicos',
     'Estadísticas',
     'Escanear producto',

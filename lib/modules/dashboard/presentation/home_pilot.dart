@@ -229,18 +229,12 @@ class HomeModuleGrid extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color:
-                                  (i.isEven
-                                          ? VetColors.turquoise
-                                          : VetColors.lavender)
-                                      .withValues(alpha: .16),
+                              color: VetColors.lavender.withValues(alpha: .24),
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: Icon(
                               sectionIcon(actions[i].$2),
-                              color: i.isEven
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(context).colorScheme.secondary,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
                           const SizedBox(height: 12),

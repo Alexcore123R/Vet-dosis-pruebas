@@ -267,6 +267,16 @@ class _TemplateEditorState extends State<TemplateEditor> {
                 changed();
               },
             ),
+            const Padding(
+              padding: EdgeInsets.only(top: 20, bottom: 8),
+              child: Text(
+                'Campos del documento',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const Text(
+              'Define qué datos variables se capturan al llenar el formato. Los datos protegidos del paciente, tutor y profesional no se pueden eliminar.',
+            ),
             for (final f in (schema['fields'] as List).cast<Map>())
               ListTile(
                 leading: Icon(
@@ -294,6 +304,16 @@ class _TemplateEditorState extends State<TemplateEditor> {
             OutlinedButton(
               onPressed: busy ? null : addField,
               child: const Text('Agregar pregunta o tabla'),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(top: 20, bottom: 8),
+              child: Text(
+                'Cláusulas e indicaciones fijas',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const Text(
+              'Este texto se incorpora al documento para que el tutor lo lea y lo acepte. No se modifica al llenar un consentimiento.',
             ),
             for (final c in (schema['clauses'] as List).cast<Map>())
               Padding(

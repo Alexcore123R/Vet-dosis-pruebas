@@ -38,7 +38,9 @@ class WorkspacePanel extends StatelessWidget {
 
 IconData sectionIcon(String page) => switch (page) {
   'Inicio' => Icons.dashboard_outlined,
-  'Cálculos' || 'Cálculo rápido' => Icons.calculate_outlined,
+  'Cálculos' ||
+  'Cálculo rápido' ||
+  'Operaciones de dosis' => Icons.calculate_outlined,
   'Cálculos clínicos' => Icons.science_outlined,
   'Escanear producto' => Icons.qr_code_scanner,
   'Hospitalización' => Icons.local_hospital_outlined,

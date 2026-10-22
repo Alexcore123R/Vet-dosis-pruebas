@@ -102,18 +102,63 @@ class CalculationMenu extends StatelessWidget {
   final ClinicMembership? member;
   final ModuleAccess? access;
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Text('Cálculos', style: Theme.of(context).textTheme.headlineSmall),
-      for (final page in ['Cálculo rápido', 'Cálculos clínicos'])
-        if (navigationAllowed(page, member, access))
-          ListTile(
-            leading: Icon(sectionIcon(page)),
-            title: Text(page),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => onNavigate(page),
+  Widget build(BuildContext context) {
+    final canDose = navigationAllowed('Cálculo rápido', member, access);
+    final canClinical = navigationAllowed('Cálculos clínicos', member, access);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Calculadoras', style: Theme.of(context).textTheme.headlineSmall),
+        const Text('Elige la operación que necesitas.'),
+        const SizedBox(height: 12),
+        if (canDose)
+          _CalculationChoice(
+            icon: Icons.medication_outlined,
+            title: 'Calcular dosis de un producto',
+            description:
+                'Usa un catálogo con fuente y concentración por presentación; requiere revisión y confirmación.',
+            onTap: () => onNavigate('Cálculo rápido'),
           ),
-    ],
+        if (canDose)
+          _CalculationChoice(
+            icon: Icons.calculate_outlined,
+            title: 'Otras operaciones de dosis',
+            description:
+                'Regla de tres, concentración tras reconstitución, UI y conversión métrica con parámetros explícitos.',
+            onTap: () => onNavigate('Operaciones de dosis'),
+          ),
+        if (canClinical)
+          _CalculationChoice(
+            icon: Icons.monitor_heart_outlined,
+            title: 'Cálculos clínicos',
+            description:
+                'Fluidos, constantes, protocolos, peso metabólico, retiros y otras herramientas disponibles.',
+            onTap: () => onNavigate('Cálculos clínicos'),
+          ),
+      ],
+    );
+  }
+}
+
+class _CalculationChoice extends StatelessWidget {
+  const _CalculationChoice({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String title, description;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      subtitle: Text(description),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
+    ),
   );
 }

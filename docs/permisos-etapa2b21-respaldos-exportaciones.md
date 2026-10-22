@@ -151,3 +151,25 @@ Los tutores nuevos conservan nombre, teléfono, correo, dirección y fecha hist�
 Cada fila creada genera `owner_restored_from_backup` y la operación completa genera `backup_restore_owners_applied`. El reporte usa `imports_applied=true` por primera vez, pero con `scope=vet_owners`, `overwrite=false` y `merge=false`.
 
 Pacientes, expedientes, hospitalización, recetas, inventario, documentos y cualquier otra tabla siguen sin una ruta de aplicación real.
+
+## Revisión de integración Carnet/Agenda — 20 de octubre de 2026
+
+El exportador de clínica añade `preventive_evidence`, `preventive_plans`,
+`preventive_plan_retirements` y `preventive_appointment_links` si esas tablas ya
+existen al momento de exportar. El control se hace al ejecutar el snapshot, por
+lo que el corte 13O puede instalarse antes de la adaptación de Carnet v2.
+
+`appointment_patient_search_v2.sql` queda como adaptación transaccional posterior
+al corte de permisos. Requiere la función de agenda de 13B, `clinical.read` de
+13C, y las tablas clínicas/operativas de M4/M9. El acceso a tutor/teléfono requiere
+`patient.read`; la búsqueda de notas clínicas requiere además `clinical.read`.
+
+La regresión integrada ejecuta, en orden, 13O, Carnet v2 y la ampliación de
+búsqueda; verifica la exportación de filas sintéticas de las cuatro tablas,
+búsqueda por teléfono, ocultamiento de notas sin permiso y acceso a notas con
+`clinical.read`, además de los tipos ampliados de cita. Ejecución local:
+`bash supabase/tests/run_permission_backups_exports.sh`.
+
+**Límite pendiente:** el respaldo conserva esas tablas, pero la inspección de
+recuperación no las importa. Los candidatos de restauración siguen limitados a
+los alcances descritos arriba; Carnet v2 no se considera restaurable todavía.

@@ -1,6 +1,19 @@
 import 'package:flutter/material.dart';
 import '../../../vet_ui/vet_components.dart';
 
+String appointmentKindLabel(Object? kind) => switch (kind) {
+  'consulta' => 'Consulta',
+  'seguimiento' => 'Revisión / seguimiento',
+  'estetica' => 'Estética / baño / peluquería',
+  'cirugia' => 'Cirugía',
+  'analisis' => 'Análisis / toma de muestras',
+  'hospital_visita' => 'Visita de hospitalizado',
+  'vacunacion' => 'Vacunación / desparasitación',
+  'entrega' => 'Entrega / alta',
+  'otro' => 'Otro servicio',
+  _ => 'Cita',
+};
+
 /// Uses only the currently loaded, authorized appointment rows.
 class AppointmentSummary extends StatelessWidget {
   const AppointmentSummary({
@@ -43,7 +56,7 @@ class AppointmentSummary extends StatelessWidget {
                 '$todayCount citas para hoy · ${rows.length} citas cargadas',
               ),
               const Text(
-                'Resumen de los registros disponibles. Horarios del dispositivo.',
+                'Resumen de los registros disponibles. Horarios del dispositivo; desliza para ver todos los estados.',
               ),
             ],
           ),

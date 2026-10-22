@@ -16,12 +16,16 @@ class AiScreen extends StatefulWidget {
     required this.repository,
     required this.member,
     this.initialDraft,
+    this.draftTitle = 'Ayuda de soporte',
+    this.returnDraft = false,
     this.canManageWorkspace = false,
     this.configurationOnly = false,
   });
   final AiRepository repository;
   final ClinicMembership member;
   final String? initialDraft;
+  final String draftTitle;
+  final bool returnDraft;
   final bool canManageWorkspace;
   final bool configurationOnly;
   @override
@@ -52,7 +56,7 @@ class _AiScreenState extends State<AiScreen> {
     await run(() async {
       final id = await widget.repository.create(
         widget.member.clinicId,
-        'Ayuda de soporte',
+        widget.draftTitle,
         newOperationId(),
       );
       await vm.load(chat: id);
@@ -533,6 +537,12 @@ class _AiScreenState extends State<AiScreen> {
                           : 'Usuario',
                     ),
                     SelectableText(m['body'] as String),
+                    if (widget.returnDraft && m['role'] == 'assistant')
+                      TextButton.icon(
+                        onPressed: working ? null : () => Navigator.pop(context, m['body'] as String),
+                        icon: const Icon(Icons.edit_note),
+                        label: const Text('Usar como borrador editable'),
+                      ),
                   ],
                 ),
               ),

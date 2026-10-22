@@ -470,7 +470,7 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
           padding: const EdgeInsets.all(20),
           children: [
             const Text(
-              'Los documentos firmados conservan su versión original. Mediciones y actuaciones se registran por separado y se anexan al caso. ASA y EKG son capturas profesionales, sin interpretación automática.',
+              'Los documentos firmados conservan su versión original y aparecen aquí como evidencia del expediente. Mediciones y actuaciones se registran por separado y se anexan al caso. ASA y EKG son capturas profesionales, sin interpretación automática.',
             ),
             OutlinedButton.icon(
               onPressed: model.busy
@@ -599,7 +599,9 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               if (b.vitals.isEmpty)
-                const Text('Todavía no hay conjuntos de constantes registrados.'),
+                const Text(
+                  'Todavía no hay conjuntos de constantes registrados.',
+                ),
               for (final v in b.vitals.reversed.take(10))
                 ListTile(
                   leading: const Icon(Icons.monitor_heart_outlined),
@@ -607,7 +609,8 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
                     [
                       if (v['fc'] != null) 'FC ${v['fc']} lpm',
                       if (v['fr'] != null) 'FR ${v['fr']} rpm',
-                      if (v['temperature'] != null) 'Temp ${v['temperature']} °C',
+                      if (v['temperature'] != null)
+                        'Temp ${v['temperature']} °C',
                       if (v['tllc'] != null) 'TLLC ${v['tllc']} s',
                     ].join(' · '),
                   ),
@@ -620,7 +623,8 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
                       if (v['mucosa_humidity'] != null)
                         'Humedad: ${vitalMucosaHumidity[v['mucosa_humidity']] ?? v['mucosa_humidity']}',
                       '${v['observed_at']}',
-                      if ((v['notes']?.toString() ?? '').isNotEmpty) '${v['notes']}',
+                      if ((v['notes']?.toString() ?? '').isNotEmpty)
+                        '${v['notes']}',
                     ].join('\n'),
                   ),
                 ),

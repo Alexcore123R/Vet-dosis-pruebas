@@ -1,4 +1,6 @@
 import '../../identity/domain/identity_repository.dart';
+import '../../ai/domain/ai_repository.dart';
+import 'inventory_insights_screen.dart';
 import '../../exports/domain/branded_export.dart';
 import '../../exports/presentation/branded_export_action.dart';
 import 'payments_screen.dart';
@@ -8,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../auth/domain/clinic_membership.dart';
 import '../../doses/domain/quantity.dart';
 import '../../prescribing/presentation/rx_entry_screen.dart';
@@ -26,8 +29,10 @@ class InventoryScreen extends StatefulWidget {
     this.identity,
     this.initialSearch = '',
     this.initialSection = 'stock',
+    this.ai,
   });
   final InventoryRepository repository;
+  final AiRepository? ai;
   final ClinicMembership member;
   final IdentityRepository? identity;
   final String initialSearch;
@@ -71,6 +76,19 @@ class _InventoryScreenState extends State<InventoryScreen> {
     searchController.dispose();
     model.dispose();
     super.dispose();
+  }
+
+  Future<void> inventoryIdeas() async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => InventoryInsightsScreen(
+          repository: widget.repository,
+          member: widget.member,
+          ai: widget.ai,
+        ),
+      ),
+    );
   }
 
   Future<void> entry(
@@ -384,12 +402,31 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Future<void> sale() async {
+    var loading = 'cargos y entregas';
     try {
       final workflow = Map<String, dynamic>.from(
         await widget.repository.read('inv_workflow_dashboard', {
           'p_clinic': widget.member.clinicId,
         }),
       );
+      loading = 'servicios del catálogo';
+      var catalogServices = <Map<String, dynamic>>[];
+      var catalogUnavailable = false;
+      if (model.canManual) {
+        try {
+          catalogServices =
+              (await widget.repository.read('inv_catalog_services', {
+                        'p_clinic': widget.member.clinicId,
+                      })
+                      as List)
+                  .map((e) => Map<String, dynamic>.from(e as Map))
+                  .toList();
+        } on PostgrestException catch (e) {
+          if (e.code != 'PGRST202' && e.code != '42883') rethrow;
+          catalogUnavailable = true;
+        }
+      }
+      loading = 'servicios pendientes de cobro';
       final operations = model.managementKnown
           ? {
               'acts': await widget.repository.read('inv_billable_services', {
@@ -408,6 +445,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         MaterialPageRoute(
           builder: (_) => SaleScreen(
             repository: widget.repository,
+            clinicName: widget.member.clinicName,
             shift: model.ownShift!['id'],
             products: model.dispensingKnown && !model.canDispense
                 ? model.products
@@ -416,6 +454,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 : model.products,
             prescriptions: model.rows('prescription_items'),
             staff: model.rows('staff'),
+            services: catalogServices,
+            catalogUnavailable: catalogUnavailable,
+            canUpdateCatalog: widget.member.role == ClinicRole.admin,
             charges: (workflow['charges'] as List? ?? [])
                 .map((e) => Map<String, dynamic>.from(e))
                 .toList(),
@@ -430,6 +471,70 @@ class _InventoryScreenState extends State<InventoryScreen> {
         ),
       );
       if (result == true && mounted) await model.load();
+    } catch (e) {
+      if (mounted) {
+        final detail = switch (e) {
+          PostgrestException(:final code) when code != null =>
+            ' (código $code)',
+          ArgumentError() => ' (operación no disponible en esta versión)',
+          TypeError() => ' (respuesta inesperada)',
+          _ => '',
+        };
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error al cargar $loading$detail. ${inventoryError(e)}',
+            ),
+            duration: const Duration(seconds: 10),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> invoiceRequests() async {
+    try {
+      final requests =
+          (await widget.repository.read('inv_invoice_requests', {
+                    'p_clinic': widget.member.clinicId,
+                  })
+                  as List)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Solicitudes de factura'),
+          content: SizedBox(
+            width: 420,
+            height: 400,
+            child: requests.isEmpty
+                ? const Text('Aún no hay solicitudes de CFDI.')
+                : ListView.builder(
+                    itemCount: requests.length,
+                    itemBuilder: (_, index) {
+                      final request = requests[index];
+                      return ListTile(
+                        title: Text(
+                          '${request['fiscal_name']} · ${request['status']}',
+                        ),
+                        subtitle: Text(
+                          'RFC ${request['rfc']} · ${request['email']}\nVenta ${request['sale_id']} · ${displayMoney(request['total'])}',
+                        ),
+                        isThreeLine: true,
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -740,7 +845,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         'card': 'Tarjeta',
         'transfer': 'Transferencia',
         'cost': 'Costo de mercancía/servicios',
-        'commission': 'Comisiones',
+        'commission': 'Comisiones del equipo (internas; no se suman al cobro)',
         'margin': 'Margen después de costos y comisiones',
         'expense': 'Gastos capturados en efectivo',
         'recorded_net': 'Resultado con gastos capturados',
@@ -774,6 +879,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 onPressed: model.busy ? null : model.load,
                 child: const Text('Actualizar'),
               ),
+              if (model.canPrepareOrder || model.canReadFinance)
+                TextButton.icon(
+                  onPressed: inventoryIdeas,
+                  icon: const Icon(Icons.auto_awesome),
+                  label: const Text(
+                    'Analizar existencias, caducidades y ventas',
+                  ),
+                ),
               if (model.canManage)
                 TextButton(
                   onPressed: model.busy
@@ -1067,6 +1180,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       child: const Text('Contar y cerrar turno'),
                     ),
                   ],
+                ),
+              if (model.canReadFinance)
+                TextButton.icon(
+                  onPressed: invoiceRequests,
+                  icon: const Icon(Icons.receipt_long),
+                  label: const Text('Solicitudes de factura'),
                 ),
               if (model.canReadFinance &&
                   model.dashboard!['day_totals'] != null) ...[

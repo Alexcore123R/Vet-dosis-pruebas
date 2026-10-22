@@ -45,6 +45,9 @@ jobs:
           flutter-version: '3.47.6'
           channel: stable
           cache: true
+      - name: Instalar NDK requerido por Flutter
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
       - name: Preparar configuración pública de pruebas
         shell: bash
         run: |
@@ -81,7 +84,7 @@ jobs:
           ANDROID_BETA_STORE_PASSWORD: ${{ secrets.ANDROID_BETA_STORE_PASSWORD }}
           ANDROID_BETA_KEY_ALIAS: ${{ secrets.ANDROID_BETA_KEY_ALIAS }}
           ANDROID_BETA_KEY_PASSWORD: ${{ secrets.ANDROID_BETA_KEY_PASSWORD }}
-        run: flutter build apk --release --flavor beta --build-number "$BETA_VERSION_CODE" -Pforce-version-code-ignoring-abi=true --split-per-abi --target-platform android-arm,android-arm64 --dart-define=APP_CHANNEL=beta --dart-define=BETA_BUILD="$BETA_VERSION_CODE" --dart-define-from-file=supabase/config.test.local.json
+        run: flutter build apk --release --flavor beta --build-number "$BETA_VERSION_CODE" -Pforce-version-code-ignoring-abi=true --split-per-abi --target-platform android-arm,android-arm64 --dart-define=APP_CHANNEL=beta --dart-define=BETA_BUILD="$BETA_VERSION_CODE" --dart-define-from-file=supabase/config.test.local.json --verbose
       - name: Verificar identidad, versión y firma de ambos APK
         env:
           ANDROID_BETA_CERT_SHA256: ${{ vars.ANDROID_BETA_CERT_SHA256 }}

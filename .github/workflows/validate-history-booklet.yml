@@ -1,0 +1,89 @@
+name: Validar historia clinica y carnet
+on:
+  pull_request:
+    paths:
+      - 'lib/modules/patients/**'
+      - 'lib/core/app.dart'
+      - 'lib/core/widgets/app_version_label.dart'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - 'test/history_booklet_test.dart'
+      - 'test/patient_activity*'
+      - 'test/contact*'
+      - 'test/appointment_care*'
+      - 'test/preventive_booklet*'
+      - 'supabase/adaptations/appointment_care_v1.sql'
+      - 'supabase/tests/appointment_care.sql'
+      - 'lib/modules/operations/**'
+      - 'android/app/src/main/kotlin/**'
+      - 'supabase/adaptations/patient_contacts_appointment_links_v1.sql'
+      - 'supabase/tests/patient_contacts_links.sql'
+      - 'supabase/adaptations/patient_activity_snapshot_v1.sql'
+      - 'supabase/tests/patient_activity_snapshot.sql'
+      - 'supabase/adaptations/preventive_booklet_v2.sql'
+      - 'supabase/tests/preventive_booklet_v2.sql'
+      - 'supabase/adaptations/appointment_patient_search_v2.sql'
+      - '.github/workflows/validate-history-booklet.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  flutter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test --timeout 5m --concurrency 2
+  sql-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: synthetic-test-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar metadatos en PostgreSQL sintetico aislado
+        env:
+          PGPASSWORD: synthetic-test-only
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/history_booklet_validation.sql
+          createdb -h localhost -U postgres activity_test
+          psql -h localhost -U postgres -d activity_test -v ON_ERROR_STOP=1 -f supabase/tests/patient_activity_snapshot.sql
+          createdb -h localhost -U postgres care_test
+          psql -h localhost -U postgres -d care_test -v ON_ERROR_STOP=1 -f supabase/tests/appointment_care.sql
+          createdb -h localhost -U postgres contacts_test
+          psql -h localhost -U postgres -d contacts_test -v ON_ERROR_STOP=1 -f supabase/tests/patient_contacts_links.sql
+          createdb -h localhost -U postgres preventive_test
+          psql -h localhost -U postgres -d preventive_test -v ON_ERROR_STOP=1 -f supabase/tests/preventive_booklet_v2.sql
+  android-compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Compilar puente de contactos Android (debug, no distribuir)
+        run: flutter build apk --debug --flavor beta --target-platform android-arm64

@@ -101,6 +101,8 @@ class DrugDose {
   final List<Presentation> presentations;
   final List<Contraindication> contraindications;
   final bool personal;
+  Quantity? get prescribedDose =>
+      min != null && max != null && min!.compareTo(max!) == 0 ? min : null;
   factory DrugDose.read(Map<String, dynamic> map, {bool personal = false}) {
     if (map['unidad_dosis'] != 'mg/kg') {
       throw const FormatException(

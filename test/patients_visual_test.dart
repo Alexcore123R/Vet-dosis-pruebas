@@ -225,7 +225,8 @@ void main() {
       await tester.tap(find.text('Lúna DEMO'));
       await tester.pumpAndSettle();
       expect(find.byType(PatientIdentity), findsOneWidget);
-      expect(find.textContaining('Alergia DEMO'), findsOneWidget);
+      // Brief alert and original chronological entry remain visible.
+      expect(find.textContaining('Alergia DEMO'), findsNWidgets(2));
       expect(find.textContaining('Tutor reservado'), findsNothing);
       expect(find.text('Nuevo paciente'), findsNothing);
       expect(repo.ownerReads, 0);

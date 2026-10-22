@@ -13,6 +13,7 @@ class SupabaseInventoryRepository
   final SupabaseClient client;
   static const reads = {
     'inv_dashboard',
+    'inv_ai_insights',
     'ops_dashboard',
     'pay_dashboard',
     'inv_shift_snapshot',
@@ -20,6 +21,8 @@ class SupabaseInventoryRepository
     'inv_workflow_dashboard',
     'inv_delivery_items',
     'inv_billable_services',
+    'inv_catalog_services',
+    'inv_invoice_requests',
   };
   static const writes = {
     'inv_settings',
@@ -37,6 +40,8 @@ class SupabaseInventoryRepository
     'inv_stock_adjust',
     'inv_shift_open',
     'inv_sale_post',
+    'inv_catalog_service_sale_post',
+    'inv_invoice_request',
     'inv_sale_reverse',
     'inv_cash_move',
     'inv_shift_close',

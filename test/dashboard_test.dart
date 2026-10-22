@@ -167,8 +167,10 @@ void main() {
   testWidgets(
     'Mobile dashboard, grouped calculations, settings and floating navigation',
     (tester) async {
-      tester.view.physicalSize = const Size(390, 844);
+      tester.view.physicalSize = const Size(390, 1000);
       tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       SharedPreferences.setMockInitialValues({});
