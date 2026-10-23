@@ -6,6 +6,7 @@ import '../modules/core/presentation/section_menu.dart';
 import '../modules/production/presentation/production_menu.dart';
 import '../modules/dashboard/presentation/home_pilot.dart';
 import '../vet_ui/vet_theme.dart';
+import 'widgets/neu_identity.dart';
 import '../modules/beta/domain/beta_repository.dart';
 import '../modules/beta/presentation/beta_boundary.dart';
 import '../modules/identity/domain/identity_repository.dart';
@@ -121,10 +122,10 @@ class VetDosisApp extends StatelessWidget {
   ThemeData theme(Brightness brightness) {
     final dark = brightness == Brightness.dark;
     final neumorphic = model.settings.visualStyle == 'neu';
-    final background = dark ? const Color(0xFF0B121C) : VetColors.canvas;
-    final surface = dark ? const Color(0xFF131E2A) : VetColors.surface;
-    final primary = dark ? const Color(0xFF55E2D3) : VetColors.purple;
-    final secondary = dark ? const Color(0xFFB69BFF) : VetColors.turquoise;
+    final background = dark ? const Color(0xFF0B121C) : (neumorphic ? neuBackground : VetColors.canvas);
+    final surface = dark ? const Color(0xFF131E2A) : (neumorphic ? neuBackground : VetColors.surface);
+    final primary = dark ? const Color(0xFF55E2D3) : (neumorphic ? const Color(0xFF087F83) : VetColors.purple);
+    final secondary = dark ? const Color(0xFFB69BFF) : (neumorphic ? neuLavender : VetColors.turquoise);
     final tertiary = dark ? const Color(0xFFFF92C9) : VetColors.lavender;
     final scheme =
         ColorScheme.fromSeed(
@@ -140,12 +141,28 @@ class VetDosisApp extends StatelessWidget {
           secondary: neumorphic ? secondary : null,
           tertiary: neumorphic ? tertiary : null,
           surface: neumorphic ? surface : null,
+          onSurface: neumorphic && !dark ? neuInk : null,
         );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: neumorphic ? background : null,
+      appBarTheme: neumorphic
+          ? AppBarTheme(
+              backgroundColor: background,
+              surfaceTintColor: Colors.transparent,
+              foregroundColor: dark ? null : neuInk,
+            )
+          : null,
+      cardTheme: neumorphic
+          ? CardThemeData(
+              color: background,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+            )
+          : null,
       inputDecorationTheme: neumorphic
           ? InputDecorationTheme(
               filled: true,
@@ -154,25 +171,19 @@ class VetDosisApp extends StatelessWidget {
                 horizontal: 18,
                 vertical: 16,
               ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: BorderSide(
-                  color: dark
-                      ? const Color(0xFF26384A)
-                      : const Color(0xFFDDE7EF),
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: BorderSide(
-                  color: dark
-                      ? const Color(0xFF26384A)
-                      : const Color(0xFFDDE7EF),
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
+              border: NeuInputBorder(dark: dark),
+              enabledBorder: NeuInputBorder(dark: dark),
+              focusedBorder: NeuInputBorder(
+                dark: dark,
                 borderSide: BorderSide(color: primary, width: 1.5),
+              ),
+              errorBorder: NeuInputBorder(
+                dark: dark,
+                borderSide: BorderSide(color: scheme.error),
+              ),
+              focusedErrorBorder: NeuInputBorder(
+                dark: dark,
+                borderSide: BorderSide(color: scheme.error, width: 1.5),
               ),
             )
           : null,

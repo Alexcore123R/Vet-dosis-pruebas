@@ -14,6 +14,9 @@ void main() {
     () async {
       SharedPreferences.setMockInitialValues({});
       final repo = SettingsRepository();
+      expect((await repo.load()).visualStyle, 'neu');
+      await repo.save(const AppSettings(visualStyle: 'standard'));
+      expect((await repo.load()).visualStyle, 'standard');
       final model = CoreViewModel(repo, await repo.load());
       await model.updateSettings(visualStyle: 'neu');
       await model.updateSettings(palette: 2, brightness: 'dark');
