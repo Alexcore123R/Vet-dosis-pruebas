@@ -39,6 +39,7 @@ class _DoseMathToolsState extends State<DoseMathTools> {
   String toUnit = 'g';
   String? result;
   String? formula;
+  String? concentrationDetail;
   String? error;
 
   @override
@@ -61,6 +62,7 @@ class _DoseMathToolsState extends State<DoseMathTools> {
     setState(() {
       result = null;
       formula = null;
+      concentrationDetail = null;
       error = null;
     });
     try {
@@ -103,6 +105,8 @@ class _DoseMathToolsState extends State<DoseMathTools> {
           answer = '${value.display()} mL';
           equation =
               '${weight.display()} kg × ${dose.display()} UI/kg ÷ (${totalUnits.display()} UI ÷ ${finalVolume.display()} mL)';
+          concentrationDetail =
+              'Concentración reconstituida: ${concentration.display()} UI/mL';
         case DoseMathMode.conversion:
           final amount = _positive('amount', 'Cantidad');
           final from = _unitFactor(fromUnit);
@@ -148,6 +152,7 @@ class _DoseMathToolsState extends State<DoseMathTools> {
       onChanged: (_) => setState(() {
         result = null;
         formula = null;
+        concentrationDetail = null;
       }),
     ),
   );
@@ -207,6 +212,7 @@ class _DoseMathToolsState extends State<DoseMathTools> {
             setState(() {
               result = null;
               formula = null;
+              concentrationDetail = null;
             });
           }
         },
@@ -240,6 +246,7 @@ class _DoseMathToolsState extends State<DoseMathTools> {
           mode = value ?? mode;
           result = null;
           formula = null;
+          concentrationDetail = null;
           error = null;
         }),
       ),
@@ -271,6 +278,7 @@ class _DoseMathToolsState extends State<DoseMathTools> {
                 Text(value, style: Theme.of(context).textTheme.headlineMedium),
                 const SizedBox(height: 4),
                 Text(formula ?? ''),
+                if (concentrationDetail != null) Text(concentrationDetail!),
               ],
             ),
           ),

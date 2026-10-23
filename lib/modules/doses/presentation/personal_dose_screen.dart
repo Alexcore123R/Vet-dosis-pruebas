@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import '../data/personal_dose_repository.dart';
 import '../domain/catalog.dart';
 import '../domain/dose_engine.dart';
+import 'dose_math_tools.dart';
 
 class PersonalDoseScreen extends StatefulWidget {
   const PersonalDoseScreen({
@@ -20,6 +23,7 @@ class PersonalDoseScreen extends StatefulWidget {
 }
 
 class _PersonalDoseScreenState extends State<PersonalDoseScreen> {
+  final labelDraft = TextEditingController();
   final fields = {
     for (final k in [
       'farmaco',
@@ -50,6 +54,7 @@ class _PersonalDoseScreenState extends State<PersonalDoseScreen> {
 
   @override
   void dispose() {
+    labelDraft.dispose();
     for (final c in fields.values) {
       c.dispose();
     }
@@ -81,6 +86,45 @@ class _PersonalDoseScreenState extends State<PersonalDoseScreen> {
   Future<void> reload() => run(() async {
     final result = await widget.repository.list(widget.clinicId);
     if (mounted) setState(() => entries = result);
+  });
+  Future<void> scanLabel() => run(() async {
+    final image = await ImagePicker().pickImage(source: ImageSource.camera,
+      maxWidth: 2200, imageQuality: 90);
+    if (image == null) return;
+    final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
+    String recognized;
+    try {
+      recognized = (await recognizer.processImage(InputImage.fromFilePath(image.path))).text;
+    } finally {
+      await recognizer.close();
+    }
+    if (!mounted) return;
+    if (recognized.trim().isEmpty) throw const FormatException('No se leyó texto en la etiqueta. Captura los datos manualmente.');
+    final apply = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
+      title: const Text('Revisar texto de la etiqueta'),
+      content: SingleChildScrollView(child: SelectableText(recognized)),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Descartar')),
+        FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Usar como borrador')),
+      ],
+    ));
+    if (apply != true || !mounted) return;
+    final lines = recognized.split('\n').map((line) => line.trim()).where((line) => line.isNotEmpty);
+    final concentration = RegExp(r'(\d+(?:[.,]\d+)?)\s*mg\s*(?:/|per)\s*m[lL]\b', caseSensitive: false).firstMatch(recognized);
+    final dose = RegExp(r'(\d+(?:[.,]\d+)?)\s*mg\s*(?:/|per)\s*kg\b', caseSensitive: false).firstMatch(recognized);
+    final ingredient = RegExp(r'(?:active ingredient|ingrediente activo|principio activo)\s*[:：]\s*([^\n\r]+)', caseSensitive: false).firstMatch(recognized);
+    setState(() {
+      labelDraft.text = recognized;
+      if (fields['nombre_comercial']!.text.isEmpty && lines.isNotEmpty) fields['nombre_comercial']!.text = lines.first;
+      if (fields['farmaco']!.text.isEmpty && ingredient != null) fields['farmaco']!.text = ingredient.group(1)!.trim();
+      if (concentration != null) fields['concentracion']!.text = concentration.group(1)!.replaceAll(',', '.');
+      if (dose != null) {
+        fields['min']!.text = dose.group(1)!.replaceAll(',', '.');
+        fields['max']!.text = fields['min']!.text;
+      }
+      fields['fuente_presentacion']!.text = 'Etiqueta fotografiada; datos OCR pendientes de verificación manual';
+      verified = false;
+    });
   });
   Future<void> save() => run(() async {
     String value(String k) => fields[k]!.text.trim();
@@ -138,6 +182,7 @@ class _PersonalDoseScreenState extends State<PersonalDoseScreen> {
     if (mounted) {
       setState(() {
         entries = result;
+        labelDraft.clear();
         for (final c in fields.values) {
           c.clear();
         }
@@ -156,6 +201,39 @@ class _PersonalDoseScreenState extends State<PersonalDoseScreen> {
           'Cada entrada conserva la etiqueta personal. Compartirla exige revisión del administrador y no modifica la base general.',
         ),
         const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: busy ? null : scanLabel,
+          icon: const Icon(Icons.document_scanner_outlined),
+          label: const Text('Escanear etiqueta y crear borrador'),
+        ),
+        const Text('El texto escaneado puede contener errores. Revisa producto, concentración, dosis y fuente antes de guardar; la foto no se sube automáticamente.'),
+        TextField(
+          controller: labelDraft,
+          enabled: !busy,
+          maxLines: 5,
+          decoration: const InputDecoration(
+            labelText: 'Texto de etiqueta (español o inglés; borrador local editable)',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Text('Puedes capturar todos los datos manualmente. Conserva las indicaciones originales en inglés y comprueba su interpretación antes de usarlas.'),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.push<void>(
+            context,
+            MaterialPageRoute(
+              builder: (_) => Scaffold(
+                appBar: AppBar(title: const Text('Fórmula general y cálculos manuales')),
+                body: const SingleChildScrollView(
+                  padding: EdgeInsets.all(24),
+                  child: DoseMathTools(),
+                ),
+              ),
+            ),
+          ),
+          icon: const Icon(Icons.calculate_outlined),
+          label: const Text('Abrir fórmula general y cálculos manuales'),
+        ),
         for (final pair in <(String, String)>[
           ('farmaco', 'Fármaco'),
           ('especie', 'Especie (igual que en el catálogo)'),

@@ -1,9 +1,15 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../domain/attendance_repository.dart';
 
-class SupabaseAttendanceRepository implements AttendanceRepository {
+class SupabaseAttendanceRepository implements AttendanceRepository, AttendanceScheduleRepository {
   SupabaseAttendanceRepository(this.client);
   final SupabaseClient client;
+  @override
+  Future<void> saveSchedule(String clinic, String start, List<int> weekdays, int grace) async {
+    await client.rpc('att_schedule_save', params: {
+      'p_clinic': clinic, 'p_start': start, 'p_weekdays': weekdays, 'p_grace': grace,
+    });
+  }
   @override
   Future<Map<String, dynamic>> dashboard(String clinic) async =>
       Map<String, dynamic>.from(

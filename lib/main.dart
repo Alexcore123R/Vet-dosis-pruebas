@@ -21,6 +21,7 @@ import 'modules/inventory/domain/inventory_repository.dart';
 import 'modules/inventory/data/supabase_inventory_repository.dart';
 import 'modules/prescribing/domain/prescribing_repository.dart';
 import 'modules/prescribing/data/supabase_prescribing_repository.dart';
+import 'modules/calculations/data/reference_library_repository.dart';
 import 'modules/forms/clinical/clinical_repository.dart';
 import 'modules/forms/domain/form_repository.dart';
 import 'modules/forms/data/supabase_form_repository.dart';
@@ -69,6 +70,7 @@ Future<void> main() async {
   IdentityRepository? identity;
   ClinicalRepository? clinical;
   PrescribingRepository? prescribing;
+  ReferenceLibraryRepository? referenceLibrary;
   InventoryRepository? inventory;
   OperationsRepository? operations;
   AttendanceRepository? attendance;
@@ -94,6 +96,7 @@ Future<void> main() async {
     identity = SupabaseIdentityRepository(Supabase.instance.client);
     clinical = SupabaseClinicalRepository(Supabase.instance.client);
     prescribing = SupabasePrescribingRepository(Supabase.instance.client);
+    referenceLibrary = SupabaseReferenceLibraryRepository(Supabase.instance.client);
     inventory = SupabaseInventoryRepository(Supabase.instance.client);
     operations = SupabaseOperationsRepository(Supabase.instance.client);
     attendance = SupabaseAttendanceRepository(Supabase.instance.client);
@@ -161,6 +164,7 @@ Future<void> main() async {
       identity: identity,
       clinical: clinical,
       prescribing: prescribing,
+      referenceLibrary: referenceLibrary,
       inventory: inventory,
       operations: operations,
       attendance: attendance,

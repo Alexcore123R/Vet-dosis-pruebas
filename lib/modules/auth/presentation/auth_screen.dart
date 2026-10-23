@@ -8,9 +8,10 @@ import '../domain/clinic_membership.dart';
 import 'auth_view_model.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key, required this.model, this.configured = true});
+  const AuthScreen({super.key, required this.model, this.configured = true, this.initialRegister = false});
   final AuthViewModel? model;
   final bool configured;
+  final bool initialRegister;
   @override
   State<AuthScreen> createState() => _AuthScreenState();
 }
@@ -21,7 +22,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _clinic = TextEditingController();
   final _code = TextEditingController();
   final _form = GlobalKey<FormState>();
-  bool _register = false;
+  late bool _register = widget.initialRegister;
   bool _reset = false;
   @override
   void dispose() {

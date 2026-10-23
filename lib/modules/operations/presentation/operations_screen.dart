@@ -950,6 +950,7 @@ class _OperationsScreenState extends State<OperationsScreen>
                   type: 'select',
                   options: people,
                 ),
+                RxField('mentioned_user_ids', 'Etiquetar integrantes', type: 'multi_select', options: people),
                 const RxField(
                   'priority',
                   'Prioridad',
@@ -983,9 +984,7 @@ class _OperationsScreenState extends State<OperationsScreen>
             ListTile(
               title: Text('${t['title']} · ${t['priority']}'),
               subtitle: Text(
-                t['assigned_to'] == null
-                    ? 'Todos'
-                    : person(t['assigned_to'] as String),
+                '${t['assigned_to'] == null ? 'Todos' : person(t['assigned_to'] as String)}${(t['mentioned_user_ids'] as List? ?? []).isEmpty ? '' : ' · Etiquetas: ${(t['mentioned_user_ids'] as List).map((id) => person('$id')).join(', ')}'}',
               ),
               trailing:
                   t['completed_at'] == null &&
@@ -1022,21 +1021,20 @@ class _OperationsScreenState extends State<OperationsScreen>
                   'Mensaje (sin datos sensibles de pacientes o personal)',
                   required: true,
                 ),
+                RxField('mentioned_user_ids', 'Etiquetar integrantes', type: 'multi_select', options: people),
               ]),
               child: Text(activeSection == 'notices' ? 'Publicar aviso' : 'Escribir al grupo'),
             ),
           for (final m in model.rows('messages').where((m) => (m['category'] == 'aviso') == (activeSection == 'notices')))
             ListTile(
               title: Text('${m['category']} · ${m['body']}'),
-              subtitle: Text(
-                '${person(m['author_id'] as String)} · ${m['created_at']}',
-              ),
+              subtitle: Text('${person(m['author_id'] as String)} · ${m['created_at']}${(m['mentioned_user_ids'] as List? ?? []).isEmpty ? '' : ' · Etiquetas: ${(m['mentioned_user_ids'] as List).map((id) => person('$id')).join(', ')}'}'),
             ),
         ],
         if (activeSection == 'private_messages') ...[
           FilledButton(
             onPressed: () => form('Mensaje privado', 'private_message', [
-              RxField('recipient_id', 'Destinatario', type: 'select', required: true,
+              RxField('recipient_id', 'Buscar integrante del equipo', type: 'search_select', required: true,
                 options: {for (final e in people.entries) if (e.key != widget.member.userId) e.key: e.value}),
               const RxField('body', 'Mensaje privado', required: true),
             ]),

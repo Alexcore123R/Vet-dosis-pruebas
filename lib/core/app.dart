@@ -21,6 +21,7 @@ import '../modules/inventory/presentation/quick_scan_screen.dart';
 import '../modules/support/domain/support_repository.dart';
 import '../modules/support/presentation/support_screen.dart';
 import '../modules/welcome/presentation/product_screen.dart';
+import '../modules/welcome/presentation/public_welcome_screen.dart';
 import '../modules/welcome/presentation/guided_start_screen.dart';
 import '../modules/ai/domain/ai_repository.dart';
 import '../modules/ai/presentation/ai_screen.dart';
@@ -38,6 +39,7 @@ import '../modules/backup/presentation/backup_screen.dart';
 import '../modules/inventory/domain/inventory_repository.dart';
 import '../modules/inventory/presentation/inventory_screen.dart';
 import '../modules/calculations/presentation/calculation_screen.dart';
+import '../modules/calculations/data/reference_library_repository.dart';
 import '../modules/prescribing/domain/prescribing_repository.dart';
 import '../modules/prescribing/presentation/prescribing_screen.dart';
 import '../modules/forms/clinical/clinical_repository.dart';
@@ -51,6 +53,8 @@ import '../modules/patients/domain/patient_repository.dart';
 import '../modules/patients/presentation/patients_screen.dart';
 import 'package:flutter/material.dart';
 import '../modules/doses/presentation/dose_screen.dart';
+import '../modules/doses/presentation/vademecum_screen.dart';
+import '../modules/doses/data/catalog_repository.dart';
 import '../modules/doses/presentation/dose_math_tools.dart';
 import '../modules/doses/data/personal_dose_repository.dart';
 import '../modules/auth/domain/clinic_membership.dart';
@@ -83,6 +87,7 @@ class VetDosisApp extends StatelessWidget {
     this.identity,
     this.clinical,
     this.prescribing,
+    this.referenceLibrary,
     this.inventory,
     this.operations,
     this.attendance,
@@ -104,6 +109,7 @@ class VetDosisApp extends StatelessWidget {
   final IdentityRepository? identity;
   final ClinicalRepository? clinical;
   final PrescribingRepository? prescribing;
+  final ReferenceLibraryRepository? referenceLibrary;
   final InventoryRepository? inventory;
   final OperationsRepository? operations;
   final AttendanceRepository? attendance;
@@ -230,7 +236,9 @@ class VetDosisApp extends StatelessWidget {
               !auth!.signedIn ||
               auth!.recoveringPassword ||
               auth!.active == null)
-      ? AuthScreen(model: auth, configured: auth != null)
+      ? auth?.signedIn == true || auth?.recoveringPassword == true
+          ? AuthScreen(model: auth, configured: auth != null)
+          : PublicWelcomeScreen(auth: auth)
       : ModuleAccessBoundary(
           member: auth?.active,
           repository: moduleAccess,
@@ -247,6 +255,7 @@ class VetDosisApp extends StatelessWidget {
             identity: identity,
             clinical: clinical,
             prescribing: prescribing,
+            referenceLibrary: referenceLibrary,
             inventory: inventory,
             operations: operations,
             attendance: attendance,
@@ -271,6 +280,7 @@ class CoreShell extends StatelessWidget {
     this.identity,
     this.clinical,
     this.prescribing,
+    this.referenceLibrary,
     this.inventory,
     this.operations,
     this.attendance,
@@ -290,6 +300,7 @@ class CoreShell extends StatelessWidget {
   final IdentityRepository? identity;
   final ClinicalRepository? clinical;
   final PrescribingRepository? prescribing;
+  final ReferenceLibraryRepository? referenceLibrary;
   final InventoryRepository? inventory;
   final OperationsRepository? operations;
   final AttendanceRepository? attendance;
@@ -343,6 +354,7 @@ class CoreShell extends StatelessWidget {
     ];
     final page = switch (model.screen) {
       'Cálculo rápido' ||
+      'Vademécum' ||
       'Operaciones de dosis' ||
       'Cálculos clínicos' => 'Cálculos',
       'Producción y grandes especies' => 'Inicio',
@@ -648,6 +660,18 @@ class CoreShell extends StatelessWidget {
                       : const Text(
                           'El cálculo clínico requiere acceso de MVZ o administrador.',
                         )
+                else if (model.screen == 'Vademécum')
+                  VademecumScreen(
+                    key: ValueKey('vademecum:${auth?.active?.userId}:${auth?.active?.clinicId}'),
+                    catalog: AssetCatalogRepository(),
+                    personal: personalDoses,
+                    clinicId: auth?.active?.clinicId,
+                    userId: auth?.active?.userId,
+                    admin: auth?.active?.role == ClinicRole.admin,
+                    canCalculate: auth?.active == null ||
+                        [ClinicRole.admin, ClinicRole.mvz].contains(auth?.active?.role),
+                    offline: auth?.offline ?? false,
+                  )
                 else if (model.screen == 'Operaciones de dosis')
                   auth == null ||
                           [
@@ -665,6 +689,8 @@ class CoreShell extends StatelessWidget {
                             ClinicRole.mvz,
                           ].contains(auth!.active?.role)
                       ? CalculationScreen(
+                          referenceLibrary: referenceLibrary,
+                          clinicId: auth?.active?.clinicId,
                           showAviculture:
                               model.branch == ClinicalBranch.production,
                           key: ValueKey(model.branch),
@@ -708,6 +734,7 @@ class CoreShell extends StatelessWidget {
                                             builder: (_) => ClinicalScreen(
                                               repository: clinical!,
                                               prescribing: prescribing,
+                                              referenceLibrary: referenceLibrary,
                                               forms: forms!,
                                               member: auth!.active!,
                                               patientId: patient.id,
@@ -1111,6 +1138,7 @@ class CoreShell extends StatelessWidget {
         hospital: hospital,
         patients: patients,
         backup: backup,
+        attendance: attendance,
         moduleAccess: moduleAccess,
       ),
       offline: auth?.offline ?? false,
@@ -1431,6 +1459,7 @@ class _ModuleSearchState extends State<_ModuleSearch> {
     'Receta',
     'Formatos',
     'Cálculo rápido',
+    'Vademécum',
     'Operaciones de dosis',
     'Cálculos clínicos',
     'Estadísticas',

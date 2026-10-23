@@ -1,5 +1,6 @@
 import '../../prescribing/domain/prescribing_repository.dart';
 import '../../prescribing/presentation/prescribing_screen.dart';
+import '../../calculations/data/reference_library_repository.dart';
 import 'package:flutter/material.dart';
 import '../../auth/domain/clinic_membership.dart';
 import '../../patients/presentation/patient_view_model.dart'
@@ -21,12 +22,14 @@ class ClinicalScreen extends StatefulWidget {
     required this.member,
     this.patientId,
     this.prescribing,
+    this.referenceLibrary,
   });
   final ClinicalRepository repository;
   final FormRepository forms;
   final ClinicMembership member;
   final String? patientId;
   final PrescribingRepository? prescribing;
+  final ReferenceLibraryRepository? referenceLibrary;
   @override
   State<ClinicalScreen> createState() => _ClinicalScreenState();
 }
@@ -418,6 +421,7 @@ class _ClinicalScreenState extends State<ClinicalScreen> {
           member: widget.member,
           caseData: bundle.caseData,
           latestWeight: latestWeight(bundle),
+          referenceLibrary: widget.referenceLibrary,
         ),
       ),
     );
