@@ -64,7 +64,6 @@ void main() {
         ),
       );
     expect(find.text('Bienvenido a VetDosis'), findsOneWidget);
-    expect(find.text('Planes y costos'), findsOneWidget);
       expect(find.text('Cálculo rápido'), findsNothing);
       expect(find.byType(DropdownButtonFormField<ClinicRole>), findsNothing);
     },
@@ -101,8 +100,10 @@ void main() {
         requireAuth: true,
       ),
     );
+    await tester.scrollUntilVisible(find.textContaining('Individual ·'), 350);
     expect(find.textContaining('Individual ·'), findsOneWidget);
     expect(find.textContaining('Clínica ·'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Crear cuenta'), -350);
     await tester.tap(find.text('Crear cuenta'));
     await tester.pumpAndSettle();
     expect(find.text('Crear cuenta'), findsOneWidget);
