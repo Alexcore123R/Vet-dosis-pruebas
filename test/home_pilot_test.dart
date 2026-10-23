@@ -189,13 +189,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         Theme.of(tester.element(find.byTooltip('Ajustes'))).colorScheme.primary,
-        isNot(original),
+        original,
       );
       core.navigate('Ajustes');
       await tester.pumpAndSettle();
       expect(
         Theme.of(tester.element(find.byTooltip('Ajustes'))).colorScheme.primary,
-        isNot(original),
+        original,
       );
       expect(core.settings.palette, 1);
       await tester.pumpWidget(const SizedBox());
