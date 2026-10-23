@@ -2,12 +2,12 @@
 -- Appended after the 13N module navigation fixture; never run in Supabase.
 -- Each .sql is executed in a separate psql session by run_module_navigation_dashboard.sh.
 -- Recreate session-local assertions; pg_temp helpers from the preceding test do not persist.
-create function pg_temp.assert_true(v boolean,msg text) returns void language plpgsql as $
+create function pg_temp.assert_true(v boolean,msg text) returns void language plpgsql as $audit$
 begin
   if v is distinct from true then raise exception 'ASSERT: %',msg;end if;
 end
-$;
-create function pg_temp.expect_error(sql text,expected text) returns void language plpgsql as $
+$audit$;
+create function pg_temp.expect_error(sql text,expected text) returns void language plpgsql as $audit$
 begin
   begin
     execute sql;
@@ -17,7 +17,7 @@ begin
   end;
   raise exception 'Expected rejection: %',expected;
 end
-$;
+$audit$;
 insert into auth.users(id,email,email_confirmed_at) values
 ('00000000-0000-0000-0000-000000000181','synthetic-owner-a@example.test',now()),
 ('00000000-0000-0000-0000-000000000182','synthetic-owner-b@example.test',now());
