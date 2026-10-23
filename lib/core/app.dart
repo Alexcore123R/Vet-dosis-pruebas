@@ -38,6 +38,7 @@ import '../modules/backup/presentation/backup_screen.dart';
 import '../modules/inventory/domain/inventory_repository.dart';
 import '../modules/inventory/presentation/inventory_screen.dart';
 import '../modules/calculations/presentation/calculation_screen.dart';
+import '../modules/calculations/data/reference_library_repository.dart';
 import '../modules/prescribing/domain/prescribing_repository.dart';
 import '../modules/prescribing/presentation/prescribing_screen.dart';
 import '../modules/forms/clinical/clinical_repository.dart';
@@ -85,6 +86,7 @@ class VetDosisApp extends StatelessWidget {
     this.identity,
     this.clinical,
     this.prescribing,
+    this.referenceLibrary,
     this.inventory,
     this.operations,
     this.attendance,
@@ -106,6 +108,7 @@ class VetDosisApp extends StatelessWidget {
   final IdentityRepository? identity;
   final ClinicalRepository? clinical;
   final PrescribingRepository? prescribing;
+  final ReferenceLibraryRepository? referenceLibrary;
   final InventoryRepository? inventory;
   final OperationsRepository? operations;
   final AttendanceRepository? attendance;
@@ -680,6 +683,8 @@ class CoreShell extends StatelessWidget {
                             ClinicRole.mvz,
                           ].contains(auth!.active?.role)
                       ? CalculationScreen(
+                          referenceLibrary: referenceLibrary,
+                          clinicId: auth?.active?.clinicId,
                           showAviculture:
                               model.branch == ClinicalBranch.production,
                           key: ValueKey(model.branch),
@@ -723,6 +728,7 @@ class CoreShell extends StatelessWidget {
                                             builder: (_) => ClinicalScreen(
                                               repository: clinical!,
                                               prescribing: prescribing,
+                                              referenceLibrary: referenceLibrary,
                                               forms: forms!,
                                               member: auth!.active!,
                                               patientId: patient.id,
