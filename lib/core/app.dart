@@ -252,6 +252,7 @@ class VetDosisApp extends StatelessWidget {
             identity: identity,
             clinical: clinical,
             prescribing: prescribing,
+            referenceLibrary: referenceLibrary,
             inventory: inventory,
             operations: operations,
             attendance: attendance,
@@ -276,6 +277,7 @@ class CoreShell extends StatelessWidget {
     this.identity,
     this.clinical,
     this.prescribing,
+    this.referenceLibrary,
     this.inventory,
     this.operations,
     this.attendance,
@@ -295,6 +297,7 @@ class CoreShell extends StatelessWidget {
   final IdentityRepository? identity;
   final ClinicalRepository? clinical;
   final PrescribingRepository? prescribing;
+  final ReferenceLibraryRepository? referenceLibrary;
   final InventoryRepository? inventory;
   final OperationsRepository? operations;
   final AttendanceRepository? attendance;
