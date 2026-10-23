@@ -1,3 +1,4 @@
+import '../../../core/widgets/workspace_panel.dart';
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import '../data/personal_dose_repository.dart';
@@ -212,7 +213,7 @@ class _DoseScreenState extends State<DoseScreen> {
           if (catalog == null)
             Text(model.error ?? 'Catálogo no disponible.')
           else if (catalog.drugs.isEmpty)
-            const Card(
+            const WorkspacePanel(
               child: Padding(
                 padding: EdgeInsets.all(20),
                 child: Text(

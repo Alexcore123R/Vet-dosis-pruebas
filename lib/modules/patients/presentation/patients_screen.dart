@@ -1,3 +1,4 @@
+import '../../../core/widgets/workspace_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../auth/domain/clinic_membership.dart';
@@ -76,7 +77,12 @@ class _PatientsScreenState extends State<PatientsScreen> {
           owners: owners,
           save: (patient, owner, operation) async {
             try {
-              await repository.createPatient(clinicId, patient, owner, operation);
+              await repository.createPatient(
+                clinicId,
+                patient,
+                owner,
+                operation,
+              );
               return null;
             } on FormatException catch (e) {
               return e.message.toString();
@@ -223,7 +229,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
               '${patient.sex} · Nacimiento: ${patient.birthDate ?? 'Pendiente'}',
             ),
             if (model.access.owners)
-              Card(
+              WorkspacePanel(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: owner == null
@@ -272,7 +278,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
               if (model.events.isEmpty && !model.busy)
                 const Text('Sin entradas clínicas registradas.'),
               for (final event in model.events.reversed)
-                Card(
+                WorkspacePanel(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(

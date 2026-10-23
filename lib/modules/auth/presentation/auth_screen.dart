@@ -1,3 +1,4 @@
+import '../../../core/widgets/neu_identity.dart';
 import '../../permissions/domain/permission_repository.dart';
 import '../../permissions/presentation/permission_screen.dart';
 import '../domain/auth_repository.dart';
@@ -23,6 +24,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _form = GlobalKey<FormState>();
   bool _register = false;
   bool _reset = false;
+  bool _showPassword = false;
   @override
   void dispose() {
     for (final field in [_email, _password, _clinic, _code]) {
@@ -35,7 +37,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget build(BuildContext context) {
     final model = widget.model;
     return Scaffold(
-      appBar: AppBar(title: const Text('VetDosis Pro')),
+      appBar: AppBar(toolbarHeight: 16),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -43,27 +45,14 @@ class _AuthScreenState extends State<AuthScreen> {
             child: ListView(
               padding: const EdgeInsets.all(24),
               children: [
-                Text(
-                  model?.signedIn == true ? 'Tu clínica' : 'Bienvenido',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                TextButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => Scaffold(
-                        appBar: AppBar(
-                          title: const Text('Conoce VetDosis Pro'),
-                        ),
-                        body: const SingleChildScrollView(
-                          padding: EdgeInsets.all(20),
-                          child: ProductScreen(),
-                        ),
-                      ),
-                    ),
+                const SizedBox(height: 16),
+                const VetDosisBrand(large: true),
+                const SizedBox(height: 36),
+                if (!widget.configured || model?.signedIn == true)
+                  Text(
+                    model?.signedIn == true ? 'Tu clínica' : 'Bienvenido',
+                    style: Theme.of(context).textTheme.headlineMedium,
                   ),
-                  child: const Text('Herramientas, planes y costos'),
-                ),
                 const SizedBox(height: 12),
                 if (!widget.configured) ...[
                   const Text(
@@ -121,9 +110,6 @@ class _AuthScreenState extends State<AuthScreen> {
                 ] else if (model.loadingMemberships) ...[
                   const Center(child: CircularProgressIndicator()),
                 ] else if (!model.signedIn) ...[
-                  const Text(
-                    'Ingresa con tu cuenta para acceder a las clínicas de tu equipo.',
-                  ),
                   const SizedBox(height: 24),
                   Form(
                     key: _form,
@@ -148,10 +134,23 @@ class _AuthScreenState extends State<AuthScreen> {
                         if (!_reset)
                           TextFormField(
                             controller: _password,
-                            obscureText: true,
+                            obscureText: !_showPassword,
                             autofillHints: const [AutofillHints.password],
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Contraseña',
+                              suffixIcon: IconButton(
+                                tooltip: _showPassword
+                                    ? 'Ocultar contraseña'
+                                    : 'Mostrar contraseña',
+                                onPressed: () => setState(
+                                  () => _showPassword = !_showPassword,
+                                ),
+                                icon: Icon(
+                                  _showPassword
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                ),
+                              ),
                             ),
                             validator: (value) =>
                                 (value?.length ?? 0) >= (_register ? 8 : 1)
@@ -162,7 +161,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  FilledButton(
+                  NeuPrimaryButton(
                     onPressed: model.busy
                         ? null
                         : () {
@@ -180,7 +179,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           ? 'Enviar enlace de recuperación'
                           : _register
                           ? 'Crear cuenta'
-                          : 'Ingresar',
+                          : 'Iniciar sesión',
                     ),
                   ),
                   if (!_reset && model.googleEnabled)
@@ -277,6 +276,23 @@ class _AuthScreenState extends State<AuthScreen> {
                     child: const Text('Cerrar sesión'),
                   ),
                 ],
+                TextButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => Scaffold(
+                        appBar: AppBar(
+                          title: const Text('Conoce VetDosis Pro'),
+                        ),
+                        body: const SingleChildScrollView(
+                          padding: EdgeInsets.all(20),
+                          child: ProductScreen(),
+                        ),
+                      ),
+                    ),
+                  ),
+                  child: const Text('Herramientas, planes y costos'),
+                ),
                 if (model?.busy == true)
                   const Padding(
                     padding: EdgeInsets.all(16),

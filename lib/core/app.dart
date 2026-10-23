@@ -1,3 +1,4 @@
+import 'widgets/neu_identity.dart';
 import '../modules/beta/domain/beta_repository.dart';
 import '../modules/beta/presentation/beta_boundary.dart';
 import '../modules/identity/domain/identity_repository.dart';
@@ -103,38 +104,62 @@ class VetDosisApp extends StatelessWidget {
   ThemeData theme(Brightness brightness) {
     final dark = brightness == Brightness.dark;
     final neumorphic = model.settings.visualStyle == 'neu';
-    final background = dark
-        ? const Color(0xFF0B121C)
-        : const Color(0xFFF2F7FA);
-    final surface = dark
-        ? const Color(0xFF131E2A)
-        : const Color(0xFFF9FBFD);
-    final primary = dark
-        ? const Color(0xFF55E2D3)
-        : const Color(0xFF31CDBD);
-    final secondary = dark
-        ? const Color(0xFFB69BFF)
-        : const Color(0xFFA88DF2);
-    final tertiary = dark
-        ? const Color(0xFFFF92C9)
-        : const Color(0xFFF29AC4);
-    final scheme = ColorScheme.fromSeed(
-      seedColor: neumorphic
-          ? primary
-          : paletteColors[model.settings.palette],
-      brightness: brightness,
-    ).copyWith(
-      primary: neumorphic ? primary : null,
-      onPrimary: neumorphic ? const Color(0xFF062321) : null,
-      secondary: neumorphic ? secondary : null,
-      tertiary: neumorphic ? tertiary : null,
-      surface: neumorphic ? surface : null,
-    );
+    final background = dark ? const Color(0xFF0B121C) : neuBackground;
+    final surface = dark ? const Color(0xFF131E2A) : neuBackground;
+    final primary = dark ? const Color(0xFF55E2D3) : const Color(0xFF087F83);
+    final secondary = dark ? const Color(0xFFB69BFF) : neuLavender;
+    final tertiary = dark ? const Color(0xFFFF92C9) : const Color(0xFFF29AC4);
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: neumorphic
+              ? primary
+              : paletteColors[model.settings.palette],
+          brightness: brightness,
+        ).copyWith(
+          primary: neumorphic ? primary : null,
+          onPrimary: neumorphic
+              ? (dark ? const Color(0xFF062321) : Colors.white)
+              : null,
+          secondary: neumorphic ? secondary : null,
+          tertiary: neumorphic ? tertiary : null,
+          surface: neumorphic ? surface : null,
+          onSurface: neumorphic && !dark ? neuInk : null,
+        );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: neumorphic ? background : null,
+      appBarTheme: neumorphic
+          ? AppBarTheme(
+              backgroundColor: background,
+              surfaceTintColor: Colors.transparent,
+              foregroundColor: dark ? null : neuInk,
+              elevation: 0,
+            )
+          : null,
+      cardTheme: neumorphic
+          ? CardThemeData(
+              color: background,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(22),
+              ),
+            )
+          : null,
+      filledButtonTheme: neumorphic
+          ? FilledButtonThemeData(
+              style: FilledButton.styleFrom(
+                backgroundColor: dark ? neuMint : const Color(0xFFD8F3ED),
+                foregroundColor: neuInk,
+                minimumSize: const Size(48, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            )
+          : null,
       inputDecorationTheme: neumorphic
           ? InputDecorationTheme(
               filled: true,
@@ -143,25 +168,19 @@ class VetDosisApp extends StatelessWidget {
                 horizontal: 18,
                 vertical: 16,
               ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: BorderSide(
-                  color: dark
-                      ? const Color(0xFF26384A)
-                      : const Color(0xFFDDE7EF),
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
-                borderSide: BorderSide(
-                  color: dark
-                      ? const Color(0xFF26384A)
-                      : const Color(0xFFDDE7EF),
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
+              border: NeuInputBorder(dark: dark),
+              enabledBorder: NeuInputBorder(dark: dark),
+              focusedBorder: NeuInputBorder(
+                dark: dark,
                 borderSide: BorderSide(color: primary, width: 1.5),
+              ),
+              errorBorder: NeuInputBorder(
+                dark: dark,
+                borderSide: BorderSide(color: scheme.error),
+              ),
+              focusedErrorBorder: NeuInputBorder(
+                dark: dark,
+                borderSide: BorderSide(color: scheme.error, width: 1.5),
               ),
             )
           : null,
@@ -171,9 +190,7 @@ class VetDosisApp extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
               ),
               side: BorderSide(
-                color: dark
-                    ? const Color(0xFF2A3A4B)
-                    : const Color(0xFFDDE7EF),
+                color: dark ? const Color(0xFF2A3A4B) : const Color(0xFFDDE7EF),
               ),
             )
           : null,
@@ -184,9 +201,7 @@ class VetDosisApp extends StatelessWidget {
               elevation: 0,
             )
           : null,
-      extensions: [
-        WorkspaceStyle(neumorphic: neumorphic),
-      ],
+      extensions: [WorkspaceStyle(neumorphic: neumorphic)],
     );
   }
 
@@ -311,11 +326,10 @@ class CoreShell extends StatelessWidget {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              model.screen == 'Inicio' ? 'VetDosis Pro' : model.screen,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+            if (model.screen == 'Inicio')
+              const VetDosisBrand()
+            else
+              Text(model.screen, maxLines: 1, overflow: TextOverflow.ellipsis),
             if (auth?.active != null)
               Text(
                 auth!.active!.clinicName,
@@ -440,6 +454,39 @@ class CoreShell extends StatelessWidget {
           ),
         ),
       ),
+      bottomNavigationBar: Builder(
+        builder: (context) {
+          final pages = <(String, String, IconData)>[
+            ('Inicio', 'Inicio', Icons.home_outlined),
+            if (allowed('Cálculo rápido'))
+              ('Cálculo rápido', 'Cálculos', Icons.calculate_outlined)
+            else if (allowed('Cálculos clínicos'))
+              ('Cálculos clínicos', 'Cálculos', Icons.calculate_outlined),
+            if (allowed('Pacientes'))
+              ('Pacientes', 'Pacientes', Icons.pets_outlined),
+            ('Más', 'Más', Icons.more_horiz),
+          ];
+          final index = pages.indexWhere(
+            (p) =>
+                p.$1 == model.screen ||
+                (p.$2 == 'Cálculos' && model.screen == 'Cálculos clínicos'),
+          );
+          return NavigationBar(
+            selectedIndex: index < 0 ? pages.length - 1 : index,
+            onDestinationSelected: (i) {
+              if (pages[i].$1 == 'Más') {
+                Scaffold.of(context).openDrawer();
+              } else {
+                model.navigate(pages[i].$1);
+              }
+            },
+            destinations: [
+              for (final p in pages)
+                NavigationDestination(icon: Icon(p.$3), label: p.$2),
+            ],
+          );
+        },
+      ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -472,8 +519,12 @@ class CoreShell extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1100),
             child: ListView(
-              key: ValueKey((auth?.active?.userId, auth?.active?.clinicId,
-                model.branch, model.screen)),
+              key: ValueKey((
+                auth?.active?.userId,
+                auth?.active?.clinicId,
+                model.branch,
+                model.screen,
+              )),
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 220),
               children: [
                 if (auth?.offline == true) ...[
@@ -787,9 +838,12 @@ class CoreShell extends StatelessWidget {
                         )
                 else if (model.screen == 'Estadísticas')
                   DashboardScreen(
-                    key: ValueKey(
-                      (auth?.active?.userId, auth?.active?.clinicId, auth?.offline, moduleAccess),
-                    ),
+                    key: ValueKey((
+                      auth?.active?.userId,
+                      auth?.active?.clinicId,
+                      auth?.offline,
+                      moduleAccess,
+                    )),
                     model: DashboardViewModel(
                       member: auth?.active,
                       backup: allowed('Estadísticas') ? backup : null,
@@ -905,9 +959,13 @@ class CoreShell extends StatelessWidget {
       onNavigate: model.navigate,
     ),
     DashboardScreen(
-      key: ValueKey(
-        (auth?.active?.userId, auth?.active?.clinicId, auth?.active?.role, auth?.offline, moduleAccess),
-      ),
+      key: ValueKey((
+        auth?.active?.userId,
+        auth?.active?.clinicId,
+        auth?.active?.role,
+        auth?.offline,
+        moduleAccess,
+      )),
       model: DashboardViewModel(
         member: auth?.active,
         operations: operations,
@@ -1063,7 +1121,11 @@ class CoreShell extends StatelessWidget {
             if (option.$1 == 'Proveedor de IA y privacidad') {
               if (ai == null || auth?.active == null || auth?.offline == true) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('La configuración de IA requiere cuenta y conexión.')),
+                  const SnackBar(
+                    content: Text(
+                      'La configuración de IA requiere cuenta y conexión.',
+                    ),
+                  ),
                 );
                 return;
               }
@@ -1129,53 +1191,11 @@ class SoftPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dark = theme.brightness == Brightness.dark;
-    final surface = dark
-        ? const Color(0xFF131E2A)
-        : const Color(0xFFF9FBFD);
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: dark
-              ? const [Color(0xFF182536), Color(0xFF101923)]
-              : const [Color(0xFFFFFFFF), Color(0xFFF1F6FA)],
-        ),
+        color: theme.scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: dark
-              ? const Color(0xFF243547)
-              : const Color(0xFFE4EDF3),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: dark
-                ? const Color(0x99000000)
-                : const Color(0xFFD5E0E7),
-            offset: const Offset(7, 8),
-            blurRadius: 18,
-          ),
-          BoxShadow(
-            color: dark
-                ? const Color(0x182DE6D1)
-                : const Color(0xFFFFFFFF),
-            offset: const Offset(-6, -6),
-            blurRadius: 16,
-          ),
-        ],
-      ),
-      foregroundDecoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            theme.colorScheme.primary.withValues(alpha: dark ? 0.035 : 0.025),
-            theme.colorScheme.secondary.withValues(alpha: dark ? 0.025 : 0.018),
-            surface.withValues(alpha: 0),
-          ],
-        ),
+        boxShadow: neuShadows(theme.brightness == Brightness.dark),
       ),
       child: child,
     );
