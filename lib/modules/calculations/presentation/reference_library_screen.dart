@@ -77,6 +77,7 @@ class _ReferenceLibraryScreenState extends State<ReferenceLibraryScreen> {
   Widget referenceCard(Map<String, dynamic> row) {
     final highlighted = row['review_state'] == 'fuente_contrastada_pendiente_mvz';
     final alternatives = row['alternatives'] as int? ?? 1;
+    final distinctIntervals = row['distinct_intervals'] as int? ?? 1;
     String value(String key) => (row[key] ?? '').toString().trim();
     final range = value('min_value').isEmpty && value('max_value').isEmpty
         ? 'Sin intervalo transcrito'
@@ -90,7 +91,8 @@ class _ReferenceLibraryScreenState extends State<ReferenceLibraryScreen> {
           Text(range, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 6),
           Text(highlighted ? 'Fuente externa contrastada · pendiente de revisión MVZ' : 'Transcripción pendiente de revisión MVZ'),
-          if (alternatives > 1) Text('$alternatives intervalos registrados para esta especie, parámetro y unidad. Revisa condiciones y fuentes.'),
+          if (distinctIntervals > 1) Text('$distinctIntervals intervalos distintos para esta especie, parámetro y unidad. Revisa condiciones y fuentes.'),
+          if (distinctIntervals == 1 && alternatives > 1) Text('$alternatives fuentes registradas para este intervalo.'),
           if (value('notes').isNotEmpty) Text(value('notes')),
           const SizedBox(height: 6),
           Text('Fuente: ${value('source_title').isEmpty ? 'No identificada' : value('source_title')}'),

@@ -14,7 +14,7 @@ class LibraryFixture implements ReferenceLibraryRepository {
         {
           'id': 'lab-1', 'species': 'Canino', 'parameter': 'Albúmina',
           'min_value': '2.3', 'max_value': '3.8', 'unit': 'g/dL',
-          'source_title': 'Método A', 'review_state': 'pendiente', 'alternatives': 2,
+          'source_title': 'Método A', 'review_state': 'pendiente', 'alternatives': 2, 'distinct_intervals': 2,
         },
       ], 1);
     }
@@ -23,7 +23,7 @@ class LibraryFixture implements ReferenceLibraryRepository {
         'id': 'temp-1', 'species': 'Canino', 'parameter': 'Temperatura rectal',
         'min_value': '37.5', 'max_value': '39.2', 'unit': '°C',
         'source_title': 'Merck Veterinary Manual',
-        'review_state': 'fuente_contrastada_pendiente_mvz', 'alternatives': 2,
+        'review_state': 'fuente_contrastada_pendiente_mvz', 'alternatives': 2, 'distinct_intervals': 2,
       },
     ], 1);
   }
@@ -38,7 +38,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Merck Veterinary Manual'), findsOneWidget);
     expect(find.textContaining('pendiente de revisión MVZ'), findsWidgets);
-    expect(find.textContaining('2 intervalos registrados'), findsOneWidget);
+    expect(find.textContaining('2 intervalos distintos'), findsOneWidget);
     expect(find.textContaining('Dentro del rango'), findsNothing);
     await tester.tap(find.text('Laboratorio'));
     await tester.pumpAndSettle();

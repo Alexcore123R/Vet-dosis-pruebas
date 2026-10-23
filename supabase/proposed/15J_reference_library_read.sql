@@ -81,9 +81,15 @@ begin
       and (coalesce(p_search,'')='' or v.species ilike '%'||p_search||'%'
         or v.parameter ilike '%'||p_search||'%'
         or v.source_title ilike '%'||p_search||'%')
+  ), variants as (
+    select coalesce(lower(species),'') species_key,coalesce(lower(parameter),'') parameter_key,coalesce(lower(unit),'') unit_key,
+      count(distinct coalesce(min_value,'')||'|'||coalesce(max_value,'')) distinct_intervals
+    from scoped group by 1,2,3
   ), marked as (
-    select s.*,count(*) over(partition by lower(s.species),lower(s.parameter),lower(s.unit)) alternatives
-    from scoped s
+    select s.*,count(*) over(partition by lower(s.species),lower(s.parameter),lower(s.unit)) alternatives,
+      v.distinct_intervals
+    from scoped s join variants v on v.species_key=coalesce(lower(s.species),'')
+      and v.parameter_key=coalesce(lower(s.parameter),'') and v.unit_key=coalesce(lower(s.unit),'')
   ), page as (
     select * from marked order by
       case when review_state='fuente_contrastada_pendiente_mvz' then 0 else 1 end,
