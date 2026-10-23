@@ -1,3 +1,4 @@
+import 'phone_directory.dart';
 import '../../../core/widgets/workspace_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -29,6 +30,7 @@ class PatientsScreen extends StatefulWidget {
 
 class _PatientsScreenState extends State<PatientsScreen> {
   late final PatientViewModel model;
+  bool showDirectory = false;
   String query = '';
   @override
   void initState() {
@@ -151,6 +153,22 @@ class _PatientsScreenState extends State<PatientsScreen> {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: model,
     builder: (context, _) {
+      if (showDirectory && model.access.owners) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextButton.icon(
+              onPressed: () => setState(() => showDirectory = false),
+              icon: const Icon(Icons.arrow_back),
+              label: const Text('Volver a pacientes'),
+            ),
+            if (model.busy) const LinearProgressIndicator(),
+            if (model.error != null) Text(model.error!),
+            if (!model.busy && model.error == null)
+              PhoneDirectory(owners: model.owners),
+          ],
+        );
+      }
       final patient = model.selected;
       VetOwner? owner;
       if (patient != null && model.access.owners) {
@@ -173,6 +191,14 @@ class _PatientsScreenState extends State<PatientsScreen> {
             spacing: 12,
             runSpacing: 8,
             children: [
+              if (model.access.owners)
+                OutlinedButton.icon(
+                  onPressed: model.busy
+                      ? null
+                      : () => setState(() => showDirectory = true),
+                  icon: const Icon(Icons.contact_phone_outlined),
+                  label: const Text('Agenda telefónica'),
+                ),
               if (model.access.createPatient)
                 FilledButton.icon(
                   onPressed: model.busy ? null : create,

@@ -1,3 +1,4 @@
+import 'vademecum_panel.dart';
 import '../../../core/widgets/calculator_surface.dart';
 import '../../../core/widgets/workspace_panel.dart';
 import 'dart:convert';
@@ -34,6 +35,7 @@ class _DoseScreenState extends State<DoseScreen> {
       step = TextEditingController(),
       breed = TextEditingController(),
       conditions = TextEditingController();
+  bool showVademecum = false;
   String query = '';
   String? species;
   List<DrugDose> personal = [];
@@ -169,6 +171,20 @@ class _DoseScreenState extends State<DoseScreen> {
           ? null
           : DoseCatalog(general.version, [...general.drugs, ...personal]);
       final selected = model.drug;
+      if (showVademecum && catalog != null) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextButton.icon(
+              onPressed: () => setState(() => showVademecum = false),
+              icon: const Icon(Icons.arrow_back),
+              label: const Text('Volver a cálculo rápido'),
+            ),
+            VademecumPanel(catalog: catalog),
+          ],
+        );
+      }
+
       return CalculatorSurface(
         id: 'dose',
         child: Column(
@@ -187,6 +203,12 @@ class _DoseScreenState extends State<DoseScreen> {
               ],
             ),
             const SizedBox(height: 16),
+            if (catalog != null)
+              OutlinedButton.icon(
+                onPressed: () => setState(() => showVademecum = true),
+                icon: const Icon(Icons.menu_book_outlined),
+                label: const Text('Abrir vademécum'),
+              ),
             if (widget.admin)
               OutlinedButton.icon(
                 onPressed: importCatalog,

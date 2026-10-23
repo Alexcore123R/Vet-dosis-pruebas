@@ -65,3 +65,21 @@ El título y el icono acompañan siempre al color. El modo oscuro adapta el cont
 el estilo estándar conserva sus campos convencionales. Se mantienen las fórmulas,
 unidades, fuentes, validaciones e invalidación de resultados tras editar entradas.
 Las herramientas de avicultura e incubación mantienen sus pantallas actuales.
+
+## Vademécum y agenda telefónica
+
+El acceso «Abrir vademécum» en Cálculo rápido consulta el catálogo general y las
+entradas personales ya autorizadas. Incluye búsqueda por nombre/marca, filtros
+por especie y tarjetas desplegables con presentaciones, unidades, fuentes y
+contraindicaciones. Las franjas cian/lila distinguen base general y dosis personal;
+no se infiere una categoría farmacológica inexistente en los datos.
+
+«Agenda telefónica» en Pacientes muestra los tutores de la clínica solamente
+cuando el permiso existente permite consultar propietarios. Incluye búsqueda,
+orden alfabético, filtro con teléfono y copia del número. No envía mensajes ni
+importa contactos del dispositivo. Ambas vistas permanecen dentro del módulo
+actual para conservar el manejo de cambios de sesión y permisos.
+
+Verificación: 27 pruebas de directorios, dosis y pacientes aprobadas; análisis
+estático sin incidencias. Inventario y proveedores son próximos candidatos al
+mismo patrón visual, todavía no modificados.
