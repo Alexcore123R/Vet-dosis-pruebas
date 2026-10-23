@@ -57,7 +57,7 @@ void main() {
       );
       final theme = Theme.of(tester.element(drawer));
       expect(theme.drawerTheme.backgroundColor, theme.colorScheme.surface);
-      expect(theme.colorScheme.primary, const Color(0xFF632CE5));
+      expect(theme.colorScheme.primary, const Color(0xFF087F83));
       tester.state<ScaffoldState>(find.byType(Scaffold).first).closeDrawer();
       await tester.pumpAndSettle();
       expect(

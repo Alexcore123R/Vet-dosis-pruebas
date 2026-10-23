@@ -7,7 +7,7 @@ class AppSettings {
   const AppSettings({
     this.palette = 0,
     this.brightness = 'system',
-    this.visualStyle = 'standard',
+    this.visualStyle = 'neu',
   });
 }
 
@@ -16,7 +16,7 @@ class SettingsRepository {
     final prefs = await SharedPreferences.getInstance();
     final palette = prefs.getInt('palette') ?? 0;
     final mode = prefs.getString('brightness') ?? 'system';
-    final visualStyle = prefs.getString('visualStyle') ?? 'standard';
+    final visualStyle = prefs.getString('visualStyle') ?? 'neu';
     return AppSettings(
       visualStyle: ['standard', 'neu'].contains(visualStyle)
           ? visualStyle

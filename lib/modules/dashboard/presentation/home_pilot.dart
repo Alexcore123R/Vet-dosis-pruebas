@@ -1,11 +1,33 @@
 import 'package:flutter/material.dart';
 import '../../../core/widgets/workspace_panel.dart';
+import '../../../core/widgets/neu_identity.dart';
 import '../../../vet_ui/vet_theme.dart';
 import '../../core/presentation/core_view_model.dart';
 
 /// Shared shell presentation. It never changes membership or access.
 ThemeData homePilotTheme(ThemeData base) {
   final dark = base.brightness == Brightness.dark;
+  // The functional home shell must preserve the selected Neu palette.
+  if (base.extension<WorkspaceStyle>()?.neumorphic == true) {
+    return base.copyWith(
+      drawerTheme: base.drawerTheme.copyWith(
+        backgroundColor: base.colorScheme.surface,
+        surfaceTintColor: Colors.transparent,
+      ),
+      navigationBarTheme: base.navigationBarTheme.copyWith(
+        backgroundColor: base.colorScheme.surface,
+        indicatorColor: base.colorScheme.primary.withValues(
+          alpha: dark ? 0.22 : 0.18,
+        ),
+        surfaceTintColor: Colors.transparent,
+      ),
+      appBarTheme: base.appBarTheme.copyWith(
+        backgroundColor: base.scaffoldBackgroundColor,
+        foregroundColor: base.colorScheme.onSurface,
+        surfaceTintColor: Colors.transparent,
+      ),
+    );
+  }
   final surface = dark ? const Color(0xFF131E2A) : VetColors.surface;
   final scheme =
       ColorScheme.fromSeed(
@@ -71,18 +93,20 @@ class HomeSurface extends StatelessWidget {
               ? theme.colorScheme.primary
               : theme.colorScheme.outlineVariant.withValues(alpha: .5),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: dark ? Colors.black26 : const Color(0xFFDDE4EE),
-            offset: const Offset(5, 6),
-            blurRadius: 14,
-          ),
-          BoxShadow(
-            color: dark ? const Color(0xFF1C2935) : Colors.white,
-            offset: const Offset(-4, -4),
-            blurRadius: 12,
-          ),
-        ],
+        boxShadow: theme.extension<WorkspaceStyle>()?.neumorphic == true
+            ? neuShadows(dark)
+            : [
+                BoxShadow(
+                  color: dark ? Colors.black26 : const Color(0xFFDDE4EE),
+                  offset: const Offset(5, 6),
+                  blurRadius: 14,
+                ),
+                BoxShadow(
+                  color: dark ? const Color(0xFF1C2935) : Colors.white,
+                  offset: const Offset(-4, -4),
+                  blurRadius: 12,
+                ),
+              ],
       ),
       child: Material(
         color: Colors.transparent,
