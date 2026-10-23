@@ -9,11 +9,13 @@ class NeuHeaderCard extends StatelessWidget {
     required this.color,
     required this.child,
     this.onTap,
+    this.trailing,
   });
   final String title;
   final IconData icon;
   final Color color;
   final Widget child;
+  final Widget? trailing;
   final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) {
@@ -37,6 +39,7 @@ class NeuHeaderCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
+                  ?trailing,
                 ],
               ),
             ),

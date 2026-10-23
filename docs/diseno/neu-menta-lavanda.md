@@ -94,3 +94,17 @@ Pacientes usa tarjetas con encabezado menta y acceso al expediente desde la tarj
 Hospitalización refuerza el encabezado menta de las fichas por jaula. Agenda de citas
 usa encabezado lila con el estado textual existente. Los colores identifican el
 módulo, no una valoración clínica. Se conservan acciones y permisos.
+
+## Dashboard y secciones complementarias
+
+Los paneles de resumen del dashboard usan encabezados de color: menta para
+pacientes/hospitalización, cian para inventario y dosis, índigo para estadísticas/caja
+y lila para el resto. Conservan sus datos, estados de carga/error y accesos. Los
+módulos principales mantienen una cuadrícula adaptable y usan fondos de icono
+coordinados para evitar tarjetas demasiado altas en móvil.
+
+Las plantillas de Formatos y los pendientes del equipo incorporan encabezados lila
+e índigo. El directorio real de distribuidores en Operaciones también utiliza las
+tarjetas con franja lateral del vademécum, conservando teléfono, notas y acciones.
+Este directorio es independiente de la agrupación de nombres por producto en
+Inventario descrita anteriormente.

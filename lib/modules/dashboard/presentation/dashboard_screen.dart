@@ -1,3 +1,4 @@
+import '../../../core/widgets/neu_header_card.dart';
 import '../../doses/domain/quantity.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -54,35 +55,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return '${d.day}/${d.month}/${d.year} · ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
   }
 
+  Color sectionColor(String page) => switch (page) {
+    'Pacientes' || 'Hospitalización' => const Color(0xFF61C7BA),
+    'Inventario' || 'Cálculo rápido' => const Color(0xFF51BAC6),
+    'Estadísticas' || 'Caja' => const Color(0xFF879AE0),
+    _ => const Color(0xFFAC8DD5),
+  };
+
   Widget panel(String title, String page, List<Widget> children) =>
-      WorkspacePanel(
+      NeuHeaderCard(
+        title: title,
+        icon: sectionIcon(page),
+        color: sectionColor(page),
+        trailing: IconButton(
+          tooltip: 'Abrir $title',
+          onPressed: () => widget.onNavigate(page),
+          icon: const Icon(Icons.chevron_right),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    sectionIcon(page),
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Abrir $title',
-                    onPressed: () => widget.onNavigate(page),
-                    icon: const Icon(Icons.chevron_right),
-                  ),
-                ],
-              ),
-              ...children,
-            ],
+            children: children,
           ),
         ),
       );
@@ -303,21 +297,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(
-                                      sectionIcon(action.$2),
-                                      size: 28,
-                                      color:
-                                          [
-                                            'Pacientes',
-                                            'Agenda',
-                                            'Cálculo rápido',
-                                          ].contains(action.$2)
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.primary
-                                          : Theme.of(
-                                              context,
-                                            ).colorScheme.secondary,
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: sectionColor(
+                                          action.$2,
+                                        ).withValues(alpha: .20),
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: Icon(
+                                        sectionIcon(action.$2),
+                                        size: 28,
+                                      ),
                                     ),
                                     const SizedBox(height: 10),
                                     Text(
