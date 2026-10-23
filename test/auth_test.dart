@@ -82,13 +82,22 @@ void main() {
     expect(find.text('Continuar con Google'), findsNothing);
     await tester.tap(find.text('Iniciar sesión'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byTooltip('Mostrar contraseña'));
+    await tester.scrollUntilVisible(
+      find.byTooltip('Mostrar contraseña'),
+      120,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Mostrar contraseña'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('Ocultar contraseña'), findsOneWidget);
     await tester.tap(find.byTooltip('Ocultar contraseña'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Ingresar'));
+    await tester.scrollUntilVisible(
+      find.text('Ingresar'),
+      120,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.tap(find.text('Ingresar'));
     await tester.pumpAndSettle();
     expect(find.text('Ingresa un correo válido'), findsOneWidget);
@@ -114,6 +123,11 @@ void main() {
     await tester.scrollUntilVisible(find.text('Crear cuenta'), -350);
     await tester.tap(find.text('Crear cuenta'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Crear cuenta'),
+      120,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('Crear cuenta'), findsOneWidget);
     expect(find.text('Correo electrónico'), findsOneWidget);
   });

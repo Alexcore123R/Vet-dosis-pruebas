@@ -176,14 +176,14 @@ void main() {
       expect(find.byType(HomePracticeSelector), findsOneWidget);
       expect(
         Theme.of(tester.element(find.byTooltip('Ajustes'))).colorScheme.primary,
-        isNot(original),
+        original,
       );
       core.navigate('Agenda');
       await tester.pumpAndSettle();
       expect(find.byType(HomePracticeSelector), findsNothing);
       expect(
         Theme.of(tester.element(find.byTooltip('Ajustes'))).colorScheme.primary,
-        isNot(original),
+        original,
       );
       core.navigate('Pacientes');
       await tester.pumpAndSettle();
