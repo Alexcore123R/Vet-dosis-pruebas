@@ -63,7 +63,8 @@ void main() {
           requireAuth: true,
         ),
       );
-      expect(find.text('Bienvenido'), findsOneWidget);
+    expect(find.text('Bienvenido a VetDosis'), findsOneWidget);
+    expect(find.text('Planes y costos'), findsOneWidget);
       expect(find.text('Cálculo rápido'), findsNothing);
       expect(find.byType(DropdownButtonFormField<ClinicRole>), findsNothing);
     },
@@ -80,10 +81,31 @@ void main() {
       ),
     );
     expect(find.text('Continuar con Google'), findsNothing);
+    await tester.tap(find.text('Iniciar sesión'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Ingresar'));
     await tester.pumpAndSettle();
     expect(find.text('Ingresa un correo válido'), findsOneWidget);
     expect(model.signedIn, isFalse);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Bienvenida muestra precios y abre registro directamente', (tester) async {
+    repo.userId = null;
+    await model.start();
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(
+      VetDosisApp(
+        model: CoreViewModel(SettingsRepository(), const AppSettings()),
+        auth: model,
+        requireAuth: true,
+      ),
+    );
+    expect(find.text('Individual'), findsOneWidget);
+    expect(find.text('Clínica'), findsOneWidget);
+    await tester.tap(find.text('Crear cuenta'));
+    await tester.pumpAndSettle();
+    expect(find.text('Crear cuenta'), findsOneWidget);
+    expect(find.text('Correo electrónico'), findsOneWidget);
   });
 }

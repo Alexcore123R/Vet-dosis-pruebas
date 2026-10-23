@@ -21,6 +21,7 @@ import '../modules/inventory/presentation/quick_scan_screen.dart';
 import '../modules/support/domain/support_repository.dart';
 import '../modules/support/presentation/support_screen.dart';
 import '../modules/welcome/presentation/product_screen.dart';
+import '../modules/welcome/presentation/public_welcome_screen.dart';
 import '../modules/welcome/presentation/guided_start_screen.dart';
 import '../modules/ai/domain/ai_repository.dart';
 import '../modules/ai/presentation/ai_screen.dart';
@@ -235,7 +236,9 @@ class VetDosisApp extends StatelessWidget {
               !auth!.signedIn ||
               auth!.recoveringPassword ||
               auth!.active == null)
-      ? AuthScreen(model: auth, configured: auth != null)
+      ? auth?.signedIn == true || auth?.recoveringPassword == true
+          ? AuthScreen(model: auth, configured: auth != null)
+          : PublicWelcomeScreen(auth: auth)
       : ModuleAccessBoundary(
           member: auth?.active,
           repository: moduleAccess,
