@@ -14,6 +14,26 @@ import '../domain/backup_repository.dart';
 import '../domain/backup_archive.dart';
 import 'backup_view_model.dart';
 
+/// Reports what the platform picker returned, without claiming remote sync.
+@visibleForTesting
+String manualBackupSaveStatus({
+  required Uri? savedFile,
+  required bool encrypted,
+}) {
+  if (savedFile == null) {
+    return 'Guardado cancelado. No se guardó una nueva copia en este intento.';
+  }
+  if (encrypted) {
+    return 'El selector confirmó el guardado de un respaldo .vetbackup cifrado. '
+        'Si elegiste Google Drive, comprueba en Drive que el archivo aparezca '
+        'y prueba abrirlo con «Revisar respaldo para recuperación». '
+        'Esto no confirma la sincronización remota ni restaura todo el servidor.';
+  }
+  return 'El selector confirmó el guardado de un JSON SIN CIFRAR. '
+      'Contiene datos privados: restringe su acceso y evita compartirlo. '
+      'Esto no confirma la sincronización remota ni restaura todo el servidor.';
+}
+
 @visibleForTesting
 String restorePreviewCloseLabel(bool importsApplied) =>
     importsApplied ? 'Cerrar vista previa' : 'Descartar vista previa';
@@ -267,18 +287,21 @@ class _BackupScreenState extends State<BackupScreen> {
     final output = protect
         ? await compute(_encryptBackup, (bytes, password!))
         : bytes;
-    await FilePicker.saveFile(
+    if (!mounted) return;
+    final savedFile = await FilePicker.saveFile(
       dialogTitle: 'Guardar respaldo operacional',
       fileName:
           'vetdosis-${scope.name}-${widget.member.clinicId}-${DateTime.now().toUtc().toIso8601String().substring(0, 10)}.${protect ? 'vetbackup' : 'json'}',
+      mimeType: protect ? 'application/octet-stream' : 'application/json',
       bytes: output,
     );
-    if (mounted) {
-      setState(
-        () => result =
-            '${protect ? 'Respaldo cifrado' : 'Respaldo sin cifrar'} preparado y verificado. Comprueba que el archivo se guardó. Drive y restauración de servidor siguen pendientes.',
+    if (!mounted) return;
+    setState(() {
+      result = manualBackupSaveStatus(
+        savedFile: savedFile,
+        encrypted: protect,
       );
-    }
+    });
   }
 
   Future<void> csv({String format = 'csv'}) async {
@@ -746,7 +769,18 @@ class _BackupScreenState extends State<BackupScreen> {
                 const Divider(),
               ],
               const Text(
-                'El respaldo de clínica incluye registros y PDF históricos. El personal incluye solo datos propios permitidos y nunca expedientes. Drive y restauración de servidor siguen pendientes.',
+                'El respaldo de clínica incluye registros y PDF históricos. '
+                'El personal incluye solo datos propios permitidos y nunca expedientes. '
+                'En Android puedes escoger Google Drive en el selector «Guardar», '
+                'si aparece como destino disponible. Es un guardado MANUAL, '
+                'no una conexión automática de VetDosis con Drive ni un respaldo '
+                'integral del servidor.',
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Para comprobar tu copia, abre Google Drive y verifica el archivo. '
+                'Luego regresa a «Revisar respaldo para recuperación» y selecciona '
+                'ese mismo archivo. No desinstales la app ni borres datos durante la prueba.',
               ),
               if (access!.clinic && access!.personal)
                 SegmentedButton<BackupScope>(
