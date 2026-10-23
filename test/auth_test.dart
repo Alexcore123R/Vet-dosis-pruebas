@@ -85,7 +85,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byTooltip('Mostrar contraseña'),
       120,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Mostrar contraseña'));
@@ -96,7 +96,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Ingresar'),
       120,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(find.text('Ingresar'));
     await tester.pumpAndSettle();
@@ -126,7 +126,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Crear cuenta'),
       120,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Crear cuenta'), findsOneWidget);
     expect(find.text('Correo electrónico'), findsOneWidget);
