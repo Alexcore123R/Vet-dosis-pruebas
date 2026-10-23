@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'neu_identity.dart';
 
 class WorkspaceStyle extends ThemeExtension<WorkspaceStyle> {
   const WorkspaceStyle({required this.neumorphic});
@@ -26,19 +27,7 @@ class WorkspacePanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-        boxShadow: [
-          BoxShadow(
-            color: dark ? const Color(0xFF131A20) : const Color(0xFFCDD6DE),
-            offset: const Offset(6, 6),
-            blurRadius: 14,
-          ),
-          BoxShadow(
-            color: dark ? const Color(0xFF34424B) : Colors.white,
-            offset: const Offset(-6, -6),
-            blurRadius: 14,
-          ),
-        ],
+        boxShadow: neuShadows(dark),
       ),
       child: Material(
         color: Colors.transparent,

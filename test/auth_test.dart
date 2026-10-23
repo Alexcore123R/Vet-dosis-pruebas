@@ -80,7 +80,12 @@ void main() {
       ),
     );
     expect(find.text('Continuar con Google'), findsNothing);
-    await tester.tap(find.text('Ingresar'));
+    await tester.scrollUntilVisible(
+      find.text('Iniciar sesión'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Iniciar sesión'));
     await tester.pumpAndSettle();
     expect(find.text('Ingresa un correo válido'), findsOneWidget);
     expect(model.signedIn, isFalse);

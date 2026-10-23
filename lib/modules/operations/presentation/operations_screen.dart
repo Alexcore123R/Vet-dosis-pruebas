@@ -1,3 +1,5 @@
+import '../../../core/widgets/neu_record_card.dart';
+import '../../../core/widgets/neu_header_card.dart';
 import '../../auth/domain/staff_labels.dart';
 import 'appointment_patient_picker.dart';
 import '../../backup/domain/backup_archive.dart';
@@ -345,7 +347,10 @@ class _OperationsScreenState extends State<OperationsScreen> {
             final d = DateTime.parse(a['starts_at'] as String).toLocal();
             return DateUtils.isSameDay(d, calendarDay);
           }))
-            Card(
+            NeuHeaderCard(
+              title: appointmentStateLabel(a['state'] as String),
+              icon: Icons.event_outlined,
+              color: const Color(0xFFAC8DD5),
               child: ListTile(
                 onTap:
                     a['patient_id'] != null &&
@@ -527,24 +532,29 @@ class _OperationsScreenState extends State<OperationsScreen> {
                         filter == 'todas' ||
                         (filter == 'pendientes') == (t['completed_at'] == null),
                   ))
-            ListTile(
-              title: Text('${t['title']} · ${t['priority']}'),
-              subtitle: Text(
-                t['assigned_to'] == null
-                    ? 'Todos'
-                    : person(t['assigned_to'] as String),
+            NeuHeaderCard(
+              title: '${t['priority']}',
+              icon: Icons.checklist_outlined,
+              color: const Color(0xFF879AE0),
+              child: ListTile(
+                title: Text('${t['title']} · ${t['priority']}'),
+                subtitle: Text(
+                  t['assigned_to'] == null
+                      ? 'Todos'
+                      : person(t['assigned_to'] as String),
+                ),
+                trailing: t['completed_at'] == null
+                    ? IconButton(
+                        icon: const Icon(Icons.check),
+                        onPressed: () => form(
+                          'Completar pendiente',
+                          'task_complete',
+                          const [],
+                          initial: {'id': t['id']},
+                        ),
+                      )
+                    : const Icon(Icons.done_all),
               ),
-              trailing: t['completed_at'] == null
-                  ? IconButton(
-                      icon: const Icon(Icons.check),
-                      onPressed: () => form(
-                        'Completar pendiente',
-                        'task_complete',
-                        const [],
-                        initial: {'id': t['id']},
-                      ),
-                    )
-                  : const Icon(Icons.done_all),
             ),
         ],
         if (activeSection == 'messages') ...[
@@ -589,25 +599,28 @@ class _OperationsScreenState extends State<OperationsScreen> {
               child: const Text('Agregar distribuidor'),
             ),
           for (final s in model.rows('suppliers'))
-            ListTile(
-              title: Text('${s['name']}'),
-              subtitle: Text('${s['phone']} · ${s['notes']}'),
-              trailing: PopupMenuButton<String>(
-                itemBuilder: (_) => [
-                  for (final x in ['WhatsApp', 'Llamar', 'SMS'])
-                    PopupMenuItem(value: x, child: Text(x)),
-                ],
-                onSelected: (x) async {
-                  final p = (s['phone'] as String).replaceAll(
-                    RegExp(r'[^0-9+]'),
-                    '',
-                  );
-                  if (p.isEmpty) return;
-                  final uri = x == 'WhatsApp'
-                      ? Uri.https('wa.me', p.replaceAll('+', ''))
-                      : Uri(scheme: x == 'Llamar' ? 'tel' : 'sms', path: p);
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                },
+            NeuRecordCard(
+              color: const Color(0xFFAC8DD5),
+              child: ListTile(
+                title: Text('${s['name']}'),
+                subtitle: Text('${s['phone']} · ${s['notes']}'),
+                trailing: PopupMenuButton<String>(
+                  itemBuilder: (_) => [
+                    for (final x in ['WhatsApp', 'Llamar', 'SMS'])
+                      PopupMenuItem(value: x, child: Text(x)),
+                  ],
+                  onSelected: (x) async {
+                    final p = (s['phone'] as String).replaceAll(
+                      RegExp(r'[^0-9+]'),
+                      '',
+                    );
+                    if (p.isEmpty) return;
+                    final uri = x == 'WhatsApp'
+                        ? Uri.https('wa.me', p.replaceAll('+', ''))
+                        : Uri(scheme: x == 'Llamar' ? 'tel' : 'sms', path: p);
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  },
+                ),
               ),
             ),
         ],

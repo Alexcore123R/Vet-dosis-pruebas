@@ -1,3 +1,4 @@
+import '../../../core/widgets/neu_record_card.dart';
 import '../../identity/domain/identity_repository.dart';
 import '../../exports/domain/branded_export.dart';
 import '../../exports/presentation/branded_export_action.dart';
@@ -851,6 +852,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               items: [
                 for (final e in {
                   'stock': 'Productos y lotes',
+                  'suppliers': 'Proveedores',
                   'cash': 'Punto de venta y caja',
                   'orders': 'Pedidos pendientes de aprobación',
                 }.entries)
@@ -868,6 +870,42 @@ class _InventoryScreenState extends State<InventoryScreen> {
               },
             ),
             const SizedBox(height: 16),
+            if (section == 'suppliers') ...[
+              Text(
+                'Proveedores',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const Text(
+                'Nombres registrados en los productos del inventario.',
+              ),
+              for (final name
+                  in (model.products
+                      .map((p) => (p['proveedor'] as String? ?? '').trim())
+                      .where((name) => name.isNotEmpty)
+                      .toSet()
+                      .toList()
+                    ..sort()))
+                NeuRecordCard(
+                  color: const Color(0xFFB098DC),
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.local_shipping_outlined),
+                    title: Text(name),
+                    subtitle: Text(
+                      '${model.products.where((p) => (p['proveedor'] as String? ?? '').trim() == name).length} productos vinculados',
+                    ),
+                  ),
+                ),
+              if (!model.products.any(
+                (p) => (p['proveedor'] as String? ?? '').trim().isNotEmpty,
+              ))
+                const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Text(
+                    'No hay proveedores registrados en los productos.',
+                  ),
+                ),
+            ],
             if (section == 'stock') ...[
               TextField(
                 controller: searchController,
@@ -941,7 +979,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 }
                 return true;
               }))
-                Card(
+                NeuRecordCard(
+                  color: const Color(0xFF51BAC6),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(

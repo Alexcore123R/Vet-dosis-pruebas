@@ -1,3 +1,4 @@
+import '../../../core/widgets/workspace_panel.dart';
 import 'package:flutter/material.dart';
 import '../../auth/domain/clinic_membership.dart';
 import '../../patients/domain/patient_repository.dart';
@@ -439,7 +440,7 @@ class _HospitalScreenState extends State<HospitalScreen> {
       TaskUrgency.escalated => 'Retraso · revisión prioritaria',
       TaskUrgency.due => 'Pendiente: horario cumplido',
     };
-    return Card(
+    return WorkspacePanel(
       child: Padding(
         padding: EdgeInsets.all(compact ? 10 : 16),
         child: Column(
@@ -577,7 +578,7 @@ class _HospitalScreenState extends State<HospitalScreen> {
           if (waiting > 0)
             Semantics(
               liveRegion: true,
-              child: Card(
+              child: WorkspacePanel(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(
@@ -717,17 +718,45 @@ class _HospitalScreenState extends State<HospitalScreen> {
             )
           else
             for (final stay in model.snapshot.stays)
-              Card(
+              WorkspacePanel(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        'Jaula ${stay.cageLabel} · ${stay.patientName}',
-                        style: Theme.of(context).textTheme.titleLarge,
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF61C7BA).withValues(alpha: .24),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.pets_outlined,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    stay.patientName,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleLarge,
+                                  ),
+                                  Text(
+                                    '${stay.species} · Jaula ${stay.cageLabel}',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      Text(stay.species),
                       if (model.snapshot.cageChanges &&
                           widget.repository is HospitalLocationRepository)
                         Wrap(

@@ -1,3 +1,4 @@
+import '../../../core/widgets/neu_header_card.dart';
 import '../../doses/domain/quantity.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -54,35 +55,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return '${d.day}/${d.month}/${d.year} · ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
   }
 
+  Color sectionColor(String page) => switch (page) {
+    'Pacientes' || 'Hospitalización' => const Color(0xFF61C7BA),
+    'Inventario' || 'Cálculo rápido' => const Color(0xFF51BAC6),
+    'Estadísticas' || 'Caja' => const Color(0xFF879AE0),
+    _ => const Color(0xFFAC8DD5),
+  };
+
   Widget panel(String title, String page, List<Widget> children) =>
-      WorkspacePanel(
+      NeuHeaderCard(
+        title: title,
+        icon: sectionIcon(page),
+        color: sectionColor(page),
+        trailing: IconButton(
+          tooltip: 'Abrir $title',
+          onPressed: () => widget.onNavigate(page),
+          icon: const Icon(Icons.chevron_right),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    sectionIcon(page),
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Abrir $title',
-                    onPressed: () => widget.onNavigate(page),
-                    icon: const Icon(Icons.chevron_right),
-                  ),
-                ],
-              ),
-              ...children,
-            ],
+            children: children,
           ),
         ),
       );
@@ -257,48 +251,79 @@ class _DashboardScreenState extends State<DashboardScreen> {
             statisticsPanel,
           if (!widget.statisticsOnly) ...[
             const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final action in <(String, String)>[
-                  ('Inventario', 'Inventario'),
-                  ('Estadísticas', 'Estadísticas'),
-                  ('Recetas', 'Receta'),
-                  ('Formatos', 'Formatos'),
-                  ('Pacientes', 'Pacientes'),
-                  ('Agenda', 'Agenda'),
-                  ('Hospitalización', 'Hospitalización'),
-                  ('Cálculo rápido', 'Cálculo rápido'),
-                  ('Cálculos clínicos', 'Cálculos clínicos'),
-                  ('Escáner', 'Escanear producto'),
-                ])
-                  if (navigationAllowed(action.$2, m.member, m.moduleAccess))
-                    ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: MediaQuery.sizeOf(context).width - 48,
-                      ),
-                      child: WorkspacePanel(
-                        child: InkWell(
-                          onTap: () => widget.onNavigate(action.$2),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(sectionIcon(action.$2), size: 20),
-                                const SizedBox(width: 8),
-                                Flexible(child: Text(action.$1)),
-                              ],
+            Text(
+              'Módulos principales',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final scale = MediaQuery.textScalerOf(context).scale(1);
+                final columns = scale > 1.4
+                    ? 1
+                    : constraints.maxWidth >= 700
+                    ? 4
+                    : 2;
+                final width =
+                    (constraints.maxWidth - 12 * (columns - 1)) / columns;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  children: [
+                    for (final action in <(String, String)>[
+                      ('Inventario', 'Inventario'),
+                      ('Estadísticas', 'Estadísticas'),
+                      ('Recetas', 'Receta'),
+                      ('Formatos', 'Formatos'),
+                      ('Pacientes', 'Pacientes'),
+                      ('Agenda', 'Agenda'),
+                      ('Hospitalización', 'Hospitalización'),
+                      ('Cálculo rápido', 'Cálculo rápido'),
+                      ('Cálculos clínicos', 'Cálculos clínicos'),
+                      ('Escáner', 'Escanear producto'),
+                    ])
+                      if (navigationAllowed(
+                        action.$2,
+                        m.member,
+                        m.moduleAccess,
+                      ))
+                        SizedBox(
+                          width: width,
+                          child: WorkspacePanel(
+                            child: InkWell(
+                              onTap: () => widget.onNavigate(action.$2),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: sectionColor(
+                                          action.$2,
+                                        ).withValues(alpha: .20),
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: Icon(
+                                        sectionIcon(action.$2),
+                                        size: 28,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      action.$1,
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-              ],
+                  ],
+                );
+              },
             ),
             panel(
               'Alertas y recordatorios',

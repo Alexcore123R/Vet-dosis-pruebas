@@ -1,3 +1,6 @@
+import '../../../core/widgets/neu_header_card.dart';
+import 'phone_directory.dart';
+import '../../../core/widgets/workspace_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../auth/domain/clinic_membership.dart';
@@ -28,6 +31,7 @@ class PatientsScreen extends StatefulWidget {
 
 class _PatientsScreenState extends State<PatientsScreen> {
   late final PatientViewModel model;
+  bool showDirectory = false;
   String query = '';
   @override
   void initState() {
@@ -76,7 +80,12 @@ class _PatientsScreenState extends State<PatientsScreen> {
           owners: owners,
           save: (patient, owner, operation) async {
             try {
-              await repository.createPatient(clinicId, patient, owner, operation);
+              await repository.createPatient(
+                clinicId,
+                patient,
+                owner,
+                operation,
+              );
               return null;
             } on FormatException catch (e) {
               return e.message.toString();
@@ -145,6 +154,22 @@ class _PatientsScreenState extends State<PatientsScreen> {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: model,
     builder: (context, _) {
+      if (showDirectory && model.access.owners) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextButton.icon(
+              onPressed: () => setState(() => showDirectory = false),
+              icon: const Icon(Icons.arrow_back),
+              label: const Text('Volver a pacientes'),
+            ),
+            if (model.busy) const LinearProgressIndicator(),
+            if (model.error != null) Text(model.error!),
+            if (!model.busy && model.error == null)
+              PhoneDirectory(owners: model.owners),
+          ],
+        );
+      }
       final patient = model.selected;
       VetOwner? owner;
       if (patient != null && model.access.owners) {
@@ -167,6 +192,14 @@ class _PatientsScreenState extends State<PatientsScreen> {
             spacing: 12,
             runSpacing: 8,
             children: [
+              if (model.access.owners)
+                OutlinedButton.icon(
+                  onPressed: model.busy
+                      ? null
+                      : () => setState(() => showDirectory = true),
+                  icon: const Icon(Icons.contact_phone_outlined),
+                  label: const Text('Agenda telefónica'),
+                ),
               if (model.access.createPatient)
                 FilledButton.icon(
                   onPressed: model.busy ? null : create,
@@ -207,11 +240,17 @@ class _PatientsScreenState extends State<PatientsScreen> {
           for (final p in model.patients.where(
             (p) => '${p.name} ${p.species}'.toLowerCase().contains(query),
           ))
-            ListTile(
-              title: Text(p.name),
-              subtitle: Text('${p.species} · ${p.breed}'),
-              selected: patient?.id == p.id,
+            NeuHeaderCard(
+              title: p.name,
               onTap: model.busy ? null : () => model.select(p),
+              icon: Icons.pets_outlined,
+              color: const Color(0xFF61C7BA),
+              child: ListTile(
+                title: Text('${p.species} · ${p.breed}'),
+                trailing: const Icon(Icons.chevron_right),
+                selected: patient?.id == p.id,
+                onTap: model.busy ? null : () => model.select(p),
+              ),
             ),
           if (patient != null) ...[
             const Divider(height: 32),
@@ -223,7 +262,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
               '${patient.sex} · Nacimiento: ${patient.birthDate ?? 'Pendiente'}',
             ),
             if (model.access.owners)
-              Card(
+              WorkspacePanel(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: owner == null
@@ -272,7 +311,7 @@ class _PatientsScreenState extends State<PatientsScreen> {
               if (model.events.isEmpty && !model.busy)
                 const Text('Sin entradas clínicas registradas.'),
               for (final event in model.events.reversed)
-                Card(
+                WorkspacePanel(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
