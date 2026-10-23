@@ -101,8 +101,8 @@ void main() {
         requireAuth: true,
       ),
     );
-    expect(find.text('Individual'), findsOneWidget);
-    expect(find.text('Clínica'), findsOneWidget);
+    expect(find.textContaining('Individual ·'), findsOneWidget);
+    expect(find.textContaining('Clínica ·'), findsOneWidget);
     await tester.tap(find.text('Crear cuenta'));
     await tester.pumpAndSettle();
     expect(find.text('Crear cuenta'), findsOneWidget);

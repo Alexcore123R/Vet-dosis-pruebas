@@ -114,9 +114,8 @@ class _Plan extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Card(
         child: ListTile(
-          title: Text(name),
+          title: Text('$name · $price'),
           subtitle: Text(description),
-          trailing: Text(price, textAlign: TextAlign.end),
         ),
       );
 }
