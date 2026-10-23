@@ -1,0 +1,43 @@
+name: Validar exportación manual y respaldo cifrado
+on:
+  pull_request:
+    paths:
+      - 'lib/modules/backup/**'
+      - 'test/backup_protection_test.dart'
+      - 'docs/respaldo-protegido-recuperacion.md'
+      - '.github/workflows/validate-manual-backup.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backup-and-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - name: Pruebas de respaldos, cifrado e interfaz
+        run: flutter test --timeout 5m --concurrency 2
+  android-compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.6'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Verificar compilación Android (debug, no distribuir)
+        run: flutter build apk --debug --flavor beta --target-platform android-arm64

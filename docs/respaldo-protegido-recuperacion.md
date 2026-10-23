@@ -38,3 +38,27 @@ Para una restauración real quedan pendientes: recuperación en entorno aislado,
 Cifrado/descifrado conserva los bytes originales, usa resultados aleatorios, rechaza contraseña incorrecta y etiqueta alterada. La inspección rechaza clínica equivocada y filas mezcladas, y no importa registros. Se prueba confirmación/cancelación de contraseña, protección activada inicialmente y ausencia de consulta de estadísticas si el componente se abre con un rol no administrador.
 
 No hay migraciones nuevas ni cambios en Supabase remoto en este bloque.
+
+## Google Drive: exportación manual desde Android
+
+El selector nativo usado por `FilePicker.saveFile` permite elegir ubicaciones
+ofrecidas por el proveedor de documentos del teléfono, incluido Google Drive
+cuando esté instalado y disponible. Esto **no** enlaza automáticamente una
+cuenta Google a VetDosis, no necesita autorización OAuth a Drive por parte
+de la aplicación y no programa respaldos sin intervención del usuario.
+
+Después de solicitar `Exportar respaldo protegido`, seleccionar el destino
+en el selector de Android y confirmar. Si se cancela, VetDosis informa
+`Guardado cancelado`; si el selector devuelve la URI del archivo, informa
+solamente que el selector confirmó el guardado. No interpreta esa URI como
+prueba de que la copia ya se haya sincronizado remotamente. No muestra ni
+guarda la URI, y no solicita permiso global de almacenamiento.
+
+Para validar la copia: buscar el archivo `.vetbackup` en el Drive elegido,
+volver a `Revisar respaldo para recuperación`, seleccionar ese archivo,
+ingresar la contraseña y comprobar integridad/identidad de clínica.
+Esa inspección es de solo lectura y no implica restauración integral del
+servidor. No subir JSON ni CSV sin cifrar con datos clínicos a un Drive
+compartido. Los respaldos automáticos, el acceso OAuth separado, la
+copiadora de PostgreSQL + binarios de Storage y el ensayo de restauración
+integral están registrados por separado en el issue #22.

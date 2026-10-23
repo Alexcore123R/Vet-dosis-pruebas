@@ -76,6 +76,36 @@ class CountingBackup extends FakeBackup {
 }
 
 void main() {
+  test('Manual backup picker cancellation is not reported as a saved backup', () {
+    expect(
+      manualBackupSaveStatus(savedFile: null, encrypted: true),
+      contains('cancelado'),
+    );
+    expect(
+      manualBackupSaveStatus(savedFile: null, encrypted: true),
+      isNot(contains('selector confirmó')),
+    );
+  });
+
+  test('Manual Drive target is acknowledged without claiming cloud sync', () {
+    final encrypted = manualBackupSaveStatus(
+      savedFile: Uri.parse(
+        'content://com.google.android.apps.docs.storage/document/synthetic',
+      ),
+      encrypted: true,
+    );
+    expect(encrypted, contains('.vetbackup cifrado'));
+    expect(encrypted, contains('comprueba en Drive'));
+    expect(encrypted, contains('no confirma la sincronización'));
+    expect(encrypted, isNot(contains('content://')));
+
+    final plain = manualBackupSaveStatus(
+      savedFile: Uri.parse('file:///synthetic/backup.json'),
+      encrypted: false,
+    );
+    expect(plain, contains('SIN CIFRAR'));
+    expect(plain, isNot(contains('.vetbackup cifrado')));
+  });
   test('persisted restore preview is normalized with owner apply state', () {
     final state = readRestorePreviewState({
       'schema_version': 1,
