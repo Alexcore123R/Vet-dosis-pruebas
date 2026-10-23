@@ -11,6 +11,7 @@ import 'package:vetdosis_pro/modules/doses/data/catalog_repository.dart';
 import 'package:vetdosis_pro/modules/doses/domain/catalog.dart';
 import 'package:vetdosis_pro/modules/doses/domain/quantity.dart';
 import 'dose_test.dart' as fixture;
+import 'package:vetdosis_pro/core/widgets/workspace_panel.dart';
 
 Map<String, Quantity> input(Map<String, String> values) =>
     values.map((k, v) => MapEntry(k, Quantity.parse(v)));
@@ -336,6 +337,9 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(
+            extensions: const [WorkspaceStyle(neumorphic: true)],
+          ),
           home: Scaffold(
             body: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
@@ -360,7 +364,7 @@ void main() {
         await tester.ensureVisible(fields.at(pair.$1));
         await tester.enterText(fields.at(pair.$1), pair.$2);
       }
-      final button = find.text('Calcular con parámetros capturados');
+      final button = find.text('Calcular · Fluidoterapia');
       await tester.ensureVisible(button);
       await tester.tap(button);
       await tester.pump();
@@ -372,6 +376,7 @@ void main() {
       await tester.ensureVisible(
         find.byType(DropdownButtonFormField<String>).first,
       );
+      await tester.pumpAndSettle();
       await tester.tap(find.byType(DropdownButtonFormField<String>).first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Constantes fisiológicas').last);

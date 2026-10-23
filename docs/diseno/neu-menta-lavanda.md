@@ -46,3 +46,22 @@ porque ese repositorio de prueba no ofrece dicha capacidad.
 Las pruebas cubren validación de acceso, mostrar/ocultar contraseña, texto al
 180 %, claro/oscuro, persistencia de preferencias y navegación según rol.
 La revisión en un teléfono físico y con una cuenta real queda pendiente.
+
+## Calculadoras: identidad por herramienta
+
+Se aplica una superficie mate con tinte suave, sombras de luz/oscuridad y campos
+hundidos en el estilo neu. Los botones usan esquinas de 16 px y nombres explícitos.
+La identidad se mantiene al seleccionar otra herramienta:
+
+- Dosis: menta.
+- Fluidoterapia: cian.
+- Infusión continua: lila.
+- Cabeza/lote: índigo.
+- Agua: turquesa.
+- Alimento: malva.
+- Ajuste pediátrico/geriátrico: morado con magenta.
+
+El título y el icono acompañan siempre al color. El modo oscuro adapta el contraste;
+el estilo estándar conserva sus campos convencionales. Se mantienen las fórmulas,
+unidades, fuentes, validaciones e invalidación de resultados tras editar entradas.
+Las herramientas de avicultura e incubación mantienen sus pantallas actuales.
