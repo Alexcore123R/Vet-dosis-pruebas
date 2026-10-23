@@ -236,6 +236,7 @@ void main() {
     expect(find.text('Presentación comercial'), findsOneWidget);
     expect(find.text('1 mg/kg · no editable'), findsOneWidget);
     expect(find.textContaining('Dosis seleccionada (mg/kg)'), findsNothing);
+    await tester.ensureVisible(find.byType(DropdownButtonFormField<Presentation>));
     await tester.tap(find.byType(DropdownButtonFormField<Presentation>));
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('Marca ficticia').last);
