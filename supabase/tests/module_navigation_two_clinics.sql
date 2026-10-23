@@ -1,5 +1,23 @@
 -- Synthetic, isolated two-account/two-clinic module permissions.
 -- Appended after the 13N module navigation fixture; never run in Supabase.
+-- Each .sql is executed in a separate psql session by run_module_navigation_dashboard.sh.
+-- Recreate session-local assertions; pg_temp helpers from the preceding test do not persist.
+create function pg_temp.assert_true(v boolean,msg text) returns void language plpgsql as $
+begin
+  if v is distinct from true then raise exception 'ASSERT: %',msg;end if;
+end
+$;
+create function pg_temp.expect_error(sql text,expected text) returns void language plpgsql as $
+begin
+  begin
+    execute sql;
+  exception when others then
+    if position(expected in sqlerrm)>0 then return;end if;
+    raise;
+  end;
+  raise exception 'Expected rejection: %',expected;
+end
+$;
 insert into auth.users(id,email,email_confirmed_at) values
 ('00000000-0000-0000-0000-000000000181','synthetic-owner-a@example.test',now()),
 ('00000000-0000-0000-0000-000000000182','synthetic-owner-b@example.test',now());
