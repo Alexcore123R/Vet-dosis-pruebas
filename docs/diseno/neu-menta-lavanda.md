@@ -2,7 +2,9 @@
 
 La referencia aprobada es el collage del usuario y su acceso: superficies lisas,
 luz blanca arriba a la izquierda, sombra gris difusa y campos suavemente hundidos.
-Se conserva el logo original aportado, sin regenerarlo. El nombre combina azul
+Se conserva el logo original aportado, sin regenerarlo. Se usa el PNG con
+transparencia `1000294086.png` de Drive (archivo
+`1g0RR9DhDKK5GYLnZgMedDQgWt_FKeo2o`), preservando sus bytes originales. El nombre combina azul
 noche y lavanda; el botón de acceso usa un degradado menta–lila con texto oscuro.
 
 ## Integración

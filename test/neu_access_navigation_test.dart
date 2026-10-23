@@ -50,7 +50,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.runAsync(() async {
         await precacheImage(
-          const AssetImage('assets/brand/vetdosis-logo.jpg'),
+          const AssetImage('assets/brand/vetdosis-logo.png'),
           tester.element(find.byType(Image).first),
         );
       });
