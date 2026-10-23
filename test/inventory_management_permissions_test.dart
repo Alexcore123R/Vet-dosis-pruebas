@@ -47,6 +47,23 @@ class ManagementRepo extends DispensingRepo
   }
 }
 
+class SupplierRepo extends ManagementRepo {
+  @override
+  Future<dynamic> read(String command, Map<String, dynamic> args) async {
+    final result = await super.read(command, args);
+    if (command == 'inv_dashboard') {
+      final product = Map<String, dynamic>.from(
+        (result['products'] as List).first as Map,
+      );
+      result['products'] = [
+        {...product, 'proveedor': 'Proveedor de prueba'},
+        {...product, 'id': 'second', 'proveedor': 'Proveedor de prueba'},
+      ];
+    }
+    return result;
+  }
+}
+
 Future<void> openInventory(
   WidgetTester tester,
   ManagementRepo repo, {
@@ -74,6 +91,15 @@ Future<void> openInventory(
 }
 
 void main() {
+  testWidgets('Supplier list groups the existing inventory records on mobile', (
+    tester,
+  ) async {
+    await openInventory(tester, SupplierRepo(), section: 'suppliers');
+    expect(find.text('Proveedor de prueba'), findsOneWidget);
+    expect(find.text('2 productos vinculados'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   test(
     'read-only administrator has no operational grants, explicit receiver can only receive',
     () async {

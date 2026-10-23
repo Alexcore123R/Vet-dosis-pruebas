@@ -1,3 +1,4 @@
+import '../../../core/widgets/neu_header_card.dart';
 import 'phone_directory.dart';
 import '../../../core/widgets/workspace_panel.dart';
 import 'package:flutter/material.dart';
@@ -239,11 +240,17 @@ class _PatientsScreenState extends State<PatientsScreen> {
           for (final p in model.patients.where(
             (p) => '${p.name} ${p.species}'.toLowerCase().contains(query),
           ))
-            ListTile(
-              title: Text(p.name),
-              subtitle: Text('${p.species} · ${p.breed}'),
-              selected: patient?.id == p.id,
+            NeuHeaderCard(
+              title: p.name,
               onTap: model.busy ? null : () => model.select(p),
+              icon: Icons.pets_outlined,
+              color: const Color(0xFF61C7BA),
+              child: ListTile(
+                title: Text('${p.species} · ${p.breed}'),
+                trailing: const Icon(Icons.chevron_right),
+                selected: patient?.id == p.id,
+                onTap: model.busy ? null : () => model.select(p),
+              ),
             ),
           if (patient != null) ...[
             const Divider(height: 32),

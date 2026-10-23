@@ -1,3 +1,4 @@
+import '../../../core/widgets/neu_header_card.dart';
 import '../../auth/domain/staff_labels.dart';
 import 'appointment_patient_picker.dart';
 import '../../backup/domain/backup_archive.dart';
@@ -345,7 +346,10 @@ class _OperationsScreenState extends State<OperationsScreen> {
             final d = DateTime.parse(a['starts_at'] as String).toLocal();
             return DateUtils.isSameDay(d, calendarDay);
           }))
-            Card(
+            NeuHeaderCard(
+              title: appointmentStateLabel(a['state'] as String),
+              icon: Icons.event_outlined,
+              color: const Color(0xFFAC8DD5),
               child: ListTile(
                 onTap:
                     a['patient_id'] != null &&

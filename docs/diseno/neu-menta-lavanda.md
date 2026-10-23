@@ -83,3 +83,14 @@ actual para conservar el manejo de cambios de sesión y permisos.
 Verificación: 27 pruebas de directorios, dosis y pacientes aprobadas; análisis
 estático sin incidencias. Inventario y proveedores son próximos candidatos al
 mismo patrón visual, todavía no modificados.
+
+## Listados y encabezados por módulo
+
+Inventario utiliza tarjetas neu con franja cian. La sección Proveedores agrupa los
+nombres existentes en los productos y muestra su cantidad vinculada; no constituye
+un directorio independiente ni añade teléfonos o contactos inventados.
+
+Pacientes usa tarjetas con encabezado menta y acceso al expediente desde la tarjeta.
+Hospitalización refuerza el encabezado menta de las fichas por jaula. Agenda de citas
+usa encabezado lila con el estado textual existente. Los colores identifican el
+módulo, no una valoración clínica. Se conservan acciones y permisos.

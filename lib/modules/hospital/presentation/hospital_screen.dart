@@ -728,9 +728,7 @@ class _HospitalScreenState extends State<HospitalScreen> {
                         padding: const EdgeInsets.all(16),
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primary.withValues(alpha: .10),
+                          color: const Color(0xFF61C7BA).withValues(alpha: .24),
                           borderRadius: BorderRadius.circular(18),
                         ),
                         child: Row(
