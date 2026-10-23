@@ -102,6 +102,7 @@ void main() {
     );
     await tester.scrollUntilVisible(find.textContaining('Individual ·'), 350);
     expect(find.textContaining('Individual ·'), findsOneWidget);
+    await tester.scrollUntilVisible(find.textContaining('Clínica ·'), 350);
     expect(find.textContaining('Clínica ·'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Crear cuenta'), -350);
     await tester.tap(find.text('Crear cuenta'));
