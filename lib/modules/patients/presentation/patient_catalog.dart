@@ -1,3 +1,4 @@
+import '../../../core/widgets/neu_header_card.dart';
 import 'package:flutter/material.dart';
 import '../../../core/widgets/workspace_panel.dart';
 import '../domain/patient_models.dart';
@@ -28,7 +29,11 @@ class PatientCatalogTile extends StatelessWidget {
   final bool selected;
   final VoidCallback? onTap;
   @override
-  Widget build(BuildContext context) => WorkspacePanel(
+  Widget build(BuildContext context) => NeuHeaderCard(
+    title: patient.name,
+    icon: Icons.pets_outlined,
+    color: const Color(0xFF61C7BA),
+    onTap: onTap,
     child: ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       selected: selected,
@@ -36,7 +41,6 @@ class PatientCatalogTile extends StatelessWidget {
         Icons.pets_outlined,
         color: selected ? Theme.of(context).colorScheme.primary : null,
       ),
-      title: Text(patient.name),
       subtitle: Text(
         [
           patient.species,

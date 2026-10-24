@@ -122,10 +122,18 @@ class VetDosisApp extends StatelessWidget {
   ThemeData theme(Brightness brightness) {
     final dark = brightness == Brightness.dark;
     final neumorphic = model.settings.visualStyle == 'neu';
-    final background = dark ? const Color(0xFF0B121C) : (neumorphic ? neuBackground : VetColors.canvas);
-    final surface = dark ? const Color(0xFF131E2A) : (neumorphic ? neuBackground : VetColors.surface);
-    final primary = dark ? const Color(0xFF55E2D3) : (neumorphic ? const Color(0xFF087F83) : VetColors.purple);
-    final secondary = dark ? const Color(0xFFB69BFF) : (neumorphic ? neuLavender : VetColors.turquoise);
+    final background = dark
+        ? const Color(0xFF0B121C)
+        : (neumorphic ? neuBackground : VetColors.canvas);
+    final surface = dark
+        ? const Color(0xFF131E2A)
+        : (neumorphic ? neuBackground : VetColors.surface);
+    final primary = dark
+        ? const Color(0xFF55E2D3)
+        : (neumorphic ? const Color(0xFF087F83) : VetColors.purple);
+    final secondary = dark
+        ? const Color(0xFFB69BFF)
+        : (neumorphic ? neuLavender : VetColors.turquoise);
     final tertiary = dark ? const Color(0xFFFF92C9) : VetColors.lavender;
     final scheme =
         ColorScheme.fromSeed(
@@ -160,7 +168,9 @@ class VetDosisApp extends StatelessWidget {
               color: background,
               surfaceTintColor: Colors.transparent,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(22),
+              ),
             )
           : null,
       inputDecorationTheme: neumorphic
@@ -248,8 +258,8 @@ class VetDosisApp extends StatelessWidget {
               auth!.recoveringPassword ||
               auth!.active == null)
       ? auth?.signedIn == true || auth?.recoveringPassword == true
-          ? AuthScreen(model: auth, configured: auth != null)
-          : PublicWelcomeScreen(auth: auth)
+            ? AuthScreen(model: auth, configured: auth != null)
+            : PublicWelcomeScreen(auth: auth)
       : ModuleAccessBoundary(
           member: auth?.active,
           repository: moduleAccess,
@@ -673,14 +683,20 @@ class CoreShell extends StatelessWidget {
                         )
                 else if (model.screen == 'Vademécum')
                   VademecumScreen(
-                    key: ValueKey('vademecum:${auth?.active?.userId}:${auth?.active?.clinicId}'),
+                    key: ValueKey(
+                      'vademecum:${auth?.active?.userId}:${auth?.active?.clinicId}',
+                    ),
                     catalog: AssetCatalogRepository(),
                     personal: personalDoses,
                     clinicId: auth?.active?.clinicId,
                     userId: auth?.active?.userId,
                     admin: auth?.active?.role == ClinicRole.admin,
-                    canCalculate: auth?.active == null ||
-                        [ClinicRole.admin, ClinicRole.mvz].contains(auth?.active?.role),
+                    canCalculate:
+                        auth?.active == null ||
+                        [
+                          ClinicRole.admin,
+                          ClinicRole.mvz,
+                        ].contains(auth?.active?.role),
                     offline: auth?.offline ?? false,
                   )
                 else if (model.screen == 'Operaciones de dosis')
@@ -700,11 +716,27 @@ class CoreShell extends StatelessWidget {
                             ClinicRole.mvz,
                           ].contains(auth!.active?.role)
                       ? CalculationScreen(
+                          patients:
+                              auth?.offline == false && allowed('Pacientes')
+                              ? patients
+                              : null,
+                          onFluidReminder:
+                              hospital != null &&
+                                  auth?.offline == false &&
+                                  allowed('Hospitalización')
+                              ? (patientId, summary) => model.navigate(
+                                  'Hospitalización',
+                                  patientId: patientId,
+                                  instructions: summary,
+                                )
+                              : null,
                           referenceLibrary: referenceLibrary,
                           clinicId: auth?.active?.clinicId,
                           showAviculture:
                               model.branch == ClinicalBranch.production,
-                          key: ValueKey(model.branch),
+                          key: ValueKey(
+                            '${model.branch}:${auth?.active?.userId}:${auth?.active?.clinicId}',
+                          ),
                           initialTool: model.branch == ClinicalBranch.exotic
                               ? 'metabolic'
                               : model.branch == ClinicalBranch.production
@@ -745,7 +777,8 @@ class CoreShell extends StatelessWidget {
                                             builder: (_) => ClinicalScreen(
                                               repository: clinical!,
                                               prescribing: prescribing,
-                                              referenceLibrary: referenceLibrary,
+                                              referenceLibrary:
+                                                  referenceLibrary,
                                               forms: forms!,
                                               member: auth!.active!,
                                               patientId: patient.id,
@@ -780,6 +813,7 @@ class CoreShell extends StatelessWidget {
                                   '${auth!.active!.userId}:${auth!.active!.clinicId}:${auth!.active!.role.name}',
                                 ),
                                 initialPatientId: model.activityPatientId,
+                                initialInstructions: model.activityInstructions,
                                 repository: hospital!,
                                 patients: patients!,
                                 member: auth!.active!,

@@ -360,8 +360,9 @@ void main() {
         await tester.ensureVisible(fields.at(pair.$1));
         await tester.enterText(fields.at(pair.$1), pair.$2);
       }
-      final button = find.text('Calcular con parámetros capturados');
+      final button = find.text('Calcular · Fluidoterapia');
       await tester.ensureVisible(button);
+      await tester.pumpAndSettle();
       await tester.tap(button);
       await tester.pump();
       expect(find.text('Volumen del periodo (ml): 800'), findsOneWidget);
@@ -372,6 +373,7 @@ void main() {
       await tester.ensureVisible(
         find.byType(DropdownButtonFormField<String>).first,
       );
+      await tester.pumpAndSettle();
       await tester.tap(find.byType(DropdownButtonFormField<String>).first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Constantes fisiológicas').last);

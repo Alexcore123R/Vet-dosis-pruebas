@@ -1,3 +1,5 @@
+import '../../patients/domain/patient_repository.dart';
+import 'fluid_therapy_panel.dart';
 import '../../incubation/presentation/incubation_screen.dart';
 import '../../aviculture/presentation/aviculture_screen.dart';
 import 'package:flutter/material.dart';
@@ -19,6 +21,8 @@ class CalculationScreen extends StatefulWidget {
     this.showAviculture = false,
     this.referenceLibrary,
     this.clinicId,
+    this.patients,
+    this.onFluidReminder,
   });
   final CalculationRepository? repository;
   final CatalogRepository? doses;
@@ -26,6 +30,8 @@ class CalculationScreen extends StatefulWidget {
   final bool showAviculture;
   final ReferenceLibraryRepository? referenceLibrary;
   final String? clinicId;
+  final PatientRepository? patients;
+  final void Function(String patientId, String summary)? onFluidReminder;
   @override
   State<CalculationScreen> createState() => _CalculationScreenState();
 }
@@ -179,22 +185,39 @@ class _CalculationScreenState extends State<CalculationScreen> {
             ),
           const SizedBox(height: 12),
           if (widget.referenceLibrary != null && widget.clinicId != null) ...[
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              OutlinedButton.icon(
-                onPressed: () => Navigator.push<void>(context, MaterialPageRoute(builder: (_) => ReferenceLibraryScreen(
-                  repository: widget.referenceLibrary!, clinicId: widget.clinicId!,
-                ))),
-                icon: const Icon(Icons.monitor_heart_outlined),
-                label: const Text('Referencias fisiológicas'),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => Navigator.push<void>(context, MaterialPageRoute(builder: (_) => ReferenceLibraryScreen(
-                  repository: widget.referenceLibrary!, clinicId: widget.clinicId!, initialSection: 'laboratorio',
-                ))),
-                icon: const Icon(Icons.science_outlined),
-                label: const Text('Referencias de laboratorio'),
-              ),
-            ]),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ReferenceLibraryScreen(
+                        repository: widget.referenceLibrary!,
+                        clinicId: widget.clinicId!,
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.monitor_heart_outlined),
+                  label: const Text('Referencias fisiológicas'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ReferenceLibraryScreen(
+                        repository: widget.referenceLibrary!,
+                        clinicId: widget.clinicId!,
+                        initialSection: 'laboratorio',
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.science_outlined),
+                  label: const Text('Referencias de laboratorio'),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
           ],
           const Text(
@@ -358,7 +381,15 @@ class _CalculationScreenState extends State<CalculationScreen> {
               ],
             ],
           ],
+          if (selected == 'fluids')
+            FluidTherapyPanel(
+              patients: widget.patients,
+              clinicId: widget.clinicId,
+              references: widget.referenceLibrary,
+              onReminder: widget.onFluidReminder,
+            ),
           if (def != null &&
+              selected != 'fluids' &&
               (selected != 'adjustment' || reference != null)) ...[
             for (final f in def.inputs)
               Padding(

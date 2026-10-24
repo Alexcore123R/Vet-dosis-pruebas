@@ -1,4 +1,4 @@
-import '../../vet_ui/vet_components.dart';
+import 'neu_identity.dart';
 import 'package:flutter/material.dart';
 
 class WorkspaceStyle extends ThemeExtension<WorkspaceStyle> {
@@ -21,16 +21,18 @@ class WorkspacePanel extends StatelessWidget {
     if (theme.extension<WorkspaceStyle>()?.neumorphic != true) {
       return Card(child: child);
     }
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-      child: VetCard(
-        padding: EdgeInsets.zero,
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
-          clipBehavior: Clip.antiAlias,
-          child: child,
-        ),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: neuShadows(theme.brightness == Brightness.dark),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(24),
+        clipBehavior: Clip.antiAlias,
+        child: child,
       ),
     );
   }
