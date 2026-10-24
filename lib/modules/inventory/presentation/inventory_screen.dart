@@ -1,3 +1,4 @@
+import '../../../core/widgets/neu_record_card.dart';
 import '../../identity/domain/identity_repository.dart';
 import '../../ai/domain/ai_repository.dart';
 import 'inventory_insights_screen.dart';
@@ -1054,7 +1055,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 }
                 return true;
               }))
-                Card(
+                NeuRecordCard(
+                  color: const Color(0xFF51BAC6),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(

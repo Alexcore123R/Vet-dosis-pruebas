@@ -21,6 +21,7 @@ class CoreViewModel extends ChangeNotifier {
   ClinicalBranch branch = ClinicalBranch.small;
   String screen = 'Inicio';
   String? activityPatientId;
+  String? activityInstructions;
   String? saveError;
   ThemeMode get themeMode => switch (settings.brightness) {
     'light' => ThemeMode.light,
@@ -29,6 +30,7 @@ class CoreViewModel extends ChangeNotifier {
   };
   void selectBranch(ClinicalBranch value) {
     activityPatientId = null;
+    activityInstructions = null;
     branch = value;
     screen = switch (value) {
       ClinicalBranch.production => 'Producción y grandes especies',
@@ -38,8 +40,9 @@ class CoreViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void navigate(String value, {String? patientId}) {
+  void navigate(String value, {String? patientId, String? instructions}) {
     activityPatientId = patientId;
+    activityInstructions = instructions;
     screen = value;
     notifyListeners();
   }

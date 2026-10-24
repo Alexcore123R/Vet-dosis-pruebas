@@ -1,3 +1,4 @@
+import '../../../core/widgets/neu_header_card.dart';
 import 'home_pilot.dart';
 import '../../../vet_ui/vet_components.dart';
 import '../../doses/domain/quantity.dart';
@@ -57,35 +58,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return '${d.day}/${d.month}/${d.year} · ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
   }
 
+  Color sectionColor(String page) => switch (page) {
+    'Pacientes' || 'Hospitalización' => const Color(0xFF61C7BA),
+    'Inventario' || 'Cálculo rápido' => const Color(0xFF51BAC6),
+    'Estadísticas' || 'Caja' => const Color(0xFF879AE0),
+    _ => const Color(0xFFAC8DD5),
+  };
+
   Widget panel(String title, String page, List<Widget> children) =>
-      WorkspacePanel(
+      NeuHeaderCard(
+        title: title,
+        icon: sectionIcon(page),
+        color: sectionColor(page),
+        trailing: IconButton(
+          tooltip: 'Abrir $title',
+          onPressed: () => widget.onNavigate(page),
+          icon: const Icon(Icons.chevron_right),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    sectionIcon(page),
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Abrir $title',
-                    onPressed: () => widget.onNavigate(page),
-                    icon: const Icon(Icons.chevron_right),
-                  ),
-                ],
-              ),
-              ...children,
-            ],
+            children: children,
           ),
         ),
       );
@@ -721,21 +715,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ]),
             if (m.member != null && m.commissions != null)
               panel('Mis comisiones', 'Servicios', [
-                Text('Saldo de servicios cobrados pendiente de liquidar: ${money(m.ownCommission?['amount'] ?? '0')}'),
+                Text(
+                  'Saldo de servicios cobrados pendiente de liquidar: ${money(m.ownCommission?['amount'] ?? '0')}',
+                ),
                 if (m.commissions?['schedule'] is Map)
-                  Text('Próximo pago: ${(m.commissions!['schedule'] as Map)['next_pay_on']}'),
-                const Text('El porcentaje se configura por servicio. Solo cuentan ventas vigentes.'),
+                  Text(
+                    'Próximo pago: ${(m.commissions!['schedule'] as Map)['next_pay_on']}',
+                  ),
+                const Text(
+                  'El porcentaje se configura por servicio. Solo cuentan ventas vigentes.',
+                ),
               ]),
             if (m.member?.isPersonal == false && m.attendanceWeek != null)
               panel('Puntualidad y asistencia', 'Checado', [
                 if (m.attendanceWeek!['week_summary'] is Map) ...[
-                  Text('Semana desde ${(m.attendanceWeek!['week_summary'] as Map)['week_start']}'),
-                  Text('Asistencias registradas: ${(m.attendanceWeek!['week_summary'] as Map)['attended']}'),
-                  if ((m.attendanceWeek!['week_summary'] as Map)['configured'] == true)
-                    Text('A tiempo: ${(m.attendanceWeek!['week_summary'] as Map)['on_time']} · Retrasos: ${(m.attendanceWeek!['week_summary'] as Map)['late']}')
+                  Text(
+                    'Semana desde ${(m.attendanceWeek!['week_summary'] as Map)['week_start']}',
+                  ),
+                  Text(
+                    'Asistencias registradas: ${(m.attendanceWeek!['week_summary'] as Map)['attended']}',
+                  ),
+                  if ((m.attendanceWeek!['week_summary']
+                          as Map)['configured'] ==
+                      true)
+                    Text(
+                      'A tiempo: ${(m.attendanceWeek!['week_summary'] as Map)['on_time']} · Retrasos: ${(m.attendanceWeek!['week_summary'] as Map)['late']}',
+                    )
                   else
-                    const Text('La clínica aún no configuró un horario para medir retrasos.'),
-                  const Text('Administración ve el total del equipo; cada integrante ve sus propios registros.'),
+                    const Text(
+                      'La clínica aún no configuró un horario para medir retrasos.',
+                    ),
+                  const Text(
+                    'Administración ve el total del equipo; cada integrante ve sus propios registros.',
+                  ),
                 ],
               ]),
             if (m.member?.isPersonal == false &&
@@ -775,9 +787,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             if (m.member?.isPersonal == false &&
                 (m.agenda?['sections'] as Map?)?['messages'] == true)
               panel('Anuncios y avisos', 'Anuncios y avisos', [
-                unavailable('Agenda', m.agenda != null, Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
+                unavailable(
+                  'Agenda',
+                  m.agenda != null,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                       if (m.notices.isEmpty)
                         const Text('No hay avisos recientes.'),
                       for (final msg in m.notices)
@@ -792,7 +807,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         child: const Text('Ver avisos'),
                       ),
                     ],
-                  )),
+                  ),
+                ),
               ]),
           ],
           const SizedBox(height: 16),

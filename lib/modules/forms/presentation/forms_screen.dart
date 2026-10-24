@@ -1,3 +1,4 @@
+import '../../../core/widgets/neu_header_card.dart';
 import '../../prescribing/domain/prescribing_repository.dart';
 import '../../ai/domain/ai_repository.dart';
 import '../clinical/clinical_repository.dart';
@@ -330,16 +331,15 @@ class _FormsScreenState extends State<FormsScreen> {
                       'configurarse y revisarse antes de usarlas.',
           ),
         for (final version in model.templates)
-          Card(
+          NeuHeaderCard(
+            title: version.schema['title'] as String,
+            icon: Icons.description_outlined,
+            color: const Color(0xFFAC8DD5),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    version.schema['title'],
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
                   Text(
                     version.clinicId == null
                         ? 'Base de referencia · sin verificar'

@@ -141,8 +141,11 @@ class HospitalOrderForm extends StatefulWidget {
     required this.stay,
     required this.save,
     this.reviewTypes,
+    this.initialLabel,
+    this.initialInstructions,
   });
   final List<HospitalReviewType>? reviewTypes;
+  final String? initialLabel, initialInstructions;
   final HospitalStay stay;
   final Future<bool> Function(
     String,
@@ -170,6 +173,8 @@ class _HospitalOrderFormState extends State<HospitalOrderForm> {
   void initState() {
     super.initState();
     if (widget.reviewTypes != null) kind = '';
+    label.text = widget.initialLabel ?? '';
+    instructions.text = widget.initialInstructions ?? '';
     for (final c in [label, instructions, delay]) {
       c.addListener(() {
         if (mounted) setState(() {});

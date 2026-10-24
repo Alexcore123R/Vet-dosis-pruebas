@@ -10,7 +10,7 @@ from unittest.mock import patch
 from prepare_ci import EPOCH, PACKAGE, prepare, version_code
 from verify_apk import inspect_apk, certificate_fingerprints, stable_apksigner
 from create_signing import create, run
-from check_keystore import certificate_fingerprint
+from check_keystore import certificate_fingerprint, certificate_digests
 import hashlib
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -105,6 +105,10 @@ class ReleaseSetupTest(unittest.TestCase):
                 return subprocess.CompletedProcess(command,0,stdout=b'JVM container warning',stderr=b'')
             with patch('check_keystore.subprocess.run', side_effect=export):
                 actual = certificate_fingerprint(Path(tmp)/'fixture.jks','fixture',{})
+            with patch('check_keystore.subprocess.run', side_effect=export):
+                digests = certificate_digests(Path(tmp)/'fixture.jks','fixture',{})
+            self.assertEqual(digests['SHA-1'], hashlib.sha1(b'synthetic-DER-certificate').hexdigest())
+            self.assertEqual(digests['SHA-256'], actual)
             self.assertEqual(actual, hashlib.sha256(b'synthetic-DER-certificate').hexdigest())
             self.assertNotEqual(actual, hashlib.sha256(b'JVM container warningsynthetic-DER-certificate').hexdigest())
 
